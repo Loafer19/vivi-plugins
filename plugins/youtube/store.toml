@@ -5,6 +5,11 @@ tags = ["youtube", "yt-dlp", "download"]
 screenshots = ["youtube-settings"]
 
 [[changelog]]
+version = "1.2.1"
+date = "2026-10-16"
+notes = "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums)."
+
+[[changelog]]
 version = "1.2.0"
 date = "2026-10-15"
 notes = "Managed ffmpeg is Vivi's minimal static build (about 6 MB instead of 150 MB), checksums pinned."

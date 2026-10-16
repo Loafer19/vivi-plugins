@@ -13,7 +13,6 @@ main repository; they are listed in the catalog with `"kind": "builtin"`.
 | --- | --- |
 | `plugins/<id>/` | One package: `manifest.toml`, the Lua entry script, `README.md`, and `store.toml` (marketplace listing: categories, tags, screenshots, changelog; not shipped in the zip) |
 | `plugins/index.json` | The catalog the app downloads (built-in + package entries, URLs, sha256, sizes) |
-| `plugins/legacy-releases.txt` | Releases published in `Loafer19/vivi` before the split (kept there forever) |
 | `plugins/examples/` | Minimal example scripts |
 | `helpers/` | Native helper programs (`vivi-discord`, `vivi-remote`) and the minimal ffmpeg build |
 | `tests/plugins/` | LuaJIT unit tests with an mpv API stub (`bash tests/plugins/run.sh`) |
@@ -33,15 +32,16 @@ main repository; they are listed in the catalog with `"kind": "builtin"`.
 
 Existing releases are never replaced: bump the version to publish a change.
 
-## Catalog URLs and old releases
+## Catalog URLs and releases
 
-* Primary: `https://plugins.viviplayer.app/index.json`
-* Fallbacks: `https://loafer19.github.io/vivi-plugins/index.json` (this repository's Pages) and
-  `https://loafer19.github.io/vivi/index.json` (kept for older Vivi versions; the main repository
-  mirrors this catalog there).
-* Plugin and helper releases made before the move (listed in `plugins/legacy-releases.txt`) stay
-  in [Loafer19/vivi releases](https://github.com/Loafer19/vivi/releases), so pinned URLs and
-  checksums in old installs keep working. New versions are released here.
+* Primary: `https://plugins.viviplayer.app/index.json`; fallback:
+  `https://loafer19.github.io/vivi-plugins/index.json` (this repository's GitHub Pages).
+* Every download (plugin zips `plugin-<id>-v<version>`, native helpers, `helper-ffmpeg-v<build>`)
+  is a release asset of this repository, built by CI and checked against the sha256 in the
+  catalog. Each asset has a build provenance attestation:
+  `gh attestation verify <file> -R Loafer19/vivi-plugins`.
+* Only current versions are published here. Releases from before the move (in Loafer19/vivi)
+  were removed; changelogs still list those versions, without a download link.
 
 ## Local checks
 

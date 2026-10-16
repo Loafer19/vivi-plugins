@@ -1,6 +1,6 @@
 id = "cut-export"
 name = "Cut & Export Clip"
-version = "1.0.0"
+version = "1.0.1"
 description = "Cut a fragment of the current file into a new file: set In / Out (Alt+[ / Alt+]) or reuse the A-B loop points, then export (Alt+W) by fast lossless stream copy or a frame-accurate re-encode. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Chapter Thumbnails and Subtitle Auto-Sync; it re-encodes audio only, video re-encoding needs a system ffmpeg)."
 author = "Vivi"
 kind = "mpv-lua"

@@ -470,7 +470,7 @@ end
 -- 6-12 MB for both. The checksums are pinned here, so a new build comes with a plugin update.
 local FF_BUILD = {
   tag = "helper-ffmpeg-v8.0-1",
-  base = "https://github.com/Loafer19/vivi/releases/download/",
+  base = "https://github.com/Loafer19/vivi-plugins/releases/download/",
   sha = {
     ["ffmpeg-linux-aarch64"] = "307ffd8e2394ec06e35cc59a1a01c5fd812af78a02987c6204822297e567e7af",
     ["ffmpeg-linux-x86_64"] = "33eb6cf11c72c1f41ee62e0b31d458b4184daf4bfa89a474bf5c79a36f6e6527",

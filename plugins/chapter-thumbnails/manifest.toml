@@ -1,6 +1,6 @@
 id = "chapter-thumbnails"
 name = "Chapter Thumbnails"
-version = "1.0.0"
+version = "1.0.1"
 description = "Thumbnail preview while hovering the seek bar and a picture for every chapter in the Chapters tab, generated in the background and cached per file. Alt+H lists the chapters with titles and times. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Subtitle Auto-Sync)."
 author = "Vivi"
 kind = "mpv-lua"

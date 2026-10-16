@@ -5,6 +5,11 @@ tags = ["thumbnails", "chapters", "seek bar", "preview", "ffmpeg"]
 screenshots = ["chapter-thumbnails-settings"]
 
 [[changelog]]
+version = "1.0.1"
+date = "2026-10-16"
+notes = "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums)."
+
+[[changelog]]
 version = "1.0.0"
 date = "2026-10-15"
 notes = "First release: seek-bar hover thumbnails and chapter thumbnails cached per file, chapter list on Alt+H, system ffmpeg or Vivi's media build."

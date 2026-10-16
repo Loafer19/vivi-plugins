@@ -168,7 +168,7 @@ end
 -- Vivi's media ffmpeg build (helpers/ffmpeg/build.sh FLAVOR=media).
 local FF_MEDIA = {
   tag = "helper-ffmpeg-v8.0-2",
-  base = "https://github.com/Loafer19/vivi/releases/download/",
+  base = "https://github.com/Loafer19/vivi-plugins/releases/download/",
   sha = {
       ["ffmpeg-media-linux-aarch64"] = "a356a2facd9a1bdf420a3dbc5edee6ce7480dff90b0f058dcb7d6259cd6fc707",
       ["ffmpeg-media-linux-x86_64"] = "64cb79d4007f78afaaf3f7cdd126dbc8937857efb4724741296aedba90eb264e",

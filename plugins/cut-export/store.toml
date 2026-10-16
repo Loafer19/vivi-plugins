@@ -4,6 +4,11 @@ categories = ["Video", "Tools"]
 tags = ["ffmpeg", "cut", "trim", "clip", "export"]
 
 [[changelog]]
+version = "1.0.1"
+date = "2026-10-16"
+notes = "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums)."
+
+[[changelog]]
 version = "1.0.0"
 date = "2026-10-15"
 notes = "First release: In/Out or A-B loop range, stream copy or re-encode, shared media ffmpeg."
