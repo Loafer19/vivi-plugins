@@ -79,8 +79,8 @@
     {
       "id": "lyrics",
       "name": "Lyrics",
-      "description": "Synced lyrics as a karaoke overlay, from a .lrc file next to the song or from LRCLIB, cached on disk. Radio streams: lyrics for the current stream title.",
-      "version": "0.8.0",
+      "description": "Synced lyrics as a karaoke overlay or a full-screen karaoke view with word-by-word highlight (enhanced LRC). Sources: a .lrc file next to the song, embedded tags (USLT/SYLT/LYRICS), cache, LRCLIB (plain lyrics as fallback) and a manual search. Per-track timing offset; save as .lrc or embed. Radio streams: lyrics for the current stream title.",
+      "version": "0.11.0",
       "author": "Vivi",
       "icon": "lyrics",
       "lucide": "mic-vocal",
@@ -92,6 +92,17 @@
           "title": "Search lyrics online (LRCLIB)",
           "type": "toggle",
           "default": "true"
+        },
+        {
+          "key": "save-mode",
+          "title": "Keep downloaded lyrics",
+          "type": "choice",
+          "options": [
+            "Don't save",
+            "Save .lrc next to the song",
+            "Embed in the file's tags"
+          ],
+          "default": "Don't save"
         },
         {
           "key": "radio-mode",
@@ -133,10 +144,20 @@
       "tags": [
         "lyrics",
         "karaoke",
-        "lrclib"
+        "lrclib",
+        "lrc"
       ],
       "screenshots": [
+        "lyrics-karaoke",
+        "lyrics-search",
         "lyrics"
+      ],
+      "changelog": [
+        {
+          "version": "0.11.0",
+          "date": "2026-10-16",
+          "notes": "Full-screen karaoke view (L / side panel) with word-level highlight for enhanced LRC, smooth scrolling and dimmed past/next lines; per-track timing offset ([ / ] ±0.1 s, Shift ±0.5 s); Find Lyrics dialog (Ctrl+L: edit artist/title, results with duration and synced/plain); embedded lyrics (USLT/SYLT/LYRICS/©lyr) and LRCLIB plain lyrics as sources; save as .lrc or embed in tags."
+        }
       ]
     },
     {
