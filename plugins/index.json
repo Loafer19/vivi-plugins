@@ -1806,8 +1806,8 @@
     {
       "id": "subtitle-sync",
       "name": "Subtitle Auto-Sync",
-      "description": "Aligns the current external subtitle to the audio with alass or ffsubsync in the background, then loads the synced copy saved next to the original. Manual offset keys (Alt+Z / Alt+X) are remembered per file. Uses an installed alass or ffsubsync; otherwise downloads alass on first use (3 MB on Linux x86_64, 26 MB on Windows) and, without a system ffmpeg, Vivi's media ffmpeg build (about 15 MB, shared with Chapter Thumbnails).",
-      "version": "1.1.1",
+      "description": "Aligns the current external subtitle to the audio with alass or ffsubsync in the background, then loads the synced copy saved next to the original. Manual offset keys (Alt+Z / Alt+X) are remembered per file (by Vivi itself from 0.11, together with z / x and the side panel). Uses an installed alass or ffsubsync; otherwise downloads alass on first use (3 MB on Linux x86_64, 26 MB on Windows) and, without a system ffmpeg, Vivi's media ffmpeg build (about 15 MB, shared with Chapter Thumbnails).",
+      "version": "1.2.0",
       "author": "Vivi",
       "icon": "subtitles",
       "lucide": "captions",
@@ -1821,9 +1821,9 @@
         "subprocess"
       ],
       "source": "plugins/subtitle-sync",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-subtitle-sync-v1.1.1/subtitle-sync-1.1.1.zip",
-      "sha256": "ba567c8d1b94ec9cf9224b159eac4d88bd6e34b501f29374d7e1257472ff9021",
-      "size": 22741,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-subtitle-sync-v1.2.0/subtitle-sync-1.2.0.zip",
+      "sha256": "e52fb328dbcf237dae196cb75d87d784dc68af6cad03bff1704708a397effa0d",
+      "size": 24163,
       "settings": [
         {
           "key": "tool",
@@ -1888,10 +1888,15 @@
       ],
       "changelog": [
         {
+          "version": "1.2.0",
+          "date": "2026-10-16",
+          "notes": "Works with Vivi's per-file subtitle offset (Vivi 0.11+): Alt+Z / Alt+X go to Vivi, offsets saved by older versions are handed over once, and the side panel's Auto-sync button runs this plugin.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-subtitle-sync-v1.2.0/subtitle-sync-1.2.0.zip"
+        },
+        {
           "version": "1.1.1",
           "date": "2026-10-16",
-          "notes": "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-subtitle-sync-v1.1.1/subtitle-sync-1.1.1.zip"
+          "notes": "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums)."
         },
         {
           "version": "1.1.0",
