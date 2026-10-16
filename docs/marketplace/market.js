@@ -19,7 +19,6 @@
     const key = sort.value, by = {
       name,
       date: (a, b) => time(b) - time(a) || name(a, b),
-      size: (a, b) => (+a.dataset.size) - (+b.dataset.size) || name(a, b),
     }[key] || name;
     cards.slice().sort(by).forEach(c => grid.appendChild(c));
     buttons.forEach(b => b.classList.toggle("on", b.dataset.cat === cat));

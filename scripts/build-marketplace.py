@@ -8,7 +8,9 @@ and screenshots from docs/screenshots/. Output: a static site with a filterable 
 card is still listed), one page per plugin (/p/<id>/), sitemap.xml, robots.txt and an
 Atom feed of plugin updates (feed.xml). Standard library only.
 """
+import hashlib
 import html
+import io
 import json
 import re
 import shutil
@@ -128,6 +130,44 @@ def shot_path(name: str) -> Path | None:
     return None
 
 
+SHOT_V: dict[str, str] = {}  # screenshot name -> short content hash, appended as ?v= to bust caches
+
+
+def shot(s: str, ext: str, up: str = "") -> str:
+    return f"{up}img/shots/{e(s)}.{ext}?v={SHOT_V.get(s, '0')}"
+
+
+def write_shot(s: str, src: Path) -> None:
+    """Copy the PNG and derive the WebP from that same PNG, so the thumbnail can never lag behind
+    the full-size image (a prebuilt WebP is only used if Pillow is missing and it sits next to the PNG)."""
+    data = src.read_bytes()
+    (OUT / f"img/shots/{s}.png").write_bytes(data)
+    webp = None
+    try:
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.open(io.BytesIO(data)).save(buf, "WEBP", quality=82, method=6)
+        webp = buf.getvalue()
+    except ImportError:
+        pre = src.parent / "webp" / f"{s}.webp"
+        webp = pre.read_bytes() if pre.exists() else data  # browsers sniff the PNG
+    (OUT / f"img/shots/{s}.webp").write_bytes(webp)
+    SHOT_V[s] = hashlib.sha256(data + webp).hexdigest()[:10]
+
+
+def short_platforms(p: dict) -> str:
+    """Card line: OS families only ("Linux · Windows · macOS"); built-ins say nothing (the badge does)."""
+    if p.get("kind") == "builtin":
+        return ""
+    fam = []
+    for x in platforms(p):
+        f = x.split()[0]
+        if f not in fam:
+            fam.append(f)
+    order = {"Linux": 0, "Windows": 1, "macOS": 2}
+    return " · ".join(sorted(fam, key=lambda f: order.get(f, 9)))
+
+
 def zip_link(c: dict) -> str:
     return f' · <a href="{e(c["url"])}">download zip</a>' if c.get("url") else ""
 
@@ -179,7 +219,7 @@ icons from <a href="https://lucide.dev">Lucide</a> (ISC) · screenshots show <a 
 def card(p: dict) -> str:
     cats = p.get("categories", [])
     shots = [s for s in p.get("screenshots", []) if shot_path(s)]
-    thumb = (f'<img class="thumb" src="img/shots/{e(shots[0])}.webp" alt="{e(p["name"])} screenshot" loading="lazy" width="640" height="360">'
+    thumb = (f'<img class="thumb" src="{shot(shots[0], 'webp')}" alt="{e(p["name"])} screenshot" loading="lazy" width="640" height="360">'
              if shots else f'<div class="thumb ph">{icon(p.get("lucide", "puzzle"))}</div>')
     size = size_label(p)
     kind = "Built-in" if p.get("kind") == "builtin" else ("Example script" if p.get("kind") == "script" else "Download")
@@ -191,7 +231,7 @@ def card(p: dict) -> str:
   <div class="body">
     <div class="title"><span class="ic">{icon(p.get('lucide', 'puzzle'))}</span><h2>{e(p['name'])}</h2></div>
     <p>{e(p['description'])}</p>
-    <div class="meta"><span>v{e(p.get('version', ''))}</span><span>{e(size)}</span><span>{e(', '.join(platforms(p)))}</span></div>
+    <div class="meta"><span>v{e(p.get('version', ''))}</span>{f'<span>{e(size)}</span>' if p.get('kind') != 'builtin' else ''}{f'<span>{e(short_platforms(p))}</span>' if short_platforms(p) else ''}</div>
     <div class="chips"><span class="chip k">{e(kind)}</span>{''.join(f'<span class="chip">{e(c)}</span>' for c in cats)}</div>
   </div>
 </a>"""
@@ -201,7 +241,7 @@ def page(p: dict) -> str:
     pid = p["id"]
     url = f"{BASE}/p/{pid}/"
     shots = [s for s in p.get("screenshots", []) if shot_path(s)]
-    image = f"{BASE}/img/shots/{shots[0]}.png" if shots else f"{SITE}/img/og.png"
+    image = f"{BASE}/{shot(shots[0], 'png')}" if shots else f"{SITE}/img/og.png"
     desc = p["description"]
     ld = {"@context": "https://schema.org", "@type": "SoftwareApplication", "name": p["name"],
           "applicationCategory": "MultimediaApplication", "applicationSubCategory": ", ".join(p.get("categories", [])),
@@ -214,7 +254,7 @@ def page(p: dict) -> str:
     out = head(f"{p['name']} – Vivi plugin", desc, url, image,
                f'<script type="application/ld+json">{json.dumps(ld)}</script>', depth=2)
     gallery = "".join(
-        f'<figure><a href="../../img/shots/{e(s)}.png"><img src="../../img/shots/{e(s)}.webp" alt="{e(p["name"])} in Vivi ({i + 1})" '
+        f'<figure><a href="{shot(s, 'png', '../../')}"><img src="{shot(s, 'webp', '../../')}" alt="{e(p["name"])} in Vivi ({i + 1})" '
         f'loading="{"eager" if i == 0 else "lazy"}" width="1280" height="720"></a></figure>' for i, s in enumerate(shots))
     perms = p.get("permissions", [])
     perm_html = "".join(f"<li>{icon(PERM.get(x, ('shield', x))[0])}{e(PERM.get(x, ('', x))[1])}</li>" for x in perms) \
@@ -244,8 +284,8 @@ Needs Vivi {e(p.get('min_vivi', ''))} or newer. No Vivi yet? <code>curl -fsSL {S
   <div class="bigic">{icon(p.get('lucide', 'puzzle'))}</div>
   <div><h1>{e(p['name'])}</h1>
   <p class="lead">{e(desc)}</p>
-  <div class="meta"><span>v{e(p.get('version', ''))}</span><span>{e(size_label(p))}</span>
-  <span>{e(', '.join(platforms(p)))}</span><span>by {e(p.get('author', ''))}{src}</span></div>
+  <div class="meta"><span>v{e(p.get('version', ''))}</span>{f'<span>{e(size_label(p))}</span>' if p.get('kind') != 'builtin' else '<span>Built into Vivi</span>'}
+  {f'<span>{e(", ".join(platforms(p)))}</span>' if p.get('kind') != 'builtin' else ''}<span>by {e(p.get('author', ''))}{src}</span></div>
   <div class="chips">{''.join(f'<a class="chip" href="../../?cat={e(c)}">{e(c)}</a>' for c in p.get('categories', []))}
   {''.join(f'<span class="chip t">#{e(t)}</span>' for t in p.get('tags', []))}</div>
   <div class="actions">{install}</div></div>
@@ -272,13 +312,8 @@ def main() -> None:
     for p in plugins:
         for s in p.get("screenshots", []):
             f = shot_path(s)
-            if f:
-                shutil.copy(f, OUT / f"img/shots/{s}.png")
-                w = ROOT / "docs/screenshots/plugins/webp" / f"{s}.webp"
-                if w.exists():
-                    shutil.copy(w, OUT / f"img/shots/{s}.webp")
-                else:
-                    shutil.copy(f, OUT / f"img/shots/{s}.webp")  # browsers sniff the PNG
+            if f and s not in SHOT_V:
+                write_shot(s, f)
     order = sorted(plugins, key=lambda p: (p.get("kind") == "script", p["name"].lower()))
     cats = "".join(f'<button type="button" data-cat="{c}">{icon(CAT_ICON[c])}{c}</button>' for c in CATEGORIES)
     desc = (f"{len(plugins)} plugins for the Vivi media player: music, video, subtitles, streaming, integrations and tools. "
@@ -294,7 +329,7 @@ with checksums verified and permissions shown before install.</p></section>
 <div class="toolbar">
   <label class="search">{icon('search')}<input id="q" type="search" placeholder="Search plugins" aria-label="Search plugins"></label>
   <div class="cats" role="group" aria-label="Category"><button type="button" data-cat="" class="on">All</button>{cats}</div>
-  <label class="sort">Sort <select id="sort" aria-label="Sort"><option value="name">Name</option><option value="date">Recently updated</option><option value="size">Size</option></select></label>
+  <label class="sort">Sort <select id="sort" aria-label="Sort"><option value="name">Name</option><option value="date">Recently updated</option></select></label>
 </div>
 <p id="empty" class="muted" hidden>No plugins match.</p>
 <div class="grid" id="grid">
