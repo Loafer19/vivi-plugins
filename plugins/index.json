@@ -279,7 +279,7 @@
     {
       "id": "free-music",
       "name": "Free Music",
-      "description": "Search Creative Commons and public-domain music on the Internet Archive and Jamendo, preview it, and download it to your library with tags, cover and licence attribution. Jamendo needs a free client ID.",
+      "description": "Search and browse Creative Commons and public-domain music from Jamendo, the Internet Archive and the Free Music Archive in one list with source badges: genres, moods, licence filters (commercial use, CC BY, BY-SA, CC0), sort, infinite scroll, album and artist pages, play similar, and downloads with tags, cover and licence attribution. Jamendo needs a free client ID.",
       "version": "0.8.0",
       "author": "Vivi",
       "icon": "free-music",
@@ -301,6 +301,22 @@
           "default": ""
         },
         {
+          "key": "choose-folder",
+          "title": "Choose download folder",
+          "type": "action",
+          "default": ""
+        },
+        {
+          "key": "downloader",
+          "title": "Download with",
+          "type": "choice",
+          "default": "Built-in (tags, cover, licence)",
+          "options": [
+            "Built-in (tags, cover, licence)",
+            "Offline Downloads queue"
+          ]
+        },
+        {
           "key": "open",
           "title": "Find free music",
           "type": "action",
@@ -314,9 +330,13 @@
       "tags": [
         "creative-commons",
         "internet-archive",
-        "jamendo"
+        "jamendo",
+        "free-music-archive",
+        "downloads"
       ],
-      "screenshots": []
+      "screenshots": [
+        "free-music"
+      ]
     },
     {
       "id": "network-streams",
