@@ -351,7 +351,7 @@ local function export()
   end)
 end
 
--- Show the In/Out range on Vivi's seekbar (`vivi-range <a> <b> [label]`, Vivi 0.10.1+;
+-- Show the In/Out range on Vivi's seekbar (`vivi-range <a> <b> [label]`, Vivi 0.11.0+;
 -- older builds ignore the message). Only In is set: b = -1 means "up to the playhead".
 local function show_range()
   local a, b = parse_time(o["in"]), parse_time(o.out)

@@ -4,6 +4,11 @@ categories = ["Video", "Tools"]
 tags = ["ffmpeg", "cut", "trim", "clip", "export"]
 
 [[changelog]]
+version = "1.0.2"
+date = "2026-10-17"
+notes = "Shows the In/Out range on Vivi's seekbar (Vivi 0.11.0+; older versions ignore it)."
+
+[[changelog]]
 version = "1.0.1"
 date = "2026-10-16"
 notes = "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums)."
