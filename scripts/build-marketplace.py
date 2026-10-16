@@ -96,7 +96,7 @@ def head(title: str, desc: str, url: str, image: str, extra: str = "", depth: in
   <a class="brand" href="{up}./"><img src="{up}img/vivi.svg" alt="" width="26" height="26">Vivi plugins</a>
   <nav>
     <a href="{SITE}/">{icon('house')}<span class="wide">Vivi</span></a>
-    <a href="{SITE}/plugin-dev.html">{icon('code-xml')}<span class="wide">Write a plugin</span></a>
+    <a href="{up}dev/">{icon('code-xml')}<span class="wide">Write a plugin</span><span class="narrow">Develop</span></a>
     <a href="{up}feed.xml">{icon('rss')}<span class="wide">Updates</span></a>
     <a href="https://github.com/Loafer19/vivi-plugins">{icon('git-fork')}<span class="wide">GitHub</span></a>
   </nav>
@@ -107,6 +107,7 @@ def head(title: str, desc: str, url: str, image: str, extra: str = "", depth: in
 
 FOOT = f"""</main>
 <footer>Vivi plugin marketplace · <a href="{SITE}/">viviplayer.app</a> · catalog as <a href="/index.json">index.json</a> ·
+<a href="/dev/">Write a plugin</a> ·
 icons from <a href="https://lucide.dev">Lucide</a> (ISC) · screenshots show <a href="https://durian.blender.org">Sintel</a> (© Blender Foundation, CC BY 3.0)</footer>
 </body>
 </html>
@@ -245,7 +246,12 @@ with checksums verified and permissions shown before install.</p></section>
         d = OUT / "p" / p["id"]
         d.mkdir(parents=True)
         (d / "index.html").write_text(page(p))
-    urls = [BASE + "/"] + [f"{BASE}/p/{p['id']}/" for p in order]
+    # Plugin authoring guide (moved here from viviplayer.app/plugin-dev.html, which 301s to /dev/).
+    (OUT / "dev").mkdir()
+    dev_desc = "Write a Vivi plugin: mpv Lua and JavaScript scripts, Rust plugins, manifest.toml, settings, packaging and publishing."
+    (OUT / "dev/index.html").write_text(head("Write a Vivi plugin – developer guide", dev_desc, BASE + "/dev/", f"{SITE}/img/og.png", depth=1)
+                                        + '<div class="doc">\n' + (ROOT / "docs/dev/content.html").read_text() + "</div>\n" + FOOT)
+    urls = [BASE + "/", BASE + "/dev/"] + [f"{BASE}/p/{p['id']}/" for p in order]
     (OUT / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
                                      + "".join(f"<url><loc>{u}</loc></url>" for u in urls) + "</urlset>\n")
     (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {BASE}/sitemap.xml\n")
