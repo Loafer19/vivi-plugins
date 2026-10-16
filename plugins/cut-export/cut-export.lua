@@ -351,9 +351,18 @@ local function export()
   end)
 end
 
+-- Show the In/Out range on Vivi's seekbar (`vivi-range <a> <b> [label]`, Vivi 0.11.0+;
+-- older builds ignore the message). Only In is set: b = -1 means "up to the playhead".
+local function show_range()
+  local a, b = parse_time(o["in"]), parse_time(o.out)
+  if not a and not b then return mp.commandv("script-message", "vivi-range", "clear") end
+  mp.commandv("script-message", "vivi-range", tostring(a or 0), tostring(b or -1), "Cut")
+end
+
 local function remember(key, v)
   o[key] = v
   mp.commandv("script-message", "vivi-setting", "cut-export", key, v)
+  show_range()
 end
 
 local function set_point(key, label)

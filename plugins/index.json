@@ -752,7 +752,7 @@
       "id": "cut-export",
       "name": "Cut & Export Clip",
       "description": "Cut a fragment of the current file into a new file: set In / Out (Alt+[ / Alt+]) or reuse the A-B loop points, then export (Alt+W) by fast lossless stream copy or a frame-accurate re-encode. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Chapter Thumbnails and Subtitle Auto-Sync; it re-encodes audio only, video re-encoding needs a system ffmpeg).",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "author": "Vivi",
       "icon": "chapters",
       "lucide": "scissors",
@@ -766,9 +766,9 @@
         "subprocess"
       ],
       "source": "plugins/cut-export",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-cut-export-v1.0.1/cut-export-1.0.1.zip",
-      "sha256": "5b92ad78c024c88d6ef29d01028f4bbb212e9d1a3374b1ef63c90be72f686b43",
-      "size": 21789,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-cut-export-v1.0.2/cut-export-1.0.2.zip",
+      "sha256": "fd0f4a03bd12d59ce0228dc775fe37350388176bf7f35fbe9e7336bde213ae09",
+      "size": 22247,
       "settings": [
         {
           "key": "in",
@@ -866,10 +866,15 @@
       ],
       "changelog": [
         {
+          "version": "1.0.2",
+          "date": "2026-10-17",
+          "notes": "Shows the In/Out range on Vivi's seekbar (Vivi 0.11.0+; older versions ignore it).",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-cut-export-v1.0.2/cut-export-1.0.2.zip"
+        },
+        {
           "version": "1.0.1",
           "date": "2026-10-16",
-          "notes": "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-cut-export-v1.0.1/cut-export-1.0.1.zip"
+          "notes": "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums)."
         },
         {
           "version": "1.0.0",
