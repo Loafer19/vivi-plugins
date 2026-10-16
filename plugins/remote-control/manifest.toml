@@ -1,7 +1,7 @@
 id = "remote-control"
 name = "Remote Control"
-version = "1.0.0"
-description = "Control playback from your phone: a web page on your local network with play/pause, seek, volume, next/previous, the queue and cover art. PIN protected; only devices on the local network can connect. Ships a small native helper (vivi-remote) that serves the page."
+version = "1.1.0"
+description = "Control Vivi from your phone: a dark, touch-friendly web page with cover art, seek, play/pause/next, volume and mute, speed, audio and subtitle tracks, chapters, the queue, library search, fullscreen and open URL, updated live. Pair by scanning a QR code; PIN protected and local-network only by default. Installs to the home screen. Ships a small native helper (vivi-remote) that serves the page."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "remote-control.lua"
@@ -21,12 +21,24 @@ default = "8765"
 
 [[settings]]
 key = "pin"
-title = "PIN (asked once by the phone; leave empty for a new random 6-digit PIN)"
+title = "PIN (empty: a random 6-digit PIN is made)"
 type = "text"
 default = ""
 
 [[settings]]
+key = "lan_only"
+title = "Only devices on the local network (recommended)"
+type = "toggle"
+default = "true"
+
+[[settings]]
 key = "address"
-title = "Phone address and PIN"
+title = "Pair a phone: QR code, address and PIN"
 type = "action"
-label = "Show"
+label = "Show QR code"
+
+[[settings]]
+key = "new_pin"
+title = "New PIN (signs out paired phones)"
+type = "action"
+label = "New PIN"

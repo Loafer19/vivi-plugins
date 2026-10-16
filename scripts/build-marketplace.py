@@ -44,6 +44,26 @@ def kb(n: int) -> str:
     return f"{n / 1024:.0f} KB" if n < 1 << 20 else f"{n / (1 << 20):.1f} MB"
 
 
+def download_sizes(p: dict) -> list[int]:
+    """Bytes downloaded on each platform: the zip plus that platform's helpers."""
+    if not p.get("size"):
+        return []
+    per: dict[str, int] = {}
+    for b in p.get("binaries", []):
+        per[b["platform"]] = per.get(b["platform"], 0) + b.get("size", 0)
+    return sorted(p["size"] + n for n in per.values()) or [p["size"]]
+
+
+def size_label(p: dict) -> str:
+    """"12 KB", "305–628 KB" across platforms for packages with helpers, plus size_note."""
+    n = download_sizes(p)
+    if not n:
+        return "built in"
+    lo, hi = kb(n[0]), kb(n[-1])
+    out = lo if lo == hi else (f"{lo[:-3]}–{hi}" if lo[-2:] == hi[-2:] else f"{lo}–{hi}")
+    return f"{out} {p['size_note']}" if p.get("size_note") else out
+
+
 def platforms(p: dict) -> list[str]:
     if p.get("kind") == "builtin":
         return ["Built in"]
@@ -119,12 +139,12 @@ def card(p: dict) -> str:
     shots = [s for s in p.get("screenshots", []) if shot_path(s)]
     thumb = (f'<img class="thumb" src="img/shots/{e(shots[0])}.webp" alt="{e(p["name"])} screenshot" loading="lazy" width="640" height="360">'
              if shots else f'<div class="thumb ph">{icon(p.get("lucide", "puzzle"))}</div>')
-    size = kb(p["size"]) if p.get("size") else "built in"
+    size = size_label(p)
     kind = "Built-in" if p.get("kind") == "builtin" else ("Example script" if p.get("kind") == "script" else "Download")
     date = (changelog(p) or [{}])[0].get("date", "")
     return f"""<a class="card" href="p/{e(p['id'])}/" data-cats="{e('|'.join(cats))}" data-tags="{e(' '.join(p.get('tags', [])))}"
  data-name="{e(p['name'].lower())}" data-text="{e((p['name'] + ' ' + p['description'] + ' ' + ' '.join(p.get('tags', []))).lower())}"
- data-size="{p.get('size', 0)}" data-date="{e(date)}">
+ data-size="{(download_sizes(p) or [0])[-1]}" data-date="{e(date)}">
   {thumb}
   <div class="body">
     <div class="title"><span class="ic">{icon(p.get('lucide', 'puzzle'))}</span><h2>{e(p['name'])}</h2></div>
@@ -182,7 +202,7 @@ Needs Vivi {e(p.get('min_vivi', ''))} or newer. No Vivi yet? <code>curl -fsSL {S
   <div class="bigic">{icon(p.get('lucide', 'puzzle'))}</div>
   <div><h1>{e(p['name'])}</h1>
   <p class="lead">{e(desc)}</p>
-  <div class="meta"><span>v{e(p.get('version', ''))}</span><span>{e(kb(p['size']) if p.get('size') else 'built in')}</span>
+  <div class="meta"><span>v{e(p.get('version', ''))}</span><span>{e(size_label(p))}</span>
   <span>{e(', '.join(platforms(p)))}</span><span>by {e(p.get('author', ''))}{src}</span></div>
   <div class="chips">{''.join(f'<a class="chip" href="../../?cat={e(c)}">{e(c)}</a>' for c in p.get('categories', []))}
   {''.join(f'<span class="chip t">#{e(t)}</span>' for t in p.get('tags', []))}</div>

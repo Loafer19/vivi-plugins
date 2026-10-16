@@ -1,66 +1,371 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111">
+<meta name="theme-color" content="#0E0E0E">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vivi Remote">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Vivi Remote</title>
 <style>
-:root{color-scheme:dark;--a:#4cc2ff}
-*{box-sizing:border-box}body{margin:0;font:16px system-ui,sans-serif;background:#111;color:#eee;padding:16px;max-width:520px;margin:auto}
-#art{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;background:#222;display:block}
-h1{font-size:20px;margin:14px 0 2px}#artist{color:#aaa;margin:0 0 10px}
-.row{display:flex;gap:10px;align-items:center;justify-content:center;margin:12px 0}
-button{background:#2a2a2a;color:#eee;border:0;border-radius:50%;width:64px;height:64px;font-size:24px}
-button.big{width:80px;height:80px;background:var(--a);color:#111;font-size:30px}
-input[type=range]{width:100%;accent-color:var(--a)}
-.t{display:flex;justify-content:space-between;color:#aaa;font-size:13px}
-ol{padding:0;list-style:none}li{padding:10px;border-radius:8px;background:#1b1b1b;margin:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-li.cur{background:#233544;color:var(--a)}
-#pin{display:none;text-align:center;margin-top:30vh}#pin input{font-size:28px;width:8em;text-align:center;padding:8px;border-radius:8px;border:0}
-#err{color:#f77;text-align:center}
-</style></head><body>
-<div id="pin"><p>Enter the PIN shown in Vivi → Settings → Extensions → Remote Control</p>
-<input id="p" inputmode="numeric" autocomplete="one-time-code"><p><button class="big" onclick="savePin()">OK</button></p></div>
-<div id="ui" style="display:none">
-<img id="art" alt="">
-<h1 id="title">—</h1><p id="artist"></p>
-<input id="seek" type="range" min="0" max="1000" value="0">
-<div class="t"><span id="pos">0:00</span><span id="dur">0:00</span></div>
-<div class="row">
-<button onclick="cmd('prev')" aria-label="Previous">⏮</button>
-<button onclick="cmd('seek-rel',-10)" aria-label="Back 10 s">↺</button>
-<button class="big" id="pp" onclick="cmd('pause')" aria-label="Play or pause">⏯</button>
-<button onclick="cmd('seek-rel',10)" aria-label="Forward 10 s">↻</button>
-<button onclick="cmd('next')" aria-label="Next">⏭</button>
+@font-face{font-family:Inter;font-style:normal;font-display:swap;font-weight:100 900;src:url(/inter-latin.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Inter;font-style:normal;font-display:swap;font-weight:100 900;src:url(/inter-cyrillic.woff2) format("woff2");unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+:root{--bg:#0E0E0E;--bg1:#161616;--bg2:#1E1E1E;--bg3:#262626;--line:#2C2C2C;--fg:#EAEAEA;--fg2:#B8B8B8;--fg3:#7A7A7A;--ac:#D37918;--ac2:#E8902F;--acbg:rgba(211,121,24,.14);--r:14px;
+--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+body{display:flex;flex-direction:column;min-height:100dvh;padding:var(--st) var(--sr) 0 var(--sl);user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.35;cursor:default}
+svg.i{width:22px;height:22px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hidden{display:none!important}
+#backdrop{position:fixed;inset:-40px;background-size:cover;background-position:center;filter:blur(60px) saturate(1.3);opacity:.22;z-index:-1;transition:opacity .6s}
+/* header */
+header{display:flex;align-items:center;gap:8px;padding:10px 14px 6px;flex:none}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:16px;letter-spacing:-.01em;flex:1;min-width:0}
+.brand .logo{width:30px;height:30px;border-radius:9px;background:#141414;border:1px solid var(--line);display:grid;place-items:center;color:var(--ac)}
+.brand .logo svg{width:16px;height:16px;fill:currentColor;stroke:none}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--fg3);flex:none}
+.dot.live{background:#3DBE6B;box-shadow:0 0 0 3px rgba(61,190,107,.18)}
+.dot.poll{background:var(--ac)}
+.ib{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--fg2);flex:none}
+.ib:active{background:var(--bg2)}
+.ib.on{color:var(--ac);background:var(--acbg)}
+/* layout */
+main{flex:1;display:grid;grid-template-columns:1fr;min-height:0}
+#now{display:flex;flex-direction:column;align-items:center;padding:6px 20px 12px;gap:14px;min-width:0}
+#cover{width:min(78vw,46dvh,380px);aspect-ratio:1;border-radius:18px;background:linear-gradient(145deg,#232323,#151515);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.55);flex:none;position:relative}
+#cover img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+#cover .ph{color:#3a3a3a;position:absolute;inset:0;display:flex;align-items:center;justify-content:center}#cover .ph svg{width:30%!important;height:30%!important;stroke-width:1.5}
+.meta{width:100%;max-width:520px;text-align:center;min-width:0}
+#title{font-size:21px;font-weight:650;letter-spacing:-.02em;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word}
+#sub{color:var(--fg2);font-size:14.5px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chap{color:var(--ac);font-size:12.5px;font-weight:500;margin-top:6px;min-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* seek */
+.seek{width:100%;max-width:520px}
+.bar{position:relative;height:32px;touch-action:none;cursor:pointer}
+.bar .tr{position:absolute;left:0;right:0;top:14px;height:4px;border-radius:2px;background:var(--bg3);overflow:hidden}
+.bar .fill{position:absolute;left:0;top:0;bottom:0;background:var(--ac);border-radius:2px}
+.bar .th{position:absolute;top:8px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.5);transition:transform .12s}
+.bar.drag .th{transform:scale(1.25)}
+.bar.drag .tr{height:6px;top:13px}
+.bar .mk{position:absolute;top:0;bottom:0;width:2px;background:var(--bg);opacity:.9}
+.times{display:flex;justify-content:space-between;font-size:12.5px;color:var(--fg3);font-variant-numeric:tabular-nums;margin-top:-2px}
+/* transport */
+.tp{display:flex;align-items:center;justify-content:center;gap:clamp(4px,3vw,18px);width:100%;max-width:520px}
+.tb{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;color:var(--fg)}
+.tb:active{background:var(--bg2)}
+.tb svg{width:26px;height:26px}
+.tb.sm svg{width:23px;height:23px}
+.tb .n{position:absolute;font-size:9px;font-weight:700;margin-top:1px}
+.tb.sm{position:relative;color:var(--fg2)}
+#pp{width:76px;height:76px;background:var(--ac);color:#0b0b0b;box-shadow:0 8px 26px rgba(211,121,24,.35)}
+#pp:active{background:var(--ac2);transform:scale(.96)}
+#pp svg{width:32px;height:32px;fill:currentColor;stroke-width:1.5}
+/* volume + chips */
+.vol{display:flex;align-items:center;gap:6px;width:100%;max-width:520px}
+.vol .bar{flex:1}
+#volv{width:40px;text-align:right;font-size:12.5px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.chips{display:flex;gap:8px;width:100%;max-width:520px;justify-content:center;flex-wrap:wrap}
+.chip{height:40px;padding:0 14px;border-radius:20px;background:var(--bg2);border:1px solid var(--line);display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:500;color:var(--fg2);max-width:100%}
+.chip svg{width:17px;height:17px}
+.chip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+.chip.on{color:var(--ac);border-color:rgba(211,121,24,.4);background:var(--acbg)}
+.chip:active{background:var(--bg3)}
+/* side panel */
+#side{display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--line);background:var(--bg)}
+.tabs{display:flex;gap:4px;padding:8px 12px 0;flex:none}
+.tab{flex:1;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13.5px;font-weight:550;color:var(--fg3)}
+.tab svg{width:18px;height:18px}
+.tab.on{color:var(--fg);background:var(--bg2)}
+.tab .cnt{font-size:11px;color:var(--fg3);font-weight:500}
+.pane{flex:1;overflow:auto;padding:8px 12px calc(16px + var(--sb));-webkit-overflow-scrolling:touch;min-height:240px}
+.list{list-style:none;margin:0;padding:0}
+.row{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 6px 6px 12px;border-radius:12px;cursor:pointer}
+.row:active{background:var(--bg2)}
+.row.cur{background:var(--acbg)}
+.row.cur .t1{color:var(--ac)}
+.row .ix{width:26px;text-align:center;font-size:12.5px;color:var(--fg3);font-variant-numeric:tabular-nums;flex:none}
+.row.cur .ix{color:var(--ac)}
+.row .tx{flex:1;min-width:0}
+.row .t1{font-size:14.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t2{font-size:12.5px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.row .act{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;color:var(--fg3);flex:none}
+.row .act:active{background:var(--bg3);color:var(--fg)}
+.empty{color:var(--fg3);text-align:center;padding:36px 16px;font-size:14px}
+.empty svg{width:34px;height:34px;display:block;margin:0 auto 10px;stroke-width:1.5;color:#444}
+.more{color:var(--fg3);font-size:12.5px;text-align:center;padding:10px}
+.search{display:flex;gap:8px;margin:4px 0 8px;position:sticky;top:-8px;padding-top:8px;background:var(--bg);z-index:1}
+.field{flex:1;display:flex;align-items:center;gap:8px;height:46px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);padding:0 12px;color:var(--fg3)}
+.field:focus-within{border-color:var(--ac)}
+.field input{flex:1;min-width:0;height:100%;background:none;border:0;outline:0;color:var(--fg);font:inherit;font-size:16px}
+.seg{display:flex;gap:6px;margin-bottom:6px}
+.seg button{height:34px;padding:0 14px;border-radius:17px;background:var(--bg2);color:var(--fg2);font-size:13px;font-weight:500}
+.seg button.on{background:var(--ac);color:#0b0b0b}
+.btn{height:48px;padding:0 20px;border-radius:12px;background:var(--ac);color:#0b0b0b;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{background:var(--ac2)}
+.btn.gh{background:var(--bg2);color:var(--fg);border:1px solid var(--line)}
+/* sheets */
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10;opacity:0;pointer-events:none;transition:opacity .2s}
+#scrim.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:520px;max-height:78dvh;background:#181818;border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;z-index:11;transform:translateY(105%);transition:transform .25s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding-bottom:var(--sb)}
+.sheet.show{transform:none}
+.sheet .grab{width:38px;height:4px;border-radius:2px;background:#3a3a3a;margin:10px auto 2px;flex:none}
+.sheet h2{font-size:16px;font-weight:650;margin:8px 20px 6px;display:flex;align-items:center;gap:10px}
+.sheet h2 svg{color:var(--ac);width:20px;height:20px}
+.sheet .body{overflow:auto;padding:4px 12px 16px}
+.opt{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 12px;border-radius:12px;width:100%;text-align:left;font-size:15px}
+.opt:active{background:var(--bg2)}
+.opt .tx{flex:1;min-width:0}
+.opt .t2{font-size:12.5px;color:var(--fg3)}
+.opt .ck{color:var(--ac);visibility:hidden}
+.opt.on .ck{visibility:visible}
+.opt.on{color:var(--ac)}
+.speeds{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:6px 8px}
+.speeds button{height:50px;border-radius:12px;background:var(--bg2);font-weight:600;font-variant-numeric:tabular-nums}
+.speeds button.on{background:var(--ac);color:#0b0b0b}
+.formrow{display:flex;flex-direction:column;gap:10px;padding:6px 8px}
+.formrow .btns{display:flex;gap:8px}.formrow .btns .btn{flex:1}
+/* pin */
+#pin{position:fixed;inset:0;display:grid;place-items:center;padding:24px;z-index:20;background:var(--bg)}
+.card{width:100%;max-width:360px;text-align:center}
+.card .big{width:64px;height:64px;border-radius:18px;background:var(--acbg);color:var(--ac);display:grid;place-items:center;margin:0 auto 18px}
+.card .big svg{width:30px;height:30px}
+.card h1{font-size:22px;margin:0 0 6px;letter-spacing:-.02em}
+.card p{color:var(--fg2);margin:0 0 22px;font-size:14.5px}
+#pinin{width:100%;height:58px;border-radius:14px;background:var(--bg2);border:1px solid var(--line);color:var(--fg);font:inherit;font-size:26px;letter-spacing:.35em;text-align:center;outline:0;margin-bottom:12px;font-variant-numeric:tabular-nums}
+#pinin:focus{border-color:var(--ac)}
+.card .btn{width:100%}
+.err{color:#FF7A6B;font-size:13.5px;min-height:20px;margin-top:12px}
+#toast{position:fixed;left:50%;bottom:calc(20px + var(--sb));transform:translate(-50%,30px);background:#262626;border:1px solid var(--line);color:var(--fg);padding:11px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;z-index:30;pointer-events:none;max-width:90vw}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#offline{position:fixed;top:calc(8px + var(--st));left:50%;transform:translateX(-50%);background:#3A1F1A;color:#FFB3A8;border:1px solid #5A2E25;padding:8px 14px;border-radius:20px;font-size:13px;display:flex;gap:8px;align-items:center;z-index:25}
+#offline svg{width:16px;height:16px}
+/* phone landscape + tablets: now playing left, lists right */
+@media (min-width:720px),(orientation:landscape) and (min-width:560px){
+ main{grid-template-columns:minmax(0,1.05fr) minmax(300px,1fr);height:calc(100dvh - 60px - var(--st))}
+ #now{overflow:auto;justify-content:safe center}
+ #side{border-top:0;border-left:1px solid var(--line);background:rgba(14,14,14,.55)}
+ .pane{min-height:0}
+}
+@media (orientation:landscape) and (max-height:540px){
+ header{padding:2px 12px 0}.ib{width:40px;height:40px}
+ main{height:calc(100dvh - 44px - var(--st))}
+ #now{flex-direction:row;flex-wrap:wrap;align-content:safe center;justify-content:center;gap:6px 14px;padding:2px 14px 8px}
+ #cover{width:88px;border-radius:12px}
+ .meta{flex:1;min-width:140px;text-align:left;max-width:none}
+ #title{font-size:17px;-webkit-line-clamp:1}#chap{margin-top:3px}
+ .tb{width:48px;height:48px}#pp{width:58px;height:58px}#pp svg{width:26px;height:26px}
+ .vol .ib{width:40px;height:40px}.chip{height:38px}
+ .vol{width:auto;flex:1 1 200px}.chips{width:max-content;flex:0 0 auto}
+}
+@media (min-width:1024px){#cover{width:min(40vw,44dvh,440px)}#title{font-size:24px}}
+@media (hover:hover){.row:hover,.opt:hover,.ib:hover,.tb:hover,.chip:hover{background:var(--bg2)}#pp:hover{background:var(--ac2)}.tab:hover{color:var(--fg)}}
+</style>
+</head>
+<body>
+<div id="backdrop"></div>
+<div id="pin" class="hidden">
+ <div class="card">
+  <div class="big"><span data-i="key-round"></span></div>
+  <h1>Connect to Vivi</h1>
+  <p>Scan the QR code in Vivi → Settings → Extensions → Remote Control, or enter the PIN shown there.</p>
+  <input id="pinin" inputmode="numeric" autocomplete="one-time-code" maxlength="32" placeholder="••••••" aria-label="PIN">
+  <button class="btn" id="pinok"><span data-i="check"></span>Connect</button>
+  <div class="err" id="pinerr"></div>
+ </div>
 </div>
-<div class="row"><span>🔈</span><input id="vol" type="range" min="0" max="130" value="100"><span id="vv">100</span></div>
-<h1>Queue</h1><ol id="q"></ol>
-</div>
-<p id="err"></p>
+<div id="offline" class="hidden"><span data-i="wifi-off"></span>Vivi is not reachable — retrying…</div>
+<header>
+ <div class="brand"><div class="logo"><svg viewBox="0 0 24 24"><path d="M7 4.5a1.5 1.5 0 0 1 2.3-1.3l10.5 7.2a1.6 1.6 0 0 1 0 2.6L9.3 20.2A1.5 1.5 0 0 1 7 18.9z"/></svg></div><span>Vivi Remote</span><span class="dot" id="dot" title="Connection"></span></div>
+ <button class="ib" id="bopen" aria-label="Open URL"><span data-i="link"></span></button>
+ <button class="ib" id="bfs" aria-label="Toggle fullscreen in Vivi"><span data-i="maximize"></span></button>
+</header>
+<main>
+ <section id="now">
+  <div id="cover"><div class="ph"><span data-i="music"></span></div><img id="art" alt="" class="hidden"></div>
+  <div class="meta"><div id="title">Nothing playing</div><div id="sub">&nbsp;</div><div id="chap"></div></div>
+  <div class="seek">
+   <div class="bar" id="seek" role="slider" aria-label="Seek" tabindex="0"><div class="tr"><div class="fill" id="sfill"></div><div id="marks"></div></div><div class="th" id="sth"></div></div>
+   <div class="times"><span id="pos">0:00</span><span id="dur">0:00</span></div>
+  </div>
+  <div class="tp">
+   <button class="tb sm" data-c="prev" aria-label="Previous"><span data-i="skip-back"></span></button>
+   <button class="tb sm" data-c="seek-rel" data-v="-10" aria-label="Back 10 seconds"><span data-i="rotate-ccw"></span><span class="n">10</span></button>
+   <button class="tb" id="pp" data-c="pause" aria-label="Play or pause"><span data-i="play"></span></button>
+   <button class="tb sm" data-c="seek-rel" data-v="10" aria-label="Forward 10 seconds"><span data-i="rotate-cw"></span><span class="n">10</span></button>
+   <button class="tb sm" data-c="next" aria-label="Next"><span data-i="skip-forward"></span></button>
+  </div>
+  <div class="vol">
+   <button class="ib" id="bmute" aria-label="Mute"><span data-i="volume-2"></span></button>
+   <div class="bar" id="vol" role="slider" aria-label="Volume" tabindex="0"><div class="tr"><div class="fill" id="vfill"></div></div><div class="th" id="vth"></div></div>
+   <span id="volv">100</span>
+  </div>
+  <div class="chips">
+   <button class="chip" id="cspeed"><span data-i="gauge"></span><span id="speedv">1×</span></button>
+   <button class="chip" id="caudio"><span data-i="audio-lines"></span><span id="audiov">Audio</span></button>
+   <button class="chip" id="csubs"><span data-i="captions"></span><span id="subsv">Subtitles</span></button>
+  </div>
+ </section>
+ <section id="side">
+  <div class="tabs" role="tablist">
+   <button class="tab on" data-t="queue" role="tab"><span data-i="list-music"></span>Queue <span class="cnt" id="qcnt"></span></button>
+   <button class="tab" data-t="chapters" role="tab"><span data-i="list-ordered"></span>Chapters</button>
+   <button class="tab" data-t="library" role="tab"><span data-i="library"></span>Library</button>
+  </div>
+  <div class="pane" id="pane-queue"><ul class="list" id="q"></ul></div>
+  <div class="pane hidden" id="pane-chapters"><ul class="list" id="ch"></ul></div>
+  <div class="pane hidden" id="pane-library">
+   <div class="search"><label class="field"><span data-i="search"></span><input id="lq" type="search" placeholder="Search your library" enterkeyhint="search" autocomplete="off"></label></div>
+   <div class="seg" id="lkind"><button class="on" data-k="">All</button><button data-k="audio">Music</button><button data-k="video">Video</button></div>
+   <ul class="list" id="lib"></ul>
+  </div>
+ </section>
+</main>
+<div id="scrim"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><h2 id="shh"></h2><div class="body" id="shb"></div></div>
+<div id="toast"></div>
 <script>
-let pin=localStorage.getItem('vivi-pin')||'',st=null,dragging=false,artKey='';
+const ICONS={"play":"<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\"/>","pause":"<rect x=\"14\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/><rect x=\"5\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\"/>","skip-back":"<path d=\"M17.971 4.285A2 2 0 0 1 21 6v12a2 2 0 0 1-3.029 1.715l-9.997-5.998a2 2 0 0 1-.003-3.432z\"/><path d=\"M3 20V4\"/>","skip-forward":"<path d=\"M21 4v16\"/><path d=\"M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z\"/>","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/>","rotate-cw":"<path d=\"M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/>","volume-2":"<path d=\"M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z\"/><path d=\"M16 9a5 5 0 0 1 0 6\"/><path d=\"M19.364 18.364a9 9 0 0 0 0-12.728\"/>","volume-1":"<path d=\"M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z\"/><path d=\"M16 9a5 5 0 0 1 0 6\"/>","volume-x":"<path d=\"M11 4.702a.7.7 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.7.7 0 0 0 11 19.298z\"/><path d=\"m16.5 14.5 5-5\"/><path d=\"m16.5 9.5 5 5\"/>","gauge":"<path d=\"m12 14 4-4\"/><path d=\"M3.34 19a10 10 0 1 1 17.32 0\"/>","captions":"<rect width=\"18\" height=\"14\" x=\"3\" y=\"5\" rx=\"2\" ry=\"2\"/><path d=\"M7 15h4M15 15h2M7 11h2M13 11h4\"/>","audio-lines":"<path d=\"M2 10v3\"/><path d=\"M6 6v11\"/><path d=\"M10 3v18\"/><path d=\"M14 8v7\"/><path d=\"M18 5v13\"/><path d=\"M22 10v3\"/>","list-music":"<path d=\"M16 5H3\"/><path d=\"M11 12H3\"/><path d=\"M11 19H3\"/><path d=\"M21 16V5\"/><circle cx=\"18\" cy=\"16\" r=\"3\"/>","list-ordered":"<path d=\"M11 5h10\"/><path d=\"M11 12h10\"/><path d=\"M11 19h10\"/><path d=\"M4 4h1v5\"/><path d=\"M4 9h2\"/><path d=\"M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02\"/>","library":"<path d=\"m16 6 4 14\"/><path d=\"M12 6v14\"/><path d=\"M8 8v12\"/><path d=\"M4 4v16\"/>","search":"<path d=\"m21 21-4.34-4.34\"/><circle cx=\"11\" cy=\"11\" r=\"8\"/>","maximize":"<path d=\"M8 3H5a2 2 0 0 0-2 2v3\"/><path d=\"M21 8V5a2 2 0 0 0-2-2h-3\"/><path d=\"M3 16v3a2 2 0 0 0 2 2h3\"/><path d=\"M16 21h3a2 2 0 0 0 2-2v-3\"/>","link":"<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\"/><path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\"/>","x":"<path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/>","music":"<path d=\"M21 16V3a1 1 0 0 0-1.28-.96l-10 2.917a1 1 0 0 0-.72.96V19\"/><circle cx=\"18\" cy=\"16\" r=\"3\"/><circle cx=\"6\" cy=\"19\" r=\"3\"/>","key-round":"<path d=\"M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z\"/><circle cx=\"16.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/>","wifi-off":"<path d=\"M12 20h.01\"/><path d=\"M8.5 16.429a5 5 0 0 1 7 0\"/><path d=\"M5 12.859a10 10 0 0 1 5.17-2.69\"/><path d=\"M19 12.859a10 10 0 0 0-2.007-1.523\"/><path d=\"M2 8.82a15 15 0 0 1 4.177-2.643\"/><path d=\"M22 8.82a15 15 0 0 0-11.288-3.764\"/><path d=\"m2 2 20 20\"/>","check":"<path d=\"M20 6 9 17l-5-5\"/>","film":"<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\"/><path d=\"M7 3v18\"/><path d=\"M3 7.5h4\"/><path d=\"M3 12h18\"/><path d=\"M3 16.5h4\"/><path d=\"M17 3v18\"/><path d=\"M17 7.5h4\"/><path d=\"M17 16.5h4\"/>","list-plus":"<path d=\"M16 5H3\"/><path d=\"M11 12H3\"/><path d=\"M16 19H3\"/><path d=\"M18 9v6\"/><path d=\"M21 12h-6\"/>"};
 const $=id=>document.getElementById(id);
+const ic=n=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||''}</svg>`;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+document.querySelectorAll('[data-i]').forEach(e=>e.outerHTML=ic(e.dataset.i));
+// Pairing: the QR code in Vivi opens /#pin=…; the fragment never reaches a server.
+let pin=localStorage.getItem('vivi-pin')||'';
+const hp=new URLSearchParams(location.hash.slice(1)).get('pin');
+if(hp){pin=hp.trim();localStorage.setItem('vivi-pin',pin);history.replaceState(null,'',location.pathname)}
+let st=null,stAt=0,artId=-1,artUrl='',mode='',tab='queue',drag=null,lastQ='',lastC='',stream=null,failN=0;
 function fmt(s){s=Math.max(0,Math.floor(s||0));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=String(s%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${x}`:`${m}:${x}`}
-function askPin(){$('ui').style.display='none';$('pin').style.display='block'}
-function savePin(){pin=$('p').value.trim();localStorage.setItem('vivi-pin',pin);$('pin').style.display='none';poll()}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2200)}
+function askPin(msg){$('pin').classList.remove('hidden');$('pinerr').textContent=msg||'';$('pinin').value='';setTimeout(()=>$('pinin').focus(),50);stopLive()}
+function savePin(){const v=$('pinin').value.trim();if(!v)return;pin=v;localStorage.setItem('vivi-pin',pin);$('pin').classList.add('hidden');start()}
+$('pinok').onclick=savePin;$('pinin').onkeydown=e=>{if(e.key==='Enter')savePin()};
+class Auth extends Error{}
 async function api(path,body){
-  const r=await fetch(path,{method:body?'POST':'GET',headers:{'X-Vivi-Pin':pin,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
-  if(r.status==401||r.status==403){askPin();throw new Error('PIN')}
-  if(r.status==429){$('err').textContent='Too many wrong PINs, wait a minute';throw new Error('429')}
-  if(!r.ok)throw new Error(r.status);return r.headers.get('content-type')?.includes('json')?r.json():null}
-async function cmd(c,v){try{await api('/api/cmd',{cmd:c,value:v??0});setTimeout(poll,150)}catch(e){}}
+ const r=await fetch(path,{method:body?'POST':'GET',cache:'no-store',headers:body?{'X-Vivi-Pin':pin,'Content-Type':'application/json'}:{'X-Vivi-Pin':pin},body:body?JSON.stringify(body):undefined});
+ if(r.status===401){askPin(pin?'Wrong PIN':'');throw new Auth()}
+ if(r.status===429){askPin('Too many wrong PINs. Wait a minute and try again.');throw new Auth()}
+ if(!r.ok)throw new Error(await r.text().catch(()=>r.status)||r.status);
+ return r;
+}
+async function cmd(c,v,extra){try{await api('/api/cmd',Object.assign({cmd:c,value:v??0},extra||{}));if(mode!=='live')setTimeout(poll,120)}catch(e){if(!(e instanceof Auth))toast('Could not reach Vivi')}}
+// ---- live updates: SSE read through fetch (keeps the PIN in a header), else polling
+function setMode(m){mode=m;$('dot').className='dot '+(m==='live'?'live':m==='poll'?'poll':'');$('offline').classList.toggle('hidden',m!=='down')}
+function stopLive(){if(stream){stream.abort();stream=null}}
+async function live(){
+ stopLive();const ac=new AbortController();stream=ac;
+ try{
+  const r=await fetch('/api/events',{headers:{'X-Vivi-Pin':pin},signal:ac.signal,cache:'no-store'});
+  if(r.status===401||r.status===429){await api('/api/state');return}
+  if(!r.ok||!r.body)throw new Error('no stream');
+  const rd=r.body.getReader(),dec=new TextDecoder();let buf='';failN=0;setMode('live');
+  for(;;){const{value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+   while((i=buf.indexOf('\n\n'))>=0){const ev=buf.slice(0,i);buf=buf.slice(i+2);for(const l of ev.split('\n'))if(l.startsWith('data: '))render(JSON.parse(l.slice(6)))}}
+  throw new Error('closed');
+ }catch(e){
+  if(e instanceof Auth||ac.signal.aborted)return;
+  failN++;await poll();if(mode!=='down')setMode('poll');
+  setTimeout(()=>{if(stream===ac)live()},Math.min(15000,1000*failN));
+ }
+}
+async function poll(){try{const r=await api('/api/state');render(await r.json());if(mode==='down')setMode('poll')}catch(e){if(!(e instanceof Auth))setMode('down')}}
+setInterval(()=>{if(mode==='poll'||mode==='down')poll()},1000);
+function start(){if(!pin){askPin();return}live()}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&pin&&mode!=='live')live()});
+// ---- rendering
+function curPos(){if(!st)return 0;if(st.paused||st.idle)return st.position;return Math.min(st.duration||1e9,st.position+(performance.now()-stAt)/1000*(st.speed||1))}
+function setBar(fill,th,f){f=Math.max(0,Math.min(1,f||0));fill.style.width=f*100+'%';th.style.left=f*100+'%'}
+function tick(){if(!st)return;if(drag!=='seek'){const p=curPos();setBar($('sfill'),$('sth'),st.duration>0?p/st.duration:0);$('pos').textContent=fmt(p)}
+ let ci=-1;const p=curPos();(st.chapters||[]).forEach((c,i)=>{if(c.time<=p+.25)ci=i});$('chap').textContent=ci>=0&&st.chapters.length>1?st.chapters[ci].title:'';
+ document.querySelectorAll('#ch .row').forEach((r,i)=>r.classList.toggle('cur',i===ci))}
+setInterval(tick,250);
+function trackName(t,kind){const p=[t.title,t.lang&&t.lang.toUpperCase(),t.codec].filter(Boolean);return p.length?p.join(' · '):(kind+' '+t.id)}
+async function loadArt(s){
+ if(s.art_id===artId)return;artId=s.art_id;
+ const img=$('art'),bd=$('backdrop');
+ $('cover').querySelector('.ph').innerHTML=ic(s.has_video?'film':'music');
+ if(!s.has_art){img.classList.add('hidden');bd.style.backgroundImage='';if(artUrl)URL.revokeObjectURL(artUrl);artUrl='';return}
+ try{const r=await api('/api/art?k='+s.art_id);const u=URL.createObjectURL(await r.blob());if(artUrl)URL.revokeObjectURL(artUrl);artUrl=u;img.src=u;img.classList.remove('hidden');bd.style.backgroundImage=`url(${u})`}catch(e){img.classList.add('hidden')}
+}
 function render(s){
-  $('ui').style.display='block';$('err').textContent='';
-  $('title').textContent=s.title||'Nothing playing';$('artist').textContent=s.artist||'';
-  $('pp').textContent=s.paused?'▶':'⏸';
-  if(!dragging){$('seek').value=s.duration>0?s.position/s.duration*1000:0}
-  $('pos').textContent=fmt(s.position);$('dur').textContent=fmt(s.duration);
-  $('vol').max=s.volume_max||100;if(document.activeElement!==$('vol'))$('vol').value=s.volume;$('vv').textContent=Math.round(s.volume);
-  const k=s.path+'';if(k!==artKey){artKey=k;$('art').src=s.has_art?'/api/art?pin='+encodeURIComponent(pin)+'&k='+encodeURIComponent(k):'data:,'}
-  const q=$('q');q.innerHTML='';s.queue.forEach((t,i)=>{const li=document.createElement('li');li.textContent=(i+1)+'. '+t;if(i===s.current)li.className='cur';li.onclick=()=>cmd('play-index',i);q.appendChild(li)})}
-async function poll(){if(!pin){askPin();return}try{st=await api('/api/state');render(st)}catch(e){if(e.message!=='PIN'&&e.message!=='429')$('err').textContent='Vivi is not reachable'}}
-$('seek').oninput=()=>{dragging=true;if(st)$('pos').textContent=fmt($('seek').value/1000*st.duration)};
-$('seek').onchange=()=>{dragging=false;if(st)cmd('seek',$('seek').value/1000*st.duration)};
-$('vol').onchange=()=>cmd('volume',+$('vol').value);
-$('p').onkeydown=e=>{if(e.key==='Enter')savePin()};
-poll();setInterval(poll,1000);
-</script></body></html>
+ st=s;stAt=performance.now();$('pin').classList.add('hidden');
+ $('title').textContent=s.idle?'Nothing playing':(s.title||'Untitled');
+ $('sub').textContent=s.idle?'Open something in Vivi, the queue or the library':([s.artist,s.album].filter(Boolean).join(' — ')||'\u00a0');
+ $('pp').innerHTML=ic(s.paused||s.idle?'play':'pause');$('pp').setAttribute('aria-label',s.paused?'Play':'Pause');
+ $('dur').textContent=s.duration>0?fmt(s.duration):(s.idle?'0:00':'Live');
+ const vm=s.volume_max||100;if(drag!=='vol'){setBar($('vfill'),$('vth'),s.volume/vm);$('volv').textContent=Math.round(s.volume)}
+ $('bmute').innerHTML=ic(s.muted||s.volume<=0?'volume-x':s.volume<50?'volume-1':'volume-2');$('bmute').classList.toggle('on',s.muted);
+ $('speedv').textContent=(+(s.speed||1).toFixed(2))+'×';$('cspeed').classList.toggle('on',Math.abs((s.speed||1)-1)>.01);
+ const a=(s.audio||[]).find(t=>t.selected),sb=(s.subs||[]).find(t=>t.selected);
+ $('caudio').classList.toggle('hidden',(s.audio||[]).length<2);$('audiov').textContent=a?(a.lang?a.lang.toUpperCase():a.title||'Track '+a.id):'Off';
+ $('csubs').classList.toggle('hidden',!(s.subs||[]).length);$('subsv').textContent=sb?(sb.lang?sb.lang.toUpperCase():sb.title||'Track '+sb.id):'Off';$('csubs').classList.toggle('on',!!sb);
+ document.querySelectorAll('.tp button').forEach(b=>b.disabled=s.idle&&b.id!=='pp');
+ loadArt(s);
+ // chapter marks on the seek bar
+ const ck=JSON.stringify([s.chapters,s.duration]);if(ck!==lastC){lastC=ck;
+  $('marks').innerHTML=s.duration>0?(s.chapters||[]).slice(1).map(c=>`<div class="mk" style="left:${c.time/s.duration*100}%"></div>`).join(''):'';
+  $('ch').innerHTML=(s.chapters||[]).length?s.chapters.map((c,i)=>`<li class="row" data-i="${i}"><span class="ix">${i+1}</span><div class="tx"><div class="t1">${esc(c.title)}</div><div class="t2">${fmt(c.time)}</div></div></li>`).join(''):`<li class="empty">${ic('list-ordered')}No chapters in this file</li>`}
+ // queue
+ const qk=JSON.stringify([s.queue,s.current]);if(qk!==lastQ){lastQ=qk;
+  $('qcnt').textContent=s.queue_total?s.queue_total:'';
+  $('q').innerHTML=s.queue.length?s.queue.map((t,i)=>`<li class="row${i===s.current?' cur':''}" data-i="${i}"><span class="ix">${i===s.current?ic('audio-lines').replace('class="i"','class="i" style="width:16px;height:16px"'):i+1}</span><div class="tx"><div class="t1">${esc(t)}</div></div><button class="act" data-rm="${i}" aria-label="Remove from queue">${ic('x')}</button></li>`).join('')+(s.queue_total>s.queue.length?`<li class="more">+ ${s.queue_total-s.queue.length} more</li>`:''):`<li class="empty">${ic('list-music')}The queue is empty</li>`;
+  const c=$('q').querySelector('.cur'),pn=$('pane-queue');if(c&&!$('q')._scrolled&&pn.scrollHeight>pn.clientHeight+4){pn.scrollTop=c.offsetTop-pn.offsetTop-pn.clientHeight/2+c.offsetHeight/2;$('q')._scrolled=1}}
+ tick();
+}
+// ---- controls
+document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const c=b.dataset.c,v=+(b.dataset.v||0);
+ if(c==='pause'&&st){st.paused=!st.paused;st.position=curPos();stAt=performance.now();$('pp').innerHTML=ic(st.paused?'play':'pause')}
+ if(navigator.vibrate)navigator.vibrate(8);cmd(c,v)});
+$('bmute').onclick=()=>cmd('mute');
+$('bfs').onclick=()=>{cmd('fullscreen');toast('Fullscreen toggled in Vivi')};
+function slider(el,name,onMove,onEnd){
+ const f=e=>{const r=el.getBoundingClientRect();return Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))};
+ el.addEventListener('pointerdown',e=>{if(!st)return;drag=name;el.classList.add('drag');el.setPointerCapture(e.pointerId);onMove(f(e))});
+ el.addEventListener('pointermove',e=>{if(drag===name)onMove(f(e))});
+ const up=e=>{if(drag!==name)return;drag=null;el.classList.remove('drag');onEnd(f(e))};
+ el.addEventListener('pointerup',up);el.addEventListener('pointercancel',()=>{drag=null;el.classList.remove('drag')});
+}
+slider($('seek'),'seek',x=>{setBar($('sfill'),$('sth'),x);$('pos').textContent=fmt(x*st.duration)},x=>{if(st.duration>0){st.position=x*st.duration;stAt=performance.now();cmd('seek',x*st.duration)}});
+let vt=0;
+slider($('vol'),'vol',x=>{const v=Math.round(x*(st.volume_max||100));setBar($('vfill'),$('vth'),x);$('volv').textContent=v;const n=Date.now();if(n-vt>120){vt=n;cmd('volume',v)}},x=>cmd('volume',Math.round(x*(st.volume_max||100))));
+$('seek').onkeydown=e=>{if(e.key==='ArrowLeft')cmd('seek-rel',-5);if(e.key==='ArrowRight')cmd('seek-rel',5)};
+$('vol').onkeydown=e=>{if(!st)return;if(e.key==='ArrowLeft')cmd('volume',Math.max(0,st.volume-5));if(e.key==='ArrowRight')cmd('volume',st.volume+5)};
+$('q').onclick=e=>{const rm=e.target.closest('[data-rm]');if(rm){e.stopPropagation();cmd('remove',+rm.dataset.rm);rm.closest('.row').style.opacity=.3;return}const r=e.target.closest('.row');if(r)cmd('play-index',+r.dataset.i)};
+$('ch').onclick=e=>{const r=e.target.closest('.row');if(r)cmd('chapter',+r.dataset.i)};
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{tab=t.dataset.t;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('hidden',p.id!=='pane-'+tab));if(tab==='library'&&!$('lib').innerHTML)lib()});
+// ---- sheets
+function sheet(title,icon,html,bind){$('shh').innerHTML=ic(icon)+esc(title);$('shb').innerHTML=html;$('scrim').classList.add('show');$('sheet').classList.add('show');bind&&bind($('shb'))}
+function closeSheet(){$('scrim').classList.remove('show');$('sheet').classList.remove('show')}
+$('scrim').onclick=closeSheet;
+function trackSheet(kind){const list=kind==='audio'?st.audio:st.subs,name=kind==='audio'?'Audio track':'Subtitles';
+ const off=!list.some(t=>t.selected);
+ sheet(name,kind==='audio'?'audio-lines':'captions',`<button class="opt${off?' on':''}" data-id="0"><div class="tx">Off</div><span class="ck">${ic('check')}</span></button>`+list.map(t=>`<button class="opt${t.selected?' on':''}" data-id="${t.id}"><div class="tx"><div>${esc(t.title||(t.lang?t.lang.toUpperCase():(kind==='audio'?'Track ':'Subtitle ')+t.id))}</div><div class="t2">${esc([t.lang&&t.lang.toUpperCase(),t.codec,'#'+t.id].filter(Boolean).join(' · '))}</div></div><span class="ck">${ic('check')}</span></button>`).join(''),
+ b=>b.onclick=e=>{const o=e.target.closest('.opt');if(o){cmd(kind,+o.dataset.id);closeSheet()}})}
+$('caudio').onclick=()=>st&&trackSheet('audio');$('csubs').onclick=()=>st&&trackSheet('sub');
+$('cspeed').onclick=()=>{if(!st)return;const v=[.5,.75,1,1.1,1.25,1.5,1.75,2,2.5,3];
+ sheet('Playback speed','gauge',`<div class="speeds">${v.map(x=>`<button data-v="${x}" class="${Math.abs(st.speed-x)<.01?'on':''}">${x}×</button>`).join('')}</div>`,b=>b.onclick=e=>{const o=e.target.closest('[data-v]');if(o){cmd('speed',+o.dataset.v);closeSheet()}})};
+$('bopen').onclick=()=>sheet('Open URL','link',`<div class="formrow"><label class="field"><span data-i="link"></span><input id="url" type="url" inputmode="url" placeholder="https://… (video, stream, YouTube)" autocomplete="off" autocapitalize="off"></label><div class="btns"><button class="btn gh" id="uadd">${ic('list-plus')}Add to queue</button><button class="btn" id="uplay">${ic('play')}Play now</button></div></div>`,b=>{
+ b.querySelector('[data-i]').outerHTML=ic('link');const u=b.querySelector('#url');setTimeout(()=>u.focus(),250);
+ const go=ap=>{const t=u.value.trim();if(!/^(https?|rtmps?|rtsps?|mms|srt|ytdl):\/\/./i.test(t)){toast('Enter a full URL starting with https://');return}cmd('open',0,{target:t,append:ap});closeSheet();toast(ap?'Added to the queue':'Opening…')};
+ b.querySelector('#uplay').onclick=()=>go(false);b.querySelector('#uadd').onclick=()=>go(true);u.onkeydown=e=>{if(e.key==='Enter')go(false)}});
+// ---- library (Vivi's control socket)
+let lk='',lt=0;
+async function lib(){const q=$('lq').value.trim(),el=$('lib');
+ if(st&&!st.library){el.innerHTML=`<li class="empty">${ic('library')}Turn on <b>Settings → General → Remote control</b> in Vivi to browse the library from here.</li>`;return}
+ try{const r=await api('/api/library?q='+encodeURIComponent(q)+'&kind='+lk);const d=await r.json();
+  el.innerHTML=d.items.length?d.items.map(m=>`<li class="row" data-p="${esc(m.path)}"><span class="ix">${ic(m.kind==='video'?'film':'music')}</span><div class="tx"><div class="t1">${esc(m.title||m.path.split(/[\\/]/).pop())}</div><div class="t2">${esc([m.artist,m.album].filter(Boolean).join(' — ')||(m.duration?fmt(m.duration):''))}</div></div><button class="act" data-add="1" aria-label="Add to queue">${ic('list-plus')}</button></li>`).join(''):`<li class="empty">${ic('search')}${q?'Nothing found':'Your library is empty'}</li>`}
+ catch(e){if(!(e instanceof Auth))el.innerHTML=`<li class="empty">${ic('library')}${esc(e.message||'Library unavailable')}</li>`}}
+$('lq').oninput=()=>{clearTimeout(lt);lt=setTimeout(lib,300)};
+$('lkind').onclick=e=>{const b=e.target.closest('button');if(!b)return;lk=b.dataset.k;$('lkind').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));lib()};
+$('lib').onclick=e=>{const r=e.target.closest('.row');if(!r||!r.dataset.p)return;const add=!!e.target.closest('[data-add]');cmd('open',0,{target:r.dataset.p,append:add});toast(add?'Added to the queue':'Playing')};
+start();
+</script>
+</body>
+</html>

@@ -1299,8 +1299,8 @@
     {
       "id": "remote-control",
       "name": "Remote Control",
-      "description": "Control playback from your phone: a web page on your local network with play/pause, seek, volume, next/previous, the queue and cover art. PIN protected; only devices on the local network can connect. Ships a small native helper (vivi-remote) that serves the page.",
-      "version": "1.0.0",
+      "description": "Control Vivi from your phone: a dark, touch-friendly web page with cover art, seek, play/pause/next, volume and mute, speed, audio and subtitle tracks, chapters, the queue, library search, fullscreen and open URL, updated live. Pair by scanning a QR code; PIN protected and local-network only by default. Installs to the home screen. Ships a small native helper (vivi-remote) that serves the page.",
+      "version": "1.1.0",
       "author": "Vivi",
       "icon": "remote",
       "lucide": "smartphone",
@@ -1313,9 +1313,9 @@
         "subprocess"
       ],
       "source": "plugins/remote-control",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/remote-control-1.0.0.zip",
-      "sha256": "bca820963eae07ca66f61ef8fc6ebb5943cc80accdd0dc53896622a255dd8e26",
-      "size": 5577,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.1.0/remote-control-1.1.0.zip",
+      "sha256": "6dc45cdee5cbec10c98db14b49aff11c163adb7e7ec7d740e06130c0a4743d83",
+      "size": 11218,
       "settings": [
         {
           "key": "port",
@@ -1325,15 +1325,27 @@
         },
         {
           "key": "pin",
-          "title": "PIN (asked once by the phone; leave empty for a new random 6-digit PIN)",
+          "title": "PIN (empty: a random 6-digit PIN is made)",
           "type": "text",
           "default": ""
         },
         {
+          "key": "lan_only",
+          "title": "Only devices on the local network (recommended)",
+          "type": "toggle",
+          "default": "true"
+        },
+        {
           "key": "address",
-          "title": "Phone address and PIN",
+          "title": "Pair a phone: QR code, address and PIN",
           "type": "action",
-          "label": "Show"
+          "label": "Show QR code"
+        },
+        {
+          "key": "new_pin",
+          "title": "New PIN (signs out paired phones)",
+          "type": "action",
+          "label": "New PIN"
         }
       ],
       "issue": 58,
@@ -1344,59 +1356,34 @@
       "tags": [
         "remote",
         "phone",
-        "web"
+        "web",
+        "qr",
+        "pwa"
       ],
       "screenshots": [
+        "remote-control-phone",
+        "remote-control-qr",
+        "remote-control-landscape",
+        "remote-control-tablet",
         "remote-control-settings"
       ],
       "changelog": [
         {
+          "version": "1.1.0",
+          "date": "2026-10-16",
+          "notes": "Redesigned phone page in Vivi's style (dark, orange accent, Inter, Lucide icons, big touch targets; phone portrait/landscape and tablet layouts). New: live updates, mute, speed, audio/subtitle track picker, chapters, queue remove, library search (with Settings → General → Remote control), fullscreen, open URL, add to home screen (web app manifest and icon). Pair by QR code (Show QR code; the QR dialog and fullscreen need Vivi 0.10.1+, older versions show a toast), New PIN action, Local network only setting; the PIN is no longer put in URLs and DNS-rebinding requests are refused. Fixes: quotes around the address in the toast, a stale cover after switching files, cover art for files that were still loading, queue names without file extensions, sizes in the catalog include the helper.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.1.0/remote-control-1.1.0.zip"
+        },
+        {
           "version": "1.0.0",
           "date": "2026-10-15",
-          "notes": "First release as a downloadable plugin with a native helper (moved out of the core).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/remote-control-1.0.0.zip"
+          "notes": "First release as a downloadable plugin with a native helper (moved out of the core)."
         }
       ],
       "needs": [
         "vivi-remote"
       ],
-      "binaries": [
-        {
-          "name": "vivi-remote",
-          "platform": "linux-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-linux-x86_64",
-          "sha256": "2fbf58d9e80f5657c09a1daf017afc5159c354ab7eaf663cf2e55d4d32d09d52",
-          "size": 598816
-        },
-        {
-          "name": "vivi-remote",
-          "platform": "linux-aarch64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-linux-aarch64",
-          "sha256": "d9cdfc7d348d50cbe42bfe516a79be92466fe813ad9b947968dc44087002b4da",
-          "size": 594208
-        },
-        {
-          "name": "vivi-remote",
-          "platform": "windows-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-windows-x86_64.exe",
-          "sha256": "1ccfdab3317830e5b0603f5044da447bb04382248aad0638b4c8326305e476ff",
-          "size": 306688
-        },
-        {
-          "name": "vivi-remote",
-          "platform": "macos-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-macos-x86_64",
-          "sha256": "425b2b0269d85b04cd9ab32be1825f41fc4e041e13da8c21a67e23518101b2de",
-          "size": 441712
-        },
-        {
-          "name": "vivi-remote",
-          "platform": "macos-aarch64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-macos-aarch64",
-          "sha256": "35674bdd04d05bb70977757a71a8a49b23352a1b0b63f4f0868b756f7d4616f7",
-          "size": 437024
-        }
-      ]
+      "binaries": []
     },
     {
       "id": "scene-chapters",
