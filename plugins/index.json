@@ -163,8 +163,8 @@
     {
       "id": "subtitle-search",
       "name": "Subtitle Search",
-      "description": "Find and download subtitles from OpenSubtitles (by file hash and name) in the Add Subtitles dialog. Needs a free API key.",
-      "version": "0.8.0",
+      "description": "Find subtitles on OpenSubtitles (by file hash, name or IMDb id) in the Add Subtitles dialog, and keep a subtitle offset per file (z / x).",
+      "version": "0.11.0",
       "author": "Vivi",
       "icon": "subtitles",
       "lucide": "captions",
@@ -194,6 +194,12 @@
           "title": "Password (optional)",
           "type": "secret",
           "default": ""
+        },
+        {
+          "key": "save-next",
+          "title": "Save next to the video",
+          "type": "toggle",
+          "default": "false"
         }
       ],
       "categories": [
@@ -201,10 +207,21 @@
       ],
       "tags": [
         "opensubtitles",
-        "download"
+        "download",
+        "imdb",
+        "offset",
+        "hash"
       ],
       "screenshots": [
-        "add-subtitles"
+        "add-subtitles",
+        "subtitles-panel"
+      ],
+      "changelog": [
+        {
+          "version": "0.11.0",
+          "date": "2026-10-16",
+          "notes": "Hash search first (Exact match badge), then by name or IMDb id; multi-language chips (remembered); results with downloads, rating, FPS, hearing-impaired, trusted and machine-translation badges; details and text preview; one-click Load; pick remembered per file; optional save next to the video; per-file subtitle offset (z / x ±0.1 s, Shift ±1 s, side panel) with Auto-sync via the Subtitle Auto-Sync plugin."
+        }
       ]
     },
     {
