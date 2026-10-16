@@ -52,7 +52,7 @@ python3 scripts/build-marketplace.py _market   # build the marketplace locally
 (cd helpers && cargo test)
 ```
 
-Writing a plugin: see https://plugins.viviplayer.app/dev/ (source: docs/dev/content.html) and
+Writing a plugin: see https://plugins.viviplayer.app/dev/ (source: docs/dev/*.md, one page per section) and
 [plugins-architecture.md](https://github.com/Loafer19/vivi/blob/master/docs/plugins-architecture.md).
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 

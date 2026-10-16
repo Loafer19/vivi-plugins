@@ -5,7 +5,7 @@ FROM python:3.12-alpine AS build
 WORKDIR /src
 COPY . .
 # git: "Recently updated" uses commit times when .git is in the build context (falls back to changelog dates).
-RUN pip install --no-cache-dir pillow && apk add --no-cache git && git config --global --add safe.directory /src
+RUN pip install --no-cache-dir pillow markdown && apk add --no-cache git && git config --global --add safe.directory /src
 RUN python3 scripts/build-marketplace.py /out
 FROM nginx:1.27-alpine
 COPY deploy/plugins/nginx.conf /etc/nginx/conf.d/default.conf

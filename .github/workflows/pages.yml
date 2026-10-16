@@ -1,10 +1,11 @@
 name: Pages
-# Publishes the marketplace (scripts/build-marketplace.py) to GitHub Pages as a mirror of
-# https://plugins.viviplayer.app. https://loafer19.github.io/vivi-plugins/index.json is a
-# fallback catalog URL; the primary site is deployed by Dokploy from deploy/plugins/Dockerfile.
+# Publishes only the fallback catalog https://loafer19.github.io/vivi-plugins/index.json (used by
+# the app when plugins.viviplayer.app is unreachable) plus an index.html that sends visitors to
+# https://plugins.viviplayer.app. The marketplace itself is deployed by Dokploy (deploy/plugins/Dockerfile).
 on:
   push:
     branches: [master]
+    paths: ["plugins/index.json", ".github/workflows/pages.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -18,7 +19,16 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - run: python3 scripts/build-marketplace.py _site
+      - name: Catalog + redirect page
+        run: |
+          mkdir _site && cp plugins/index.json _site/index.json && touch _site/.nojekyll
+          cat > _site/index.html <<'HTML'
+          <!doctype html><html lang="en"><head><meta charset="utf-8"><title>Vivi plugins</title>
+          <meta http-equiv="refresh" content="0; url=https://plugins.viviplayer.app/">
+          <link rel="canonical" href="https://plugins.viviplayer.app/"><meta name="robots" content="noindex">
+          <script>location.replace("https://plugins.viviplayer.app/")</script></head>
+          <body><p>Moved to <a href="https://plugins.viviplayer.app/">plugins.viviplayer.app</a>.</p></body></html>
+          HTML
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

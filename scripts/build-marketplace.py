@@ -198,7 +198,7 @@ def head(title: str, desc: str, url: str, image: str, extra: str = "", depth: in
   <a class="brand" href="{up}./"><img src="{up}img/vivi.svg" alt="" width="26" height="26">Vivi plugins</a>
   <nav>
     <a href="{SITE}/">{icon('house')}<span class="wide">Vivi</span></a>
-    <a href="{up}dev/">{icon('code-xml')}<span class="wide">Write a plugin</span><span class="narrow">Develop</span></a>
+    <a href="{up}dev/">{icon("code-xml")}<span class="wide">Developers</span><span class="narrow">Dev</span></a>
     <a href="{up}feed.xml">{icon('rss')}<span class="wide">Updates</span></a>
     <a href="https://github.com/Loafer19/vivi-plugins">{icon('git-fork')}<span class="wide">GitHub</span></a>
   </nav>
@@ -209,7 +209,7 @@ def head(title: str, desc: str, url: str, image: str, extra: str = "", depth: in
 
 FOOT = f"""</main>
 <footer>Vivi plugin marketplace · <a href="{SITE}/">viviplayer.app</a> · catalog as <a href="/index.json">index.json</a> ·
-<a href="/dev/">Write a plugin</a> ·
+<a href="/dev/">Developer docs</a> ·
 icons from <a href="https://lucide.dev">Lucide</a> (ISC) · screenshots show <a href="https://durian.blender.org">Sintel</a> (© Blender Foundation, CC BY 3.0)</footer>
 </body>
 </html>
@@ -300,6 +300,43 @@ Needs Vivi {e(p.get('min_vivi', ''))} or newer. No Vivi yet? <code>curl -fsSL {S
     return out + FOOT.replace('href="/index.json"', 'href="../../index.json"')
 
 
+# Developer docs: one page per docs/dev/<slug>.md (single source of truth), rendered with a sidebar.
+DEV_PAGES = ["index", "manifest", "lua-api", "permissions", "settings", "ui-hooks", "binaries",
+             "packaging", "catalog", "architecture"]
+
+
+def build_dev() -> list[str]:
+    import markdown
+    docs = []
+    for slug in DEV_PAGES:
+        src = (ROOT / f"docs/dev/{slug}.md").read_text()
+        title = src.splitlines()[0].lstrip("# ").strip()
+        m = re.search(r"<!-- desc: (.*?) -->", src)
+        docs.append((slug, title, m.group(1) if m else title, src))
+    urls = []
+    for slug, title, desc, src in docs:
+        depth = 1 if slug == "index" else 2
+        up = "../" * (depth - 1)
+        side = "".join(
+            f'<a href="{up}{"" if s == "index" else s + "/"}"{" class=on aria-current=page" if s == slug else ""}>{e(t)}</a>'
+            for s, t, _, _ in docs)
+        body = markdown.markdown(src, extensions=["tables", "fenced_code", "toc"])
+        i = DEV_PAGES.index(slug)
+        nxt = docs[i + 1] if i + 1 < len(docs) else None
+        pager = (f'<p class="pager"><a href="{up}{nxt[0]}/">Next: {e(nxt[1])} →</a></p>' if nxt else "")
+        url = BASE + "/dev/" + ("" if slug == "index" else slug + "/")
+        page_title = "Vivi plugin developer docs" if slug == "index" else f"{title} – Vivi plugin developer docs"
+        d = OUT / "dev" / ("" if slug == "index" else slug)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "index.html").write_text(
+            head(page_title, desc, url, f"{SITE}/img/og.png", depth=depth)
+            + f'<div class="devdocs"><nav class="side" aria-label="Developer docs"><b>Developer docs</b>{side}</nav>'
+            + f'<article class="doc">{body}{pager}</article></div>\n'
+            + FOOT.replace('href="/', f'href="{"../" * depth}'))
+        urls.append(url)
+    return urls
+
+
 def main() -> None:
     idx = json.loads((ROOT / "plugins/index.json").read_text())
     plugins = [p for p in idx["plugins"]]
@@ -343,12 +380,8 @@ with checksums verified and permissions shown before install.</p></section>
         d = OUT / "p" / p["id"]
         d.mkdir(parents=True)
         (d / "index.html").write_text(page(p))
-    # Plugin authoring guide (moved here from viviplayer.app/plugin-dev.html, which 301s to /dev/).
-    (OUT / "dev").mkdir()
-    dev_desc = "Write a Vivi plugin: mpv Lua and JavaScript scripts, Rust plugins, manifest.toml, settings, packaging and publishing."
-    (OUT / "dev/index.html").write_text(head("Write a Vivi plugin – developer guide", dev_desc, BASE + "/dev/", f"{SITE}/img/og.png", depth=1)
-                                        + '<div class="doc">\n' + (ROOT / "docs/dev/content.html").read_text() + "</div>\n" + FOOT)
-    urls = [BASE + "/", BASE + "/dev/"] + [f"{BASE}/p/{p['id']}/" for p in order]
+    dev_urls = build_dev()
+    urls = [BASE + "/"] + dev_urls + [f"{BASE}/p/{p['id']}/" for p in order]
     (OUT / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
                                      + "".join(f"<url><loc>{u}</loc></url>" for u in urls) + "</urlset>\n")
     (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {BASE}/sitemap.xml\n")
