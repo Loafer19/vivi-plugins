@@ -83,6 +83,11 @@ def changelog(p: dict) -> list[dict]:
 def _git_times() -> list[tuple[str, str, set[str]]]:
     """(ISO commit time, lower-cased subject, touched paths) for every commit, newest first; [] without git."""
     try:
+        git = lambda *a: subprocess.run(["git", "-C", str(ROOT), *a], capture_output=True, text=True, timeout=60, check=True).stdout
+        if git("rev-parse", "--is-shallow-repository").strip() == "true":
+            subprocess.run(["git", "-C", str(ROOT), "fetch", "-q", "--unshallow"], capture_output=True, timeout=120)
+            if git("rev-parse", "--is-shallow-repository").strip() == "true":
+                return []  # a shallow history would date every plugin to the one fetched commit
         out = subprocess.run(["git", "-C", str(ROOT), "log", "--format=%x00%cI%x01%s", "--name-only"],
                              capture_output=True, text=True, timeout=30, check=True).stdout
     except (OSError, subprocess.SubprocessError):
