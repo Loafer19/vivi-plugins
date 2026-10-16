@@ -12,6 +12,7 @@ import html
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tomllib
 from datetime import datetime, timezone
@@ -79,6 +80,42 @@ def changelog(p: dict) -> list[dict]:
     return tomllib.loads(f.read_text()).get("changelog", []) if f.exists() else []
 
 
+def _git_times() -> list[tuple[str, str, set[str]]]:
+    """(ISO commit time, lower-cased subject, touched paths) for every commit, newest first; [] without git."""
+    try:
+        out = subprocess.run(["git", "-C", str(ROOT), "log", "--format=%x00%cI%x01%s", "--name-only"],
+                             capture_output=True, text=True, timeout=30, check=True).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    res = []
+    for chunk in out.split("\0")[1:]:
+        head, _, files = chunk.partition("\n")
+        when, _, subj = head.partition("\x01")
+        res.append((when.strip(), subj.lower(), {l for l in files.splitlines() if l}))
+    return res
+
+
+GIT = _git_times()
+
+
+def updated(p: dict) -> str:
+    """Sortable UTC timestamp of the latest update: the newest changelog/release date, refined
+    to the time of the commit that shipped it (subject starts with the plugin name, or touches
+    plugins/<id>/) when git history is available. Falls back to that commit alone if there is no
+    changelog, then to ""."""
+    dates = [c["date"] for c in changelog(p) if c.get("date")]
+    day = max(dates) if dates else ""
+    name, d = p["name"].lower(), f"plugins/{p['id']}/"
+    for when, subj, files in GIT:
+        if subj.startswith(name + " ") or subj.startswith(name + ":") or any(x.startswith(d) for x in files):
+            ts = datetime.fromisoformat(when).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            if not day or ts[:10] == day:
+                return ts
+            if ts[:10] < day:
+                break
+    return f"{day}T00:00:00Z" if day else ""
+
+
 def shot_path(name: str) -> Path | None:
     for f in (ROOT / f"docs/screenshots/plugins/{name}.png", ROOT / f"docs/screenshots/{name}.png"):
         if f.exists():
@@ -141,7 +178,7 @@ def card(p: dict) -> str:
              if shots else f'<div class="thumb ph">{icon(p.get("lucide", "puzzle"))}</div>')
     size = size_label(p)
     kind = "Built-in" if p.get("kind") == "builtin" else ("Example script" if p.get("kind") == "script" else "Download")
-    date = (changelog(p) or [{}])[0].get("date", "")
+    date = updated(p)
     return f"""<a class="card" href="p/{e(p['id'])}/" data-cats="{e('|'.join(cats))}" data-tags="{e(' '.join(p.get('tags', [])))}"
  data-name="{e(p['name'].lower())}" data-text="{e((p['name'] + ' ' + p['description'] + ' ' + ' '.join(p.get('tags', []))).lower())}"
  data-size="{(download_sizes(p) or [0])[-1]}" data-date="{e(date)}">
