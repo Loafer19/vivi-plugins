@@ -1,22 +1,24 @@
 name: Plugins
 # Packages every plugins/<id>/ that has a manifest.toml (scripts/package-plugins.py),
 # checks that plugins/index.json lists the same sha256, and publishes each new version
-# as a GitHub release "plugin-<id>-v<version>" with the zip as its asset. Releases that
+# as a GitHub release "plugin-<id>-v<version>" of this repository with the zip as its asset.
+# Versions released before the move to this repository stay in Loafer19/vivi
+# (plugins/legacy-releases.txt). Releases that
 # already exist are left alone (bump the version to publish a change). Plugin releases are
-# never marked "latest", so the app's own release stays the latest one.
+# never marked "latest".
 #
 # Packages with native helpers (manifest `binaries`, sources in helpers/) also get one
 # asset per helper and platform, built by the `helpers` job. Builds are not bit-for-bit
 # reproducible, so their checksums cannot be committed up front: after publishing a new
 # version this workflow writes the helpers' sha256/size into plugins/index.json, commits
-# that to master and redeploys the docs site (which serves the catalog). For versions
+# that to master and redeploys the GitHub Pages copy of the catalog. For versions
 # that are already released the published assets are used, never fresh builds.
 on:
   push:
     branches: [master]
-    paths: ["plugins/**", "helpers/**", "scripts/package-plugins.py", ".github/workflows/plugins.yml"]
+    paths: ["plugins/**", "helpers/**", "tests/plugins/**", "scripts/package-plugins.py", ".github/workflows/plugins.yml"]
   pull_request:
-    paths: ["plugins/**", "helpers/**", "scripts/package-plugins.py", ".github/workflows/plugins.yml"]
+    paths: ["plugins/**", "helpers/**", "tests/plugins/**", "scripts/package-plugins.py", ".github/workflows/plugins.yml"]
   workflow_dispatch:
 permissions:
   contents: write
@@ -88,8 +90,9 @@ jobs:
           python3 scripts/package-plugins.py --list | while read -r id ver tag zip; do
             needs=$(python3 -c "import tomllib,sys; print(' '.join(tomllib.load(open('plugins/$id/manifest.toml','rb')).get('binaries', [])))")
             [ -z "$needs" ] && continue
-            gh release view "$tag" > /dev/null 2>&1 || continue
-            rm -rf /tmp/rel && gh release download "$tag" -D /tmp/rel -p 'vivi-*'
+            repo=$(python3 scripts/package-plugins.py --repo-of "$tag")
+            gh release view "$tag" -R "$repo" > /dev/null 2>&1 || continue
+            rm -rf /tmp/rel && gh release download "$tag" -R "$repo" -D /tmp/rel -p 'vivi-*'
             for f in /tmp/rel/*; do
               n=$(basename "$f"); base=${n%.exe}; ext=""; [ "$n" != "$base" ] && ext=".exe"
               for name in $needs; do
@@ -104,8 +107,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 scripts/package-plugins.py --list | while read -r id ver tag zip; do
-            if gh release view "$tag" > /dev/null 2>&1; then
-              echo "$tag exists"
+            repo=$(python3 scripts/package-plugins.py --repo-of "$tag")
+            if gh release view "$tag" -R "$repo" > /dev/null 2>&1; then
+              echo "$tag exists in $repo"
               continue
             fi
             assets=$(python3 scripts/package-plugins.py --assets "$id")

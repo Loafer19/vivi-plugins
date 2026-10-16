@@ -1,5 +1,6 @@
 # plugins.viviplayer.app: plugin marketplace + catalog (index.json) built by scripts/build-marketplace.py.
-# Dokploy app "vivi-plugins" (project "vivi") builds this file from the repo root on every push to master.
+# Dokploy app "vivi-plugins" (project "vivi") builds this file from the root of Loafer19/vivi-plugins
+# on every push to master.
 FROM python:3.12-alpine AS build
 WORKDIR /src
 COPY . .

@@ -98,7 +98,7 @@ def head(title: str, desc: str, url: str, image: str, extra: str = "", depth: in
     <a href="{SITE}/">{icon('house')}<span class="wide">Vivi</span></a>
     <a href="{SITE}/plugin-dev.html">{icon('code-xml')}<span class="wide">Write a plugin</span></a>
     <a href="{up}feed.xml">{icon('rss')}<span class="wide">Updates</span></a>
-    <a href="https://github.com/Loafer19/vivi">{icon('git-fork')}<span class="wide">GitHub</span></a>
+    <a href="https://github.com/Loafer19/vivi-plugins">{icon('git-fork')}<span class="wide">GitHub</span></a>
   </nav>
 </div></header>
 <main>
@@ -174,8 +174,8 @@ Needs Vivi {e(p.get('min_vivi', ''))} or newer. No Vivi yet? <code>curl -fsSL {S
         install = f"""<a class="btn primary" href="vivi://plugin/{e(pid)}">{icon('external-link')}Open in Vivi</a>
 <p class="muted small">Built into Vivi: enable it in Settings → Extensions. <a href="{SITE}/#install">Install Vivi</a></p>"""
     else:
-        install = f"""<a class="btn ghost" href="https://github.com/Loafer19/vivi/tree/master/{e(p.get('source', ''))}">{icon('code-xml')}View the script</a>"""
-    src = f' · <a href="https://github.com/Loafer19/vivi/tree/master/{e(p["source"])}">source</a>' if p.get("source") else ""
+        install = f"""<a class="btn ghost" href="https://github.com/Loafer19/vivi-plugins/tree/master/{e(p.get('source', ''))}">{icon('code-xml')}View the script</a>"""
+    src = f' · <a href="https://github.com/Loafer19/vivi-plugins/tree/master/{e(p["source"])}">source</a>' if p.get("source") else ""
     out += f"""<nav class="crumbs"><a href="../../">All plugins</a> / {e(p['name'])}</nav>
 <section class="phead">
   <div class="bigic">{icon(p.get('lucide', 'puzzle'))}</div>

@@ -1,0 +1,38 @@
+# Releases published in Loafer19/vivi before the plugins moved to Loafer19/vivi-plugins.
+# Their assets stay there (old installs and pinned URLs/sha256); every other tag lives in
+# Loafer19/vivi-plugins. Never edit existing lines.
+helper-ffmpeg-v8.0-1
+helper-ffmpeg-v8.0-2
+plugin-ab-loop-v1.0.0
+plugin-ab-loop-v1.0.1
+plugin-ab-loop-v1.0.2
+plugin-acoustid-v1.0.0
+plugin-chapter-thumbnails-v1.0.0
+plugin-cut-export-v1.0.0
+plugin-discord-v1.0.0
+plugin-equalizer-v1.0.0
+plugin-night-mode-v1.0.0
+plugin-night-mode-v1.0.1
+plugin-night-mode-v1.0.2
+plugin-night-mode-v1.0.3
+plugin-offline-downloads-v1.0.0
+plugin-playback-stats-v1.0.0
+plugin-playback-stats-v1.0.1
+plugin-playback-stats-v1.0.2
+plugin-remote-control-v1.0.0
+plugin-scene-chapters-v1.0.0
+plugin-scene-chapters-v1.0.1
+plugin-scrobbler-v1.0.0
+plugin-scrobbler-v1.0.1
+plugin-scrobbler-v1.1.0
+plugin-sponsorblock-v1.0.0
+plugin-sponsorblock-v1.0.1
+plugin-sponsorblock-v1.1.0
+plugin-subtitle-sync-v1.0.0
+plugin-subtitle-sync-v1.0.1
+plugin-subtitle-sync-v1.1.0
+plugin-youtube-v1.0.0
+plugin-youtube-v1.1.0
+plugin-youtube-v1.1.1
+plugin-youtube-v1.1.2
+plugin-youtube-v1.2.0

@@ -1,6 +1,5 @@
 # Native helper programs of downloadable plugins (plugins/discord, plugins/remote-control).
-# A separate crate with its own Cargo.lock: nothing here is linked into Vivi, and the
-# Flatpak's cargo-sources.json only covers the root Cargo.lock.
+# A separate crate: nothing here is linked into Vivi.
 # Built per platform by .github/workflows/plugins.yml.
 [package]
 name = "vivi-helpers"

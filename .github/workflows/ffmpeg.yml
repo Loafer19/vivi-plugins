@@ -4,7 +4,8 @@ name: Helper ffmpeg
 # linux-x86_64, linux-aarch64, windows-x86_64 and macos-aarch64 and published as release
 # "helper-ffmpeg-v<RELEASE>" (helpers/ffmpeg/RELEASE) with SHA256SUMS. A release that
 # already exists is never replaced: bump RELEASE to publish a new build, then pin the new
-# tag and checksums in plugins/youtube/youtube.lua (FF_BUILD).
+# tag and checksums in the plugins that use it (FF_BUILD in plugins/*/*.lua; releases up to
+# helper-ffmpeg-v8.0-2 live in Loafer19/vivi, newer ones in this repository).
 on:
   push:
     branches: [master]
@@ -80,7 +81,9 @@ jobs:
       - name: Publish
         run: |
           tag="helper-ffmpeg-v$(cat helpers/ffmpeg/RELEASE)"
-          if gh release view "$tag" >/dev/null 2>&1; then echo "$tag exists, left alone"; exit 0; fi
+          for r in "$GITHUB_REPOSITORY" Loafer19/vivi; do
+            if gh release view "$tag" -R "$r" >/dev/null 2>&1; then echo "$tag exists in $r, left alone"; exit 0; fi
+          done
           cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
           gh release create "$tag" --latest=false --target "$GITHUB_SHA" \
             --title "Helper: minimal ffmpeg $(cat ../helpers/ffmpeg/RELEASE)" \

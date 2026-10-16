@@ -5,10 +5,12 @@ Every plugins/<id>/ directory with a manifest.toml is one package. It is zipped
 deterministically (sorted names, fixed timestamps, stored = no compression) into
 dist/plugins/<id>-<version>.zip, so the same sources always give the same sha256 here
 and in CI. Its index entry gets the download URL of the GitHub release asset
-(tag plugin-<id>-v<version>), the sha256 and the size. Built-in entries are kept.
+(tag plugin-<id>-v<version> in Loafer19/vivi-plugins, or in Loafer19/vivi for versions
+listed in plugins/legacy-releases.txt), the sha256 and the size. Built-in entries are kept.
 
     scripts/package-plugins.py            # build zips, rewrite plugins/index.json
     scripts/package-plugins.py --check    # build zips, fail if index.json is stale
+    scripts/package-plugins.py --repo-of <tag>  # print the repository hosting release <tag>
     scripts/package-plugins.py --list     # print "<id> <version> <tag> <zip>" per package
 
 Packages with native helpers (`binaries = ["vivi-discord"]` in manifest.toml) get one
@@ -34,7 +36,15 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REPO = "Loafer19/vivi"
+REPO = "Loafer19/vivi-plugins"
+LEGACY_REPO = "Loafer19/vivi"
+LEGACY = {l.strip() for l in (ROOT / "plugins/legacy-releases.txt").read_text().splitlines()
+          if l.strip() and not l.startswith("#")}
+
+
+def repo_of(tag: str) -> str:
+    """Repository hosting release `tag`: versions released before the split stay in Loafer19/vivi."""
+    return LEGACY_REPO if tag in LEGACY else REPO
 DIST = ROOT / "dist/plugins"
 INDEX = ROOT / "plugins/index.json"
 SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
@@ -124,7 +134,7 @@ def binaries(m: dict, tag: str, old: dict | None) -> list[dict]:
         out.append({
             "name": name,
             "platform": plat,
-            "url": f"https://github.com/{REPO}/releases/download/{tag}/{asset}",
+            "url": f"https://github.com/{repo_of(tag)}/releases/download/{tag}/{asset}",
             "sha256": hashlib.sha256(data).hexdigest(),
             "size": len(data),
         })
@@ -148,7 +158,7 @@ def entry(m: dict, z: Path, old: dict | None = None) -> dict:
         "min_vivi": m["min_vivi"],
         "permissions": m.get("permissions", []),
         "source": f"plugins/{m['id']}",
-        "url": f"https://github.com/{REPO}/releases/download/{tag}/{z.name}",
+        "url": f"https://github.com/{repo_of(tag)}/releases/download/{tag}/{z.name}",
         "sha256": hashlib.sha256(data).hexdigest(),
         "size": len(data),
         "settings": [
@@ -167,7 +177,7 @@ def entry(m: dict, z: Path, old: dict | None = None) -> dict:
                 "version": c["version"],
                 "date": c.get("date", ""),
                 "notes": c.get("notes", ""),
-                "url": f"https://github.com/{REPO}/releases/download/plugin-{m['id']}-v{c['version']}/{m['id']}-{c['version']}.zip",
+                "url": f"https://github.com/{repo_of(f"plugin-{m['id']}-v{c['version']}")}/releases/download/plugin-{m['id']}-v{c['version']}/{m['id']}-{c['version']}.zip",
             }
             for c in m["_store"]["changelog"]
         ]
@@ -180,6 +190,9 @@ def entry(m: dict, z: Path, old: dict | None = None) -> dict:
 
 
 def main() -> None:
+    if "--repo-of" in sys.argv:
+        print(repo_of(sys.argv[sys.argv.index("--repo-of") + 1]))
+        return
     pk = [(d, m, build_zip(d, m)) for d, m in manifests()]
     if "--assets" in sys.argv:
         want = sys.argv[sys.argv.index("--assets") + 1]
