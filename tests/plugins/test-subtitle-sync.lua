@@ -14,4 +14,14 @@ T.eq(T.props["sub-delay"], 0.2, "two steps later")
 P.nudge(-10)()
 T.eq(T.props["sub-delay"], -0.8, "one second earlier")
 T.ok(P.OFFSETS:find("subtitle-sync", 1, true), "offsets file path")
+-- With Vivi 0.11+ (script-opt vivi-sub-offsets=1) the keys hand the offset to Vivi.
+T.opts = { ["vivi-sub-offsets"] = "1" }
+T.calls = {}
+T.props["sub-delay"] = 0.5
+P.nudge(1)()
+local last = T.calls[#T.calls]
+T.eq(last and last[2], "vivi-sub-offset", "offset message to Vivi")
+T.eq(last and last[3], "set:0.6", "absolute offset sent")
+T.eq(T.props["sub-delay"], 0.5, "Vivi sets sub-delay itself")
+T.opts = nil
 T.done("subtitle-sync")

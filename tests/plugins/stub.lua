@@ -128,6 +128,7 @@ function M.load(script, opts)
     add_periodic_timer = function() return { kill = function() end, resume = function() end } end,
     get_time = function() return os.clock() end,
     get_script_name = function() return "test" end,
+    get_opt = function(k) return (M.opts or {})[k] end,
     create_osd_overlay = function() return { update = function() end, remove = function() end } end,
     get_osd_size = function() return 1280, 720 end,
   }

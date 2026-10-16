@@ -35,3 +35,10 @@ Embedded subtitle tracks are not supported (extract them first).
 
 The offset is saved per file (path + size) in `plugin-data/subtitle-sync/offsets.json`
 and applied as `sub-delay` every time the file is opened again.
+
+**Vivi 0.11 and newer** keep the per-file subtitle offset themselves (Subtitle Search
+plugin: `z` / `x`, side panel → Subtitles → Offset, MCP `set_subtitle_offset`). Vivi tells
+the plugin with the script-opt `vivi-sub-offsets=1`; the Alt keys then send
+`script-message vivi-sub-offset set:<seconds>` to Vivi, which saves and shows the value,
+and an offset saved here by an older version is handed over once and removed. The side
+panel's *Auto-sync to audio* button (and MCP `sync_subtitles`) runs this plugin's sync.

@@ -1,5 +1,5 @@
 -- @name Subtitle Auto-Sync
--- @version 1.1.0
+-- @version 1.2.0
 -- @author Vivi
 -- @description Align external subtitles to the audio with alass or ffsubsync, plus manual offsets remembered per file (Vivi plugin package).
 --
@@ -18,7 +18,10 @@
 -- (cargo install alass-cli) or ffsubsync (pip install ffsubsync).
 --
 -- Offsets: kept in plugin-data/subtitle-sync/offsets.json per file (path, size) and
--- applied as sub-delay whenever that file is opened again.
+-- applied as sub-delay whenever that file is opened again. Vivi 0.11+ keeps per-file
+-- subtitle offsets itself (z / x, side panel) and says so with the script-opt
+-- vivi-sub-offsets=1: then these keys send `script-message vivi-sub-offset <v>` to Vivi
+-- instead, and offsets saved here earlier are handed over once and forgotten.
 local mp = require "mp"
 local options = require "mp.options"
 local utils = require "mp.utils"
@@ -419,8 +422,15 @@ end
 
 local function round(x) return math.floor(x * 1000 + 0.5) / 1000 end
 
+-- Vivi saves the offset per file (Subtitle Search plugin on, Vivi 0.11+).
+local function vivi_offsets() return mp.get_opt("vivi-sub-offsets") == "1" end
+
 local function set_offset(v, quiet)
   v = round(v)
+  if vivi_offsets() then
+    mp.commandv("script-message", "vivi-sub-offset", "set:" .. tostring(v))
+    return
+  end
   mp.set_property_number("sub-delay", v)
   local k = file_key(mp.get_property("path"))
   if k then
@@ -439,12 +449,21 @@ end
 
 local function reset()
   set_offset(0, true)
+  if vivi_offsets() then return end
   mp.osd_message("Subtitle offset reset", 2)
 end
 
 mp.register_event("file-loaded", function()
   local k = file_key(mp.get_property("path"))
-  local v = k and read_offsets()[k]
+  local t = k and read_offsets() or {}
+  local v = k and t[k]
+  if v and vivi_offsets() then
+    -- Hand an offset saved by older versions over to Vivi once.
+    t[k] = nil
+    write_offsets(t)
+    mp.commandv("script-message", "vivi-sub-offset", "set:" .. tostring(v))
+    return
+  end
   -- After Vivi's per-show preset (applied on file-loaded too), so the file's own value wins.
   if v then mp.add_timeout(0.2, function()
     mp.set_property_number("sub-delay", v)
