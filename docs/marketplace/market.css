@@ -84,6 +84,7 @@ footer { border-top:1px solid var(--line); color:var(--fg3); font-size:13px; tex
 @media (max-width: 640px) { .doc .toc { columns: 1; } }
 @media (max-width:760px) { .narrow { display:inline; } }
 /* Developer docs (/dev/): sidebar + article */
+.devdocs > * { min-width: 0; }
 .devdocs { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; max-width: 1120px; margin: 24px auto 0; }
 .devdocs .side { position: sticky; top: 76px; align-self: start; display: flex; flex-direction: column; gap: 2px; }
 .devdocs .side b { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #8a8a8a; margin: 0 0 8px 12px; }
