@@ -872,37 +872,37 @@
         {
           "name": "vivi-discord",
           "platform": "linux-x86_64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-discord-v1.0.0/vivi-discord-linux-x86_64",
-          "sha256": "2c24e36dd53d9d08987d2e43cb5c0e7aa686d430235e7b9da9c49fd206a0c1dd",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-linux-x86_64",
+          "sha256": "a04deaf1f83bc3bc6de30b4ccc61521844739d47d58f4f56204cbf447584c526",
           "size": 471760
         },
         {
           "name": "vivi-discord",
           "platform": "linux-aarch64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-discord-v1.0.0/vivi-discord-linux-aarch64",
-          "sha256": "b14d66b70c2a5dcbb783d0a7798cd411cfef2e8d638dc1b2b9d0893f64fa7f5a",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-linux-aarch64",
+          "sha256": "6e058b4a88ef17aad19223452a162dcfb31b30c3d40d4573f244acf3785e7ee7",
           "size": 463024
         },
         {
           "name": "vivi-discord",
           "platform": "windows-x86_64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-discord-v1.0.0/vivi-discord-windows-x86_64.exe",
-          "sha256": "e871329adac185d20d7deb4ec4fd10f42b92d3646be697912bc2f4e6746adefc",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-windows-x86_64.exe",
+          "sha256": "69e204ea1d0386b56efc07258e353f3758ad231ba9682a5814206d01c7840aa9",
           "size": 200192
         },
         {
           "name": "vivi-discord",
           "platform": "macos-x86_64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-discord-v1.0.0/vivi-discord-macos-x86_64",
-          "sha256": "50afc9bb32c31bceb698ea6eefbca3da9c2c978def68e1c064d80b634866cb11",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-macos-x86_64",
+          "sha256": "71a0a01e4ffced7061db40d0c4ad3f76bff168ab9c5a2bc84e930a9186a6cd73",
           "size": 354400
         },
         {
           "name": "vivi-discord",
           "platform": "macos-aarch64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-discord-v1.0.0/vivi-discord-macos-aarch64",
-          "sha256": "ca2de2eb1f0539e502b4f4cbe703b012494cc2c52ff5d72c6e97af396b96d3f4",
-          "size": 353136
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-macos-aarch64",
+          "sha256": "710f069536c8a218932a9b3ecd26ad76f881034a55b424abcafa515394ba0778",
+          "size": 353152
         }
       ]
     },
@@ -1364,37 +1364,37 @@
         {
           "name": "vivi-remote",
           "platform": "linux-x86_64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-remote-control-v1.0.0/vivi-remote-linux-x86_64",
-          "sha256": "e548155cb26f6ed745e2b8b119a78647816bb1cdfb2387af2773345e1f14e75f",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-linux-x86_64",
+          "sha256": "2fbf58d9e80f5657c09a1daf017afc5159c354ab7eaf663cf2e55d4d32d09d52",
           "size": 598816
         },
         {
           "name": "vivi-remote",
           "platform": "linux-aarch64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-remote-control-v1.0.0/vivi-remote-linux-aarch64",
-          "sha256": "f668f8a713cb3042b32c400df7b5f88ac7ca4cb5498a755d88f8a929ea0970e1",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-linux-aarch64",
+          "sha256": "d9cdfc7d348d50cbe42bfe516a79be92466fe813ad9b947968dc44087002b4da",
           "size": 594208
         },
         {
           "name": "vivi-remote",
           "platform": "windows-x86_64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-remote-control-v1.0.0/vivi-remote-windows-x86_64.exe",
-          "sha256": "261ba925a7eb7aa640ddaa46a3761c507ecad4977fc8028b6f46bf5537d43ee5",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-windows-x86_64.exe",
+          "sha256": "1ccfdab3317830e5b0603f5044da447bb04382248aad0638b4c8326305e476ff",
           "size": 306688
         },
         {
           "name": "vivi-remote",
           "platform": "macos-x86_64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-remote-control-v1.0.0/vivi-remote-macos-x86_64",
-          "sha256": "90cbcbed75577886a2085b53addb0d063b816ef82ca5a9f7576ae8b11c66728a",
-          "size": 441720
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-macos-x86_64",
+          "sha256": "425b2b0269d85b04cd9ab32be1825f41fc4e041e13da8c21a67e23518101b2de",
+          "size": 441712
         },
         {
           "name": "vivi-remote",
           "platform": "macos-aarch64",
-          "url": "https://github.com/Loafer19/vivi/releases/download/plugin-remote-control-v1.0.0/vivi-remote-macos-aarch64",
-          "sha256": "af983fe6c8ef4079058113671254611d8bd1c2f77d9fdaa00202c617ab41b080",
-          "size": 437040
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.0.0/vivi-remote-macos-aarch64",
+          "sha256": "35674bdd04d05bb70977757a71a8a49b23352a1b0b63f4f0868b756f7d4616f7",
+          "size": 437024
         }
       ]
     },
