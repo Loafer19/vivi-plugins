@@ -28,11 +28,11 @@ Send them with `mp.commandv("script-message", name, ...)`.
 | `vivi-setting <id> <key> <value>` | Save one of your declared settings (e.g. a generated PIN) and apply it. |
 | `vivi-pick-folder <id> <key>` | Folder dialog; the result is saved as that setting and sent back as `script-message-to <script> folder-picked <path>`. |
 | `vivi-qr <title> <text> [caption]` | Dialog with `text` as a QR code (0.10.1+). |
-| `vivi-fullscreen [toggle | on | off]` | Toggle Vivi's window fullscreen (0.10.1+). |
+| `vivi-fullscreen [toggle, on, off]` | Toggle Vivi's window fullscreen (0.10.1+). |
 | `vivi-preview-frames <dir>` | Load seek-bar preview frames `seek-NN.jpg` from `<dir>` (0.9.2+). |
 | `vivi-chapter-thumbs <dir>` | Reload chapter thumbnails `chapter-N.jpg` from `<dir>` (0.9.2+). |
 | `vivi-tagger-acoustid <path> <json>` | Open the auto-tagger review with AcoustID results (0.9.2+). |
-| `vivi-sub-offset <delta | set:v | reset>` | Change the per-file subtitle offset. |
+| `vivi-sub-offset <delta, set:v, reset>` | Change the per-file subtitle offset. |
 
 `action` settings arrive the other way, as a script message named after the setting key:
 
