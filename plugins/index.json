@@ -227,8 +227,8 @@
     {
       "id": "auto-tagger",
       "name": "Auto-tagger",
-      "description": "Identifies songs by their audio (AcoustID fingerprint) or tags, looks them up on MusicBrainz, Deezer, iTunes, Last.fm and Discogs and writes tags, hi-res covers and optional LRCLIB synced lyrics after a preview that shows each field's source. Originals are backed up. Keys optional.",
-      "version": "0.8.0",
+      "description": "Identifies songs by their audio (AcoustID fingerprint, system fpcalc first) or tags, merges MusicBrainz, Deezer, iTunes, Last.fm and Discogs ranked by confidence, and writes tags, hi-res covers and optional LRCLIB lyrics after a preview: per-field source badges, switch to another source's value, cover candidates, synced/plain lyrics, opt-in safe rename from a pattern. Batch folders, backups and Undo. Keys optional.",
+      "version": "0.9.0",
       "author": "Vivi",
       "icon": "tag",
       "lucide": "tags",
@@ -279,6 +279,18 @@
           "default": "false"
         },
         {
+          "key": "rename",
+          "title": "Suggest file names",
+          "type": "toggle",
+          "default": "true"
+        },
+        {
+          "key": "rename-pattern",
+          "title": "File name pattern",
+          "type": "text",
+          "default": "{artist} - {title}"
+        },
+        {
           "key": "folder",
           "title": "Library folder",
           "type": "text",
@@ -312,7 +324,17 @@
         "acoustid",
         "tags"
       ],
-      "screenshots": []
+      "screenshots": [
+        "tagger-review",
+        "tagger-summary"
+      ],
+      "changelog": [
+        {
+          "version": "0.9.0",
+          "date": "2026-10-16",
+          "notes": "Merged sources ranked by match confidence (agreeing sources raise it, duplicates collapse); per-field alternatives from other sources (⇄); lyrics rows show LRCLIB synced vs plain; file card notes fingerprinter and sources; fingerprint matches suggest a file name from a pattern (opt-in, never overwrites, sanitized); batch progress with matched/skipped counts; keys also from VIVI_ACOUSTID_KEY / VIVI_LASTFM_KEY / VIVI_DISCOGS_TOKEN."
+        }
+      ]
     },
     {
       "id": "free-music",
