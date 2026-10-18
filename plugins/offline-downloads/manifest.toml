@@ -1,6 +1,6 @@
 id = "offline-downloads"
 name = "Offline Downloads"
-version = "1.1.0"
+version = "1.1.1"
 description = "A download queue for offline listening and watching: YouTube and other yt-dlp sites, direct music files (Jamendo, Internet Archive and any audio/video link) and radio streams recorded for a set time. Pending / active / paused / done / failed list with pause, cancel and retry, progress and a download folder. Paste a URL or press Alt+D with one in the clipboard. Downloads no tools of its own: it uses curl and your yt-dlp, or the copy the YouTube & yt-dlp plugin manages."
 author = "Vivi"
 kind = "mpv-lua"
@@ -28,8 +28,23 @@ command = "enqueue"
 
 [[contributes]]
 point = "downloads.action"
-label = "Download / record the playing stream"
-command = "add-current"
+label = "Record stream"
+command = "record"
+
+[[contributes]]
+point = "downloads.action"
+label = "Add URL from clipboard"
+command = "add-clipboard"
+
+[[contributes]]
+point = "palette.command"
+label = "Downloads: record the playing stream"
+command = "record"
+
+[[contributes]]
+point = "palette.command"
+label = "Downloads: add the URL in the clipboard"
+command = "add-clipboard"
 
 [[contributes]]
 point = "palette.command"
@@ -73,6 +88,12 @@ key = "add-current"
 title = "Add the playing online item"
 type = "action"
 label = "Add current"
+
+[[settings]]
+key = "record"
+title = "Record the playing radio / live stream for the set length"
+type = "action"
+label = "Record"
 
 [[settings]]
 key = "show"

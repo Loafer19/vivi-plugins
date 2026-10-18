@@ -24,8 +24,9 @@ progress, size, speed and time left, "Recording · 12:30 of 30 min" for radio, a
 error of a failed download. The row buttons act on that one download: **Pause / Resume**
 (not for recordings, which cannot continue), **Cancel** (the row stays as *Cancelled*),
 **Retry**; Play now, Open file, Show in folder, Remove and Clear finished are Vivi's.
-The panel's *paste a link* field and its **Download / record the playing stream** button
-add to this queue, Alt+D still adds the clipboard URL, and **Show** / Alt+Shift+D open
+The panel's *paste a link* field and its **Record stream** (the playing radio / live
+stream, or the copied URL, for the set length) and **Add URL from clipboard** buttons
+add to this queue (also in the command palette), Alt+D still adds the clipboard URL, and **Show** / Alt+Shift+D open
 the panel instead of the on-screen list. Free Music's *Offline Downloads* downloader
 setting sends its tracks here too. Older Vivi versions ignore the reports and keep the
 on-screen list.

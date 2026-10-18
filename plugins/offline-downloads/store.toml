@@ -4,6 +4,11 @@ categories = ["Music", "Streaming", "Tools"]
 tags = ["download", "offline", "queue", "yt-dlp", "radio", "jamendo", "archive.org"]
 
 [[changelog]]
+version = "1.1.1"
+date = "2026-10-18"
+notes = "Record stream: a Downloads panel button, a palette command and a setting record the playing radio / live stream (or the copied URL) for the set length, even when the server reports a file size. Add URL from clipboard in the panel and the palette."
+
+[[changelog]]
 version = "1.1.0"
 date = "2026-10-18"
 notes = "Vivi 0.13+: the queue shows in the shared Downloads panel (Library → Downloads) with per-download Pause / Resume, Cancel and Retry; the panel's paste-a-link field and its Download / record button add to this queue; Show and Alt+Shift+D open the panel. Older Vivi keeps the on-screen queue."

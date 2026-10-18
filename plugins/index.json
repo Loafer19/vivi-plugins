@@ -1170,7 +1170,7 @@
       "id": "offline-downloads",
       "name": "Offline Downloads",
       "description": "A download queue for offline listening and watching: YouTube and other yt-dlp sites, direct music files (Jamendo, Internet Archive and any audio/video link) and radio streams recorded for a set time. Pending / active / paused / done / failed list with pause, cancel and retry, progress and a download folder. Paste a URL or press Alt+D with one in the clipboard. Downloads no tools of its own: it uses curl and your yt-dlp, or the copy the YouTube & yt-dlp plugin manages.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": "Vivi",
       "icon": "streams",
       "lucide": "download",
@@ -1184,9 +1184,9 @@
         "subprocess"
       ],
       "source": "plugins/offline-downloads",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.0/offline-downloads-1.1.0.zip",
-      "sha256": "622de6b5b4c3c4f0c733a33669c8f93dcc35fe74e6820de7f25790c5125014fd",
-      "size": 31951,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.1/offline-downloads-1.1.1.zip",
+      "sha256": "a4cc58629f7858b3b56155c7871aeb2a8ef9234823ada8503d78c8dee03bd8cd",
+      "size": 33584,
       "settings": [
         {
           "key": "url",
@@ -1205,6 +1205,12 @@
           "title": "Add the playing online item",
           "type": "action",
           "label": "Add current"
+        },
+        {
+          "key": "record",
+          "title": "Record the playing radio / live stream for the set length",
+          "type": "action",
+          "label": "Record"
         },
         {
           "key": "show",
@@ -1304,10 +1310,15 @@
       ],
       "changelog": [
         {
+          "version": "1.1.1",
+          "date": "2026-10-18",
+          "notes": "Record stream: a Downloads panel button, a palette command and a setting record the playing radio / live stream (or the copied URL) for the set length, even when the server reports a file size. Add URL from clipboard in the panel and the palette.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.1/offline-downloads-1.1.1.zip"
+        },
+        {
           "version": "1.1.0",
           "date": "2026-10-18",
-          "notes": "Vivi 0.13+: the queue shows in the shared Downloads panel (Library → Downloads) with per-download Pause / Resume, Cancel and Retry; the panel's paste-a-link field and its Download / record button add to this queue; Show and Alt+Shift+D open the panel. Older Vivi keeps the on-screen queue.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.0/offline-downloads-1.1.0.zip"
+          "notes": "Vivi 0.13+: the queue shows in the shared Downloads panel (Library → Downloads) with per-download Pause / Resume, Cancel and Retry; the panel's paste-a-link field and its Download / record button add to this queue; Show and Alt+Shift+D open the panel. Older Vivi keeps the on-screen queue."
         },
         {
           "version": "1.0.0",

@@ -1,11 +1,13 @@
 -- @name Offline Downloads
--- @version 1.1.0
+-- @version 1.1.1
 -- @author Vivi
 -- @description Download queue for YouTube/yt-dlp sites, direct music files (Jamendo, Internet Archive, …) and radio streams (Vivi plugin package).
 --
 -- Keys: Alt+d   add the URL in the clipboard (or the playing URL) to the queue
 --       Alt+D   show the queue (Alt+Shift+d)
--- Script messages: add, add-current, enqueue <url>, show, pause, cancel, retry,
+-- Script messages: add, add-current, add-clipboard, enqueue <url>, record [url] (a radio /
+--                  live recording of the URL, else the playing stream, else the clipboard
+--                  URL), show, pause, cancel, retry,
 --                  clear-done, open-folder, pick-folder, info; from Vivi's Downloads
 --                  panel: download-pause / download-resume / download-cancel /
 --                  download-retry <job id>.
@@ -183,7 +185,7 @@ local function panel() return mp.get_property("user-data/vivi/downloads", "") ==
 -- Stable across restarts and unique even when ids are reused after the list was cleared.
 local function job_id(it) return tostring(it.added or 0) .. "-" .. tostring(it.id) end
 
-local function recording(it) return it.kind == "stream" or it.kind == "hls" end
+local function recording(it) return it.record == true or it.kind == "stream" or it.kind == "hls" end
 
 local function title_of(it) return it.title or (it.file and it.file:match("([^/\\]+)$")) or it.url end
 
@@ -427,6 +429,8 @@ local function begin(it)
     run({ "curl", "-sIL", "-A", "Vivi", "--max-time", "15", it.url }, function(h)
       if active and active.aborted then return finish(it, false) end
       local kind, len = classify_headers(it.kind, h.stdout)
+      -- "record": a timed recording even when the server sends a length.
+      if it.record and kind ~= "list" then kind, len = (kind == "hls") and "hls" or "stream", nil end
       if kind == "list" then
         return run({ "curl", "-sL", "--max-time", "15", it.url }, function(b)
           local u = first_list_url(b.stdout)
@@ -468,18 +472,20 @@ start_next = function()
   end
 end
 
-local function enqueue(url)
+local function enqueue(url, record)
   url = trim(url)
   if not url:match("^https?://%S+$") then return toast("Not an http(s) URL: " .. url:sub(1, 80)) end
   for _, it in ipairs(queue) do
     if it.url == url and it.state ~= "done" and it.state ~= "failed" then return toast("Already in the queue") end
   end
-  local it = { id = next_id, url = url, kind = classify(url), state = "pending", added = os.time() }
+  local it = { id = next_id, url = url, kind = classify(url), state = "pending", added = os.time(),
+    record = record or nil }
   next_id = next_id + 1
   queue[#queue + 1] = it
   report(it)
   save()
-  toast(string.format("Queued (%s): %s — %d waiting", it.kind == "ytdlp" and "yt-dlp" or it.kind,
+  toast(string.format("Queued (%s): %s — %d waiting",
+    record and (o["radio-minutes"] .. " min recording") or (it.kind == "ytdlp" and "yt-dlp" or it.kind),
     url:sub(1, 80), counts().pending), 4)
   start_next()
   return it
@@ -603,6 +609,19 @@ local function report_unfinished()
   end
 end
 
+-- Record the given URL, else the playing online stream, else the URL in the clipboard.
+local function record(url)
+  url = trim(url)
+  if url == "" then
+    local p = mp.get_property("path", "") or ""
+    local c = trim(mp.get_property("clipboard/text", "") or "")
+    if p:match("^https?://") then url = p
+    elseif c:match("^https?://%S+$") then url = c
+    else return toast("Play a radio / live stream (or copy its URL) to record it") end
+  end
+  return enqueue(url, true)
+end
+
 local function info()
   toast(string.format("yt-dlp: %s\nffmpeg: %s\nFolder: %s",
     ytdlp() or "none (install yt-dlp or the YouTube & yt-dlp plugin)",
@@ -616,7 +635,9 @@ mp.register_script_message("add-current", function()
   local p = mp.get_property("path", "") or ""
   if p:match("^https?://") then enqueue(p) else toast("The playing item is not an online URL") end
 end)
-mp.register_script_message("enqueue", enqueue)
+mp.register_script_message("enqueue", function(url) enqueue(url) end)
+mp.register_script_message("record", record)
+mp.register_script_message("add-clipboard", add_clipboard_or_current)
 mp.register_script_message("show", show)
 mp.register_script_message("pause", pause)
 mp.register_script_message("cancel", cancel)
@@ -646,5 +667,5 @@ if VIVI_TEST then
     clear_done = clear_done, known_site = known_site, queue = function() return queue end, describe = describe, human = human,
     set_active = function(a) active = a end, job_id = job_id, panel_row = panel_row,
     job_pause = job_pause, job_resume = job_resume, job_cancel = job_cancel, job_retry = job_retry,
-    show = show, report_unfinished = report_unfinished }
+    show = show, report_unfinished = report_unfinished, record = record }
 end

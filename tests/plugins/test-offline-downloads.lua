@@ -91,4 +91,16 @@ it.state = "done"
 T.calls = {}
 P.clear_done()
 T.eq(T.calls[1] and T.calls[1][2], "vivi-download-remove", "clear removes the row")
+-- record: the given URL, else the playing stream, else the clipboard.
+T.props["path"] = "http://radio.example:8000/live"
+local rec = P.record()
+T.eq(rec and rec.url, "http://radio.example:8000/live", "record the playing stream")
+T.eq(rec and rec.record, true, "record flag")
+T.eq(P.panel_row(rec).can_pause, false, "a queued recording cannot pause")
+T.props["path"] = "/music/a.flac"
+T.props["clipboard/text"] = " https://radio.example/b.pls "
+T.eq(P.record().url, "https://radio.example/b.pls", "record the clipboard URL")
+T.props["clipboard/text"] = ""
+T.eq(P.record(), nil, "nothing to record")
+T.eq(P.record("https://x.example/c.mp3").record, true, "record an explicit URL")
 T.done("offline-downloads")
