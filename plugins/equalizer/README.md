@@ -1,5 +1,13 @@
 # Equalizer
 
+> **Deprecated — built into Vivi since 0.13.0.** The built-in Equalizer (player side
+> panel → Audio → Equalizer) replaces this plugin: 10 bands, VLC presets plus Bass, Vocal,
+> Rock and Night, custom presets with import / export, `Alt+E` to cycle presets,
+> `Alt+Shift+E` to turn it on / off and *Auto pre-amp / prevent clipping*. Uninstall this
+> plugin in Extensions → All / Marketplace; it stays here for older Vivi versions and is
+> no longer listed in the marketplace (its page remains). With Vivi 0.13.0 or newer the
+> core takes `Alt+E` / `Alt+Shift+E` before this script sees them.
+
 Presets and a custom 10-band equalizer applied with mpv audio filters. Implements #74.
 
 | Preset | 31 | 62 | 125 | 250 | 500 | 1k | 2k | 4k | 8k | 16k |

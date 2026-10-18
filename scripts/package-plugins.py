@@ -45,6 +45,9 @@ NOT_PACKAGED = {"store.toml"}
 HELPERS = ROOT / "dist/helpers"
 PLATFORMS = ["linux-x86_64", "linux-aarch64", "windows-x86_64", "macos-x86_64", "macos-aarch64"]
 RESERVED = {"pkgdir"}
+# [deprecated] in manifest.toml: since (Vivi version that replaces it), message, replacement
+# ("builtin:<feature>" or "plugin:<id>"), action (button label in Vivi).
+DEPRECATED_KEYS = {"since", "message", "replacement", "action"}
 REQUIRED = ["id", "name", "version", "description", "author", "kind", "entry", "min_vivi"]
 
 
@@ -72,6 +75,12 @@ def manifests() -> list[tuple[Path, dict]]:
         bad = set(m.get("permissions", [])) - PERMISSIONS
         if bad:
             sys.exit(f"{f}: unknown permissions {sorted(bad)}")
+        dep = m.get("deprecated")
+        if dep is not None:
+            if not isinstance(dep, dict) or set(dep) - DEPRECATED_KEYS:
+                sys.exit(f"{f}: [deprecated] takes only {sorted(DEPRECATED_KEYS)}")
+            if dep.get("since") and not SEMVER.match(dep["since"]):
+                sys.exit(f"{f}: deprecated.since must be MAJOR.MINOR.PATCH")
         m["_store"] = store(d)
         out.append((d, m))
     return out
@@ -179,6 +188,8 @@ def entry(m: dict, z: Path, old: dict | None = None) -> dict:
         e["binaries"] = binaries(m, tag, old)
     if m.get("size_note"):
         e["size_note"] = m["size_note"]
+    if m.get("deprecated"):
+        e["deprecated"] = {k: m["deprecated"][k] for k in sorted(DEPRECATED_KEYS) if k in m["deprecated"]}
     return e
 
 

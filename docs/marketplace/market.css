@@ -102,3 +102,6 @@ footer { border-top:1px solid var(--line); color:var(--fg3); font-size:13px; tex
   .devdocs .side b { width: 100%; }
   .devdocs .doc table { display: block; overflow-x: auto; }
 }
+.chip.dep { color:#f0b45a; border-color:rgba(240,180,90,.5); background:rgba(240,180,90,.08); font-weight:600; }
+.deprecated { margin:8px 0 4px; padding:10px 14px; border:1px solid rgba(240,180,90,.45); border-radius:10px; background:rgba(240,180,90,.06); }
+.deprecated p { margin:6px 0 0; color:var(--fg2); }

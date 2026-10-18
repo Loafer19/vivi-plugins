@@ -5,6 +5,11 @@ tags = ["equalizer", "eq", "presets", "audio"]
 screenshots = ["equalizer-settings"]
 
 [[changelog]]
+version = "1.0.1"
+date = "2026-10-18"
+notes = "Deprecated: the built-in Equalizer in Vivi 0.13.0 (Audio panel) replaces this plugin, with Bass, Vocal, Rock and Night presets, Alt+E / Alt+Shift+E and an auto pre-amp. Nothing else changed."
+
+[[changelog]]
 version = "1.0.0"
 date = "2026-10-15"
 notes = "First release: Flat, Bass, Vocal, Rock and Night presets, custom 10-band EQ (equalizer or superequalizer), anti-clipping pre-amp, remembered across restarts."

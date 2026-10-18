@@ -216,6 +216,15 @@ icons from <a href="https://lucide.dev">Lucide</a> (ISC) · screenshots show <a 
 """
 
 
+def deprecated_badge(p: dict) -> str:
+    """'Deprecated — built into Vivi since 0.13.0' (catalog `deprecated`), or ''."""
+    d = p.get("deprecated")
+    if not d:
+        return ""
+    since = f" — built into Vivi since {d['since']}" if d.get("since") and d.get("replacement", "").startswith("builtin:") else ""
+    return f'<span class="chip dep">Deprecated{e(since)}</span>'
+
+
 def card(p: dict) -> str:
     cats = p.get("categories", [])
     shots = [s for s in p.get("screenshots", []) if shot_path(s)]
@@ -268,7 +277,12 @@ def page(p: dict) -> str:
         f"<p>{e(c.get('notes', ''))}</p></li>" for c in cl) or "<li><p>Ships with Vivi; changes are listed in the <a href=\"https://github.com/Loafer19/vivi/blob/master/CHANGELOG.md\">Vivi changelog</a>.</p></li>"
     settings = "".join(f"<li><b>{e(s['title'])}</b> <span class=muted>({e(s['type'])})</span></li>" for s in p.get("settings", []) if s["type"] != "action")
     install = ""
-    if p.get("kind") == "package":
+    dep = p.get("deprecated")
+    if dep:
+        # Kept for older Vivi versions: download only, no "Open in Vivi" (Browse hides it).
+        install = f"""<a class="btn ghost" href="{e(p['url'])}">{icon('download')}Download zip ({e(kb(p['size']))})</a>
+<p class="muted small">For Vivi older than {e(dep.get('since', 'the current version'))} only. <a href="{SITE}/#install">Get the latest Vivi</a></p>"""
+    elif p.get("kind") == "package":
         install = f"""<a class="btn primary" href="vivi://plugin/{e(pid)}">{icon('external-link')}Open in Vivi</a>
 <a class="btn ghost" href="{e(p['url'])}">{icon('download')}Download zip ({e(kb(p['size']))})</a>
 <p class="muted small">"Open in Vivi" shows the plugin in Settings → Extensions → Browse, where you confirm its permissions and install it.
@@ -283,6 +297,7 @@ Needs Vivi {e(p.get('min_vivi', ''))} or newer. No Vivi yet? <code>curl -fsSL {S
 <section class="phead">
   <div class="bigic">{icon(p.get('lucide', 'puzzle'))}</div>
   <div><h1>{e(p['name'])}</h1>
+  {f'<div class="deprecated">{deprecated_badge(p)}<p>{e(dep.get("message", ""))}</p></div>' if dep else ''}
   <p class="lead">{e(desc)}</p>
   <div class="meta"><span>v{e(p.get('version', ''))}</span>{f'<span>{e(size_label(p))}</span>' if p.get('kind') != 'builtin' else '<span>Built into Vivi</span>'}
   {f'<span>{e(", ".join(platforms(p)))}</span>' if p.get('kind') != 'builtin' else ''}<span>by {e(p.get('author', ''))}{src}</span></div>
@@ -340,6 +355,8 @@ def build_dev() -> list[str]:
 def main() -> None:
     idx = json.loads((ROOT / "plugins/index.json").read_text())
     plugins = [p for p in idx["plugins"]]
+    # Deprecated plugins keep their page (and sitemap entry) but leave the grid and search.
+    listed = [p for p in plugins if not p.get("deprecated")]
     if OUT.exists():
         shutil.rmtree(OUT)
     (OUT / "img/shots").mkdir(parents=True)
@@ -351,9 +368,9 @@ def main() -> None:
             f = shot_path(s)
             if f and s not in SHOT_V:
                 write_shot(s, f)
-    order = sorted(plugins, key=lambda p: (p.get("kind") == "script", p["name"].lower()))
+    order = sorted(listed, key=lambda p: (p.get("kind") == "script", p["name"].lower()))
     cats = "".join(f'<button type="button" data-cat="{c}">{icon(CAT_ICON[c])}{c}</button>' for c in CATEGORIES)
-    desc = (f"{len(plugins)} plugins for the Vivi media player: music, video, subtitles, streaming, integrations and tools. "
+    desc = (f"{len(listed)} plugins for the Vivi media player: music, video, subtitles, streaming, integrations and tools. "
             "Install them in one click from Vivi.")
     ld = {"@context": "https://schema.org", "@type": "ItemList", "name": "Vivi plugins",
           "itemListElement": [{"@type": "ListItem", "position": i + 1, "url": f"{BASE}/p/{p['id']}/", "name": p["name"]}
@@ -361,7 +378,7 @@ def main() -> None:
     out = head("Vivi plugins – extensions for the Vivi media player", desc, BASE + "/", f"{SITE}/img/og.png",
                f'<script type="application/ld+json">{json.dumps(ld)}</script>')
     out += f"""<section class="hero"><h1>Plugins for <span>Vivi</span></h1>
-<p>{len(plugins)} extensions. Built-in ones ship with Vivi; downloadable ones install from Settings → Extensions → Browse
+<p>{len(listed)} extensions. Built-in ones ship with Vivi; downloadable ones install from Settings → Extensions → Browse
 with checksums verified and permissions shown before install.</p></section>
 <div class="toolbar">
   <label class="search">{icon('search')}<input id="q" type="search" placeholder="Search plugins" aria-label="Search plugins"></label>
@@ -381,7 +398,7 @@ with checksums verified and permissions shown before install.</p></section>
         d.mkdir(parents=True)
         (d / "index.html").write_text(page(p))
     dev_urls = build_dev()
-    urls = [BASE + "/"] + dev_urls + [f"{BASE}/p/{p['id']}/" for p in order]
+    urls = [BASE + "/"] + dev_urls + [f"{BASE}/p/{p['id']}/" for p in order + [p for p in plugins if p.get("deprecated")]]
     (OUT / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
                                      + "".join(f"<url><loc>{u}</loc></url>" for u in urls) + "</urlset>\n")
     (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {BASE}/sitemap.xml\n")
