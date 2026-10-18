@@ -39,4 +39,56 @@ T.eq(P.queue()[1].state, "pending", "retry")
 P.queue()[1].state = "done"
 P.clear_done()
 T.eq(#P.queue(), 0, "clear done")
+-- Shared Downloads panel (Vivi sets user-data/vivi/downloads = 1).
+local function reports(job)
+  local out = {}
+  for _, c in ipairs(T.calls) do
+    if c[1] == "script-message" and c[2] == "vivi-download" and c[3] == "offline-downloads" and (not job or c[4] == job) then
+      out[#out + 1] = T.json_decode(c[5])
+    end
+  end
+  return out
+end
+T.calls = {}
+P.enqueue("https://example.org/two.mp3")
+T.eq(#reports(), 0, "no reports without the panel")
+P.clear_done()
+P.queue()[1] = nil
+T.props["user-data/vivi/downloads"] = "1"
+T.calls = {}
+local it = P.enqueue("https://example.org/three.ogg")
+local job = P.job_id(it)
+T.ok(job:match("^%d+%-%d+$"), "job id")
+local r = reports(job)
+T.eq(#r, 1, "reported on enqueue")
+T.eq(r[1].state, "queued", "queued state")
+T.eq(r[1].title, "https://example.org/three.ogg", "title falls back to the URL")
+T.eq(r[1].can_pause, true, "files can pause")
+P.job_pause(job)
+T.eq(it.state, "paused", "panel pause on a waiting job")
+P.job_resume(job)
+T.eq(it.state, "pending", "panel resume")
+P.job_cancel(job)
+T.eq(it.state, "failed", "panel cancel keeps the row")
+T.eq(it.error, "Cancelled", "cancel reason")
+local last = reports(job)
+T.eq(last[#last].state, "failed", "cancel reported")
+P.job_retry(job)
+T.eq(it.state, "pending", "panel retry")
+T.eq(P.panel_row({ id = 9, url = "http://r.example/live", kind = "stream", state = "active", started = 100, minutes = 30 }, 175).detail,
+  "Recording · 1:15 of 30 min", "recording detail")
+T.eq(P.panel_row({ id = 9, url = "http://r.example/live", kind = "stream", state = "active" }).can_pause, false, "recordings cannot pause")
+T.eq(P.panel_row({ id = 9, url = "u", kind = "ytdlp", state = "active", pct = 40, total_text = "3.40MiB" }).detail,
+  "40% of 3.40MiB", "yt-dlp detail")
+local d = P.panel_row({ id = 9, url = "u", kind = "file", state = "done", size = 2048, file = "/m/a.mp3" })
+T.eq(d.progress, 1, "done progress")
+T.eq(d.total, 2048, "done size")
+T.eq(d.title, "a.mp3", "title from the file")
+T.calls = {}
+P.show()
+T.eq(T.calls[1] and T.calls[1][2], "vivi-downloads-show", "show opens the panel")
+it.state = "done"
+T.calls = {}
+P.clear_done()
+T.eq(T.calls[1] and T.calls[1][2], "vivi-download-remove", "clear removes the row")
 T.done("offline-downloads")

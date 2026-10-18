@@ -4,6 +4,11 @@ categories = ["Music", "Streaming", "Tools"]
 tags = ["download", "offline", "queue", "yt-dlp", "radio", "jamendo", "archive.org"]
 
 [[changelog]]
+version = "1.1.0"
+date = "2026-10-18"
+notes = "Vivi 0.13+: the queue shows in the shared Downloads panel (Library → Downloads) with per-download Pause / Resume, Cancel and Retry; the panel's paste-a-link field and its Download / record button add to this queue; Show and Alt+Shift+D open the panel. Older Vivi keeps the on-screen queue."
+
+[[changelog]]
 version = "1.0.0"
 date = "2026-10-15"
 notes = "First release: queue with pause / cancel / retry for yt-dlp sites, direct files and radio recordings."

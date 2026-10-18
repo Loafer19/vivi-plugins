@@ -1,15 +1,23 @@
 -- @name Offline Downloads
--- @version 1.0.0
+-- @version 1.1.0
 -- @author Vivi
 -- @description Download queue for YouTube/yt-dlp sites, direct music files (Jamendo, Internet Archive, …) and radio streams (Vivi plugin package).
 --
 -- Keys: Alt+d   add the URL in the clipboard (or the playing URL) to the queue
 --       Alt+D   show the queue (Alt+Shift+d)
 -- Script messages: add, add-current, enqueue <url>, show, pause, cancel, retry,
---                  clear-done, open-folder, pick-folder, info.
+--                  clear-done, open-folder, pick-folder, info; from Vivi's Downloads
+--                  panel: download-pause / download-resume / download-cancel /
+--                  download-retry <job id>.
 --
 -- One item downloads at a time; the queue (pending / active / paused / done / failed)
 -- is kept in plugin-data/offline-downloads/queue.json and survives restarts.
+--
+-- Vivi 0.13+ has a shared Downloads panel (Library -> Downloads) and sets the property
+-- user-data/vivi/downloads to 1. Every queue change is then reported to it with
+-- `script-message vivi-download offline-downloads <job id> <json>`, its row buttons call
+-- back with the download-* messages above, and Show / Alt+Shift+D open the panel
+-- instead of the OSD list. Older Vivi ignores the reports and keeps the OSD queue.
 --
 -- How an URL is fetched:
 --   * direct media files (.mp3 .ogg .flac .opus .m4a .mp4 .mkv …, Jamendo/Internet
@@ -165,6 +173,54 @@ local queue = {}      -- { id, url, kind, state, file, size, done, total, pct, t
 local active          -- { item, job, timer, t0, aborted = "pause"|"cancel" }
 local next_id = 1
 
+-- ---------- Vivi's shared Downloads panel ----------
+
+local PLUGIN = "offline-downloads"
+local PANEL_STATE = { pending = "queued", active = "active", paused = "paused", done = "done", failed = "failed" }
+
+local function panel() return mp.get_property("user-data/vivi/downloads", "") == "1" end
+
+-- Stable across restarts and unique even when ids are reused after the list was cleared.
+local function job_id(it) return tostring(it.added or 0) .. "-" .. tostring(it.id) end
+
+local function recording(it) return it.kind == "stream" or it.kind == "hls" end
+
+local function title_of(it) return it.title or (it.file and it.file:match("([^/\\]+)$")) or it.url end
+
+-- The panel row (fields of Vivi's downloads report; all are sent so a row never keeps
+-- stale values from an earlier state).
+local function panel_row(it, now)
+  local r = { title = title_of(it), state = PANEL_STATE[it.state] or "queued",
+    done = it.done or 0, total = it.total or 0, progress = (it.pct or 0) / 100,
+    error = it.error or "", path = it.file or "", can_pause = not recording(it), detail = "" }
+  if it.state == "done" then
+    r.done = it.size or r.done
+    r.total = it.size or r.total
+    r.progress = 1
+  end
+  if it.state == "active" and recording(it) then
+    local el = math.max(0, (now or os.time()) - (it.started or now or os.time()))
+    r.detail = string.format("Recording · %d:%02d of %s min", math.floor(el / 60), el % 60,
+      tostring(it.minutes or "?"))
+  elseif it.state == "active" and r.total == 0 and it.total_text and it.total_text ~= "" then
+    r.detail = string.format("%.0f%% of %s", it.pct or 0, it.total_text)
+  end
+  return r
+end
+
+local function report(it)
+  if not panel() then return end
+  mp.commandv("script-message", "vivi-download", PLUGIN, job_id(it), utils.format_json(panel_row(it)))
+end
+
+local function unreport(it)
+  if panel() then mp.commandv("script-message", "vivi-download-remove", PLUGIN, job_id(it)) end
+end
+
+local function find_job(job)
+  for _, it in ipairs(queue) do if job_id(it) == job then return it end end
+end
+
 local function save()
   mkdir(DIR, function()
     local f = io.open(QUEUE .. ".tmp", "w")
@@ -208,6 +264,7 @@ local function describe(it)
 end
 
 local function show()
+  if panel() then return mp.commandv("script-message", "vivi-downloads-show") end
   if #queue == 0 then return toast("The download queue is empty") end
   local c, lines = counts(), {}
   lines[1] = string.format("Downloads: %d pending, %d active, %d paused, %d done, %d failed → %s",
@@ -252,8 +309,14 @@ local function finish(it, ok, err)
   if a and a.aborted == "pause" then
     it.state = "paused"
   elseif a and a.aborted == "cancel" then
-    for i, x in ipairs(queue) do if x == it then table.remove(queue, i) break end end
     if it.file and it.kind ~= "ytdlp" then os.remove(it.file) end
+    if panel() then
+      -- Keep the row (failed, "Cancelled") so the panel's Retry works.
+      it.state, it.error, it.done, it.pct = "failed", "Cancelled", 0, 0
+      if it.kind ~= "ytdlp" then it.file = nil end
+    else
+      for i, x in ipairs(queue) do if x == it then table.remove(queue, i) break end end
+    end
     toast("Download cancelled")
   elseif ok then
     it.state, it.error, it.pct = "done", nil, 100
@@ -264,6 +327,7 @@ local function finish(it, ok, err)
     it.state, it.error = "failed", trim(err or "error"):match("([^\n]*)$")
     toast("Download failed: " .. it.error, 8)
   end
+  report(it)
   save()
   start_next()
 end
@@ -284,6 +348,7 @@ local function curl_job(it, max_time)
     it.done = fi and fi.size or 0
     if it.total and it.total > 0 then it.pct = math.min(99, it.done / it.total * 100)
     elseif max_time then it.pct = math.min(99, (os.time() - t0) / max_time * 100) end
+    report(it)
   end)
   active.job = run(args, function(r)
     -- curl exits 28 when --max-time ends a recording: that is the normal end.
@@ -325,6 +390,7 @@ local function ytdlp_job(it)
     f:close()
     if pct then it.pct, it.total_text = pct, total end
     if title and title ~= "" then it.title = title end
+    report(it)
   end)
   active.job = run(args, function(r)
     local out = (r.stdout or "") .. (r.stderr or "")
@@ -352,7 +418,8 @@ end
 
 local function begin(it)
   active = { item = it, t0 = os.time() }
-  it.state, it.error = "active", nil
+  it.state, it.error, it.started = "active", nil, active.t0
+  report(it)
   save()
   mkdir(folder(), function()
     -- Well-known video/music sites skip the header probe; other URLs may be radio or files.
@@ -374,11 +441,16 @@ local function begin(it)
       if kind == "ytdlp" then return ytdlp_job(it) end
       it.file = it.file or (folder() .. SEP .. file_name(it.url, kind))
       local secs = math.floor((tonumber(o["radio-minutes"]) or 30) * 60)
+      if kind == "stream" or kind == "hls" then it.minutes = math.floor(secs / 60) end
+      report(it)
       if kind == "hls" then
         local ff = ffmpeg()
         if not ff then return finish(it, false, "HLS streams need ffmpeg (install ffmpeg)") end
         local t0 = active.t0
-        active.timer = mp.add_periodic_timer(1, function() it.pct = math.min(99, (os.time() - t0) / secs * 100) end)
+        active.timer = mp.add_periodic_timer(1, function()
+          it.pct = math.min(99, (os.time() - t0) / secs * 100)
+          report(it)
+        end)
         active.job = run({ ff, "-hide_banner", "-loglevel", "error", "-y", "-i", it.url, "-t", tostring(secs), "-c", "copy", it.file },
           function(r) finish(it, r.status == 0, r.stderr) end)
         return
@@ -405,6 +477,7 @@ local function enqueue(url)
   local it = { id = next_id, url = url, kind = classify(url), state = "pending", added = os.time() }
   next_id = next_id + 1
   queue[#queue + 1] = it
+  report(it)
   save()
   toast(string.format("Queued (%s): %s — %d waiting", it.kind == "ytdlp" and "yt-dlp" or it.kind,
     url:sub(1, 80), counts().pending), 4)
@@ -423,7 +496,9 @@ local function pause()
     return toast("Paused (Pause / Resume again continues)")
   end
   local any = false
-  for _, it in ipairs(queue) do if it.state == "paused" then it.state = "pending" any = true end end
+  for _, it in ipairs(queue) do
+    if it.state == "paused" then it.state = "pending" any = true report(it) end
+  end
   if not any then return toast("Nothing to pause or resume") end
   save()
   toast("Resumed")
@@ -434,7 +509,11 @@ local function cancel()
   if active then return abort("cancel") end
   local n = 0
   for i = #queue, 1, -1 do
-    if queue[i].state == "pending" or queue[i].state == "paused" then table.remove(queue, i) n = n + 1 end
+    if queue[i].state == "pending" or queue[i].state == "paused" then
+      unreport(queue[i])
+      table.remove(queue, i)
+      n = n + 1
+    end
   end
   save()
   toast(n > 0 and ("Removed " .. n .. " waiting download(s)") or "Nothing to cancel")
@@ -443,7 +522,11 @@ end
 local function retry()
   local n = 0
   for _, it in ipairs(queue) do
-    if it.state == "failed" then it.state, it.error, it.kind = "pending", nil, classify(it.url) n = n + 1 end
+    if it.state == "failed" then
+      it.state, it.error, it.kind = "pending", nil, classify(it.url)
+      n = n + 1
+      report(it)
+    end
   end
   save()
   toast(n > 0 and ("Retrying " .. n .. " download(s)") or "No failed downloads")
@@ -451,7 +534,9 @@ local function retry()
 end
 
 local function clear_done()
-  for i = #queue, 1, -1 do if queue[i].state == "done" then table.remove(queue, i) end end
+  for i = #queue, 1, -1 do
+    if queue[i].state == "done" then unreport(queue[i]) table.remove(queue, i) end
+  end
   save()
   toast("Finished downloads removed from the list (files are kept)")
 end
@@ -470,6 +555,52 @@ local function add_clipboard_or_current()
   local p = mp.get_property("path", "") or ""
   if p:match("^https?://") then return enqueue(p) end
   toast("Copy a URL first (or paste it into the Offline Downloads settings)")
+end
+
+-- ---------- Downloads panel buttons (one job each) ----------
+
+local function job_pause(job)
+  local it = find_job(job)
+  if not it then return end
+  if active and active.item == it then return abort("pause") end
+  if it.state == "pending" then it.state = "paused" report(it) save() end
+end
+
+local function job_resume(job)
+  local it = find_job(job)
+  if not it or it.state ~= "paused" then return end
+  it.state = "pending"
+  report(it)
+  save()
+  start_next()
+end
+
+local function job_cancel(job)
+  local it = find_job(job)
+  if not it then return end
+  if active and active.item == it then return abort("cancel") end
+  if it.state == "pending" or it.state == "paused" then
+    it.state, it.error = "failed", "Cancelled"
+    report(it)
+    save()
+  end
+end
+
+local function job_retry(job)
+  local it = find_job(job)
+  if not it or it.state ~= "failed" then return end
+  it.state, it.error, it.kind, it.pct, it.done = "pending", nil, classify(it.url), 0, 0
+  report(it)
+  save()
+  start_next()
+end
+
+-- Vivi keeps finished rows itself (and Remove / Clear finished are its own), so only
+-- the unfinished ones are announced again at startup.
+local function report_unfinished()
+  for _, it in ipairs(queue) do
+    if it.state ~= "done" and it.state ~= "failed" then report(it) end
+  end
 end
 
 local function info()
@@ -493,6 +624,10 @@ mp.register_script_message("retry", retry)
 mp.register_script_message("clear-done", clear_done)
 mp.register_script_message("open-folder", open_folder)
 mp.register_script_message("info", info)
+mp.register_script_message("download-pause", job_pause)
+mp.register_script_message("download-resume", job_resume)
+mp.register_script_message("download-cancel", job_cancel)
+mp.register_script_message("download-retry", job_retry)
 mp.register_script_message("pick-folder", function()
   mp.commandv("script-message", "vivi-pick-folder", "offline-downloads", "folder")
 end)
@@ -500,11 +635,16 @@ mp.register_script_message("folder-picked", function(p) o.folder = p toast("Down
 mp.add_forced_key_binding("Alt+d", "offline-add", add_clipboard_or_current)
 mp.add_forced_key_binding("Alt+D", "offline-show", show)
 mp.register_event("shutdown", function() if active then abort("pause") end end)
-mp.add_timeout(3, start_next)
+mp.add_timeout(3, function()
+  report_unfinished()
+  start_next()
+end)
 
 if VIVI_TEST then
   return { classify = classify, classify_headers = classify_headers, first_list_url = first_list_url,
     file_name = file_name, parse_progress = parse_progress, enqueue = enqueue, retry = retry,
     clear_done = clear_done, known_site = known_site, queue = function() return queue end, describe = describe, human = human,
-    set_active = function(a) active = a end }
+    set_active = function(a) active = a end, job_id = job_id, panel_row = panel_row,
+    job_pause = job_pause, job_resume = job_resume, job_cancel = job_cancel, job_retry = job_retry,
+    show = show, report_unfinished = report_unfinished }
 end
