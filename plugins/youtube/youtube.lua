@@ -1,5 +1,5 @@
 -- @name YouTube & yt-dlp
--- @version 1.2.0
+-- @version 1.2.2
 -- @author Vivi
 -- @description List, size and download YouTube (and other yt-dlp) videos and playlists.
 --

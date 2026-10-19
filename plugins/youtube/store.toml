@@ -5,6 +5,11 @@ tags = ["youtube", "yt-dlp", "download"]
 screenshots = ["youtube-settings"]
 
 [[changelog]]
+version = "1.2.2"
+date = "2026-10-19"
+notes = "Own icon in Vivi 0.13+ (it looked like Network Streams)."
+
+[[changelog]]
 version = "1.2.1"
 date = "2026-10-16"
 notes = "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums)."
