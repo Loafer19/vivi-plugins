@@ -1,0 +1,10 @@
+# Marketplace listing (plugins.viviplayer.app). Not part of the package zip,
+# so editing it needs no new plugin version.
+categories = ["Music", "Streaming"]
+tags = ["youtube-music", "youtube", "yt-dlp", "playlists", "radio", "downloads"]
+screenshots = ["youtube-music-search", "youtube-music-album", "youtube-music-playing", "youtube-music-downloads", "youtube-music-home"]
+
+[[changelog]]
+version = "1.0.0"
+date = "2026-10-19"
+notes = "First release: sign in with your browser's cookies (browser, cookies.txt / headers file or clipboard), search, liked songs, playlists, albums and history, album / playlist / artist pages, up next and mixes, likes and adding to playlists, now-playing card, opt-in downloads with tags and cover, and Download playlist / Sync for playlists, albums and liked songs (a Vivi playlist in YouTube Music's order). Needs a Vivi with the plugin music dialog (0.13, or a 0.12.0 master build of 18 Oct 2026 or later); on the 0.12.0 release Open explains that instead of doing nothing."

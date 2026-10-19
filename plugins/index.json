@@ -2264,6 +2264,163 @@
         }
       ],
       "size_note": "+ yt-dlp, ffmpeg if needed"
+    },
+    {
+      "id": "youtube-music",
+      "name": "YouTube Music",
+      "description": "Your own YouTube Music account in Vivi: search songs, albums, artists and playlists, your liked songs, playlists, saved albums and history, up next and mixes, likes and adding to playlists, with Premium audio when your account has it. Signs in with your browser's cookies (kept in a private file, wiped on Sign out). Optional downloads with tags and cover, also of whole playlists, albums and liked songs as Vivi playlists you can sync, off by default. Unofficial: uses YouTube Music's web API, not a Google-approved app; it may break when Google changes it, and Google may restrict accounts that use it. Needs yt-dlp (the YouTube & yt-dlp plugin provides one), curl and a Vivi with the plugin music dialog: 0.13, or a 0.12.0 build from master of 18 Oct 2026 or later.",
+      "version": "1.0.0",
+      "author": "Vivi",
+      "icon": "youtube-music",
+      "lucide": "music",
+      "kind": "package",
+      "runtime": "mpv-lua",
+      "default_enabled": false,
+      "min_vivi": "0.12.0",
+      "permissions": [
+        "network",
+        "filesystem",
+        "subprocess"
+      ],
+      "source": "plugins/youtube-music",
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-music-v1.0.0/youtube-music-1.0.0.zip",
+      "sha256": "cb620a8b73552a7965c4b9e458666a42cc6b5884607667b3d1c61aa759852aaf",
+      "size": 124402,
+      "settings": [
+        {
+          "key": "open",
+          "title": "Search and your library in Vivi's music dialog",
+          "type": "action",
+          "label": "Open YouTube Music"
+        },
+        {
+          "key": "browser",
+          "title": "Browser you are signed in with at music.youtube.com",
+          "type": "choice",
+          "options": [
+            "Firefox",
+            "Chrome",
+            "Chromium",
+            "Brave",
+            "Edge",
+            "Opera",
+            "Vivaldi",
+            "Safari",
+            "Whale"
+          ],
+          "default": "Firefox"
+        },
+        {
+          "key": "sign-in",
+          "title": "Copy that browser's youtube.com cookies with yt-dlp (Chrome-based browsers may ask for the keyring password)",
+          "type": "action",
+          "label": "Sign in"
+        },
+        {
+          "key": "cookie-file",
+          "title": "Or a cookies.txt / copied request headers file of a music.youtube.com request",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "key": "import",
+          "title": "Import the cookie file above",
+          "type": "action",
+          "label": "Import"
+        },
+        {
+          "key": "paste",
+          "title": "Or paste a Cookie header, request headers or \"Copy as cURL\" from the clipboard",
+          "type": "action",
+          "label": "Paste"
+        },
+        {
+          "key": "sign-out",
+          "title": "Delete the stored cookies (your browser stays signed in)",
+          "type": "action",
+          "label": "Sign out"
+        },
+        {
+          "key": "up-next",
+          "title": "Up next after a song played from search",
+          "type": "toggle",
+          "default": "true"
+        },
+        {
+          "key": "audio-only",
+          "title": "Audio only (turn off to watch music videos)",
+          "type": "toggle",
+          "default": "true"
+        },
+        {
+          "key": "view",
+          "title": "Results view",
+          "type": "choice",
+          "options": [
+            "List",
+            "Grid"
+          ],
+          "default": "List"
+        },
+        {
+          "key": "downloads",
+          "title": "Allow downloads (off by default; may violate YouTube's Terms of Service, personal use only, at your own risk; needs yt-dlp)",
+          "type": "toggle",
+          "default": "false"
+        },
+        {
+          "key": "folder",
+          "title": "Download folder (empty: ~/Music/vivi)",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "key": "audio-format",
+          "title": "Download format (mp3/m4a/opus convert with ffmpeg)",
+          "type": "choice",
+          "options": [
+            "Original (m4a/opus, no re-encode)",
+            "m4a",
+            "mp3",
+            "opus"
+          ],
+          "default": "Original (m4a/opus, no re-encode)"
+        },
+        {
+          "key": "cancel",
+          "title": "Stop the running download and empty the queue",
+          "type": "action",
+          "label": "Cancel downloads"
+        }
+      ],
+      "categories": [
+        "Music",
+        "Streaming"
+      ],
+      "tags": [
+        "youtube-music",
+        "youtube",
+        "yt-dlp",
+        "playlists",
+        "radio",
+        "downloads"
+      ],
+      "screenshots": [
+        "youtube-music-search",
+        "youtube-music-album",
+        "youtube-music-playing",
+        "youtube-music-downloads",
+        "youtube-music-home"
+      ],
+      "changelog": [
+        {
+          "version": "1.0.0",
+          "date": "2026-10-19",
+          "notes": "First release: sign in with your browser's cookies (browser, cookies.txt / headers file or clipboard), search, liked songs, playlists, albums and history, album / playlist / artist pages, up next and mixes, likes and adding to playlists, now-playing card, opt-in downloads with tags and cover, and Download playlist / Sync for playlists, albums and liked songs (a Vivi playlist in YouTube Music's order). Needs a Vivi with the plugin music dialog (0.13, or a 0.12.0 master build of 18 Oct 2026 or later); on the 0.12.0 release Open explains that instead of doing nothing.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-music-v1.0.0/youtube-music-1.0.0.zip"
+        }
+      ],
+      "size_note": "+ yt-dlp"
     }
   ]
 }

@@ -1,0 +1,131 @@
+{
+ "continuationContents": {
+  "musicShelfContinuation": {
+   "contents": [
+    {
+     "musicResponsiveListItemRenderer": {
+      "thumbnail": {
+       "musicThumbnailRenderer": {
+        "thumbnail": {
+         "thumbnails": [
+          {
+           "url": "https://lh3.googleusercontent.com/fake-c1=w60-h60-l90-rj",
+           "width": 60,
+           "height": 60
+          },
+          {
+           "url": "https://lh3.googleusercontent.com/fake-c1=w120-h120-l90-rj",
+           "width": 120,
+           "height": 120
+          }
+         ]
+        }
+       }
+      },
+      "overlay": {
+       "musicItemThumbnailOverlayRenderer": {
+        "content": {
+         "musicPlayButtonRenderer": {
+          "playNavigationEndpoint": {
+           "watchEndpoint": {
+            "videoId": "fakeVid0005",
+            "watchEndpointMusicSupportedConfigs": {
+             "watchEndpointMusicConfig": {
+              "musicVideoType": "MUSIC_VIDEO_TYPE_ATV"
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      },
+      "flexColumns": [
+       {
+        "musicResponsiveListItemFlexColumnRenderer": {
+         "text": {
+          "runs": [
+           {
+            "text": "Tide Clock",
+            "navigationEndpoint": {
+             "watchEndpoint": {
+              "videoId": "fakeVid0005",
+              "watchEndpointMusicSupportedConfigs": {
+               "watchEndpointMusicConfig": {
+                "musicVideoType": "MUSIC_VIDEO_TYPE_ATV"
+               }
+              }
+             }
+            }
+           }
+          ]
+         }
+        }
+       },
+       {
+        "musicResponsiveListItemFlexColumnRenderer": {
+         "text": {
+          "runs": [
+           {
+            "text": "Northern Lights Ensemble",
+            "navigationEndpoint": {
+             "browseEndpoint": {
+              "browseId": "UCfakeArtist00000000001",
+              "browseEndpointContextSupportedConfigs": {
+               "browseEndpointContextMusicConfig": {
+                "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+               }
+              }
+             }
+            }
+           },
+           {
+            "text": " • "
+           },
+           {
+            "text": "Quiet Harbour",
+            "navigationEndpoint": {
+             "browseEndpoint": {
+              "browseId": "MPREb_fakeAlbum001",
+              "browseEndpointContextSupportedConfigs": {
+               "browseEndpointContextMusicConfig": {
+                "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+               }
+              }
+             }
+            }
+           },
+           {
+            "text": " • "
+           },
+           {
+            "text": "3:01"
+           }
+          ]
+         }
+        }
+       }
+      ],
+      "menu": {
+       "menuRenderer": {
+        "items": [
+         {
+          "menuNavigationItemRenderer": {
+           "text": {
+            "runs": [
+             {
+              "text": "Start mix"
+             }
+            ]
+           }
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+}
