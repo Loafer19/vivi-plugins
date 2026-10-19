@@ -1632,6 +1632,7 @@
       ],
       "screenshots": [
         "remote-control-phone",
+        "remote-control-sleep",
         "remote-control-qr",
         "remote-control-landscape",
         "remote-control-tablet",
@@ -1640,7 +1641,7 @@
       "changelog": [
         {
           "version": "1.2.0",
-          "date": "2026-10-19",
+          "date": "2026-10-20",
           "notes": "New: sleep timer on the phone page (15–90 minutes or the end of the current file; Vivi pauses with a toast, the page counts down) and Play next for library results and Open URL. Fixes: a phone that was connected when the PIN changed (New PIN) kept polling with the old PIN, cleared the PIN being typed every second and locked itself out for a minute; the Library tab never found Vivi's control socket without XDG_RUNTIME_DIR (macOS), as it looked in ~/.cache instead of ~/.cache/vivi; the helper retries the port for a few seconds after a restart instead of failing with \"address in use\"; the docs said the QR dialog and fullscreen need Vivi 0.10.1, it is 0.11.0; the Library hint names the actual setting (Allow AI agents and scripts). Security: the PIN reaches the helper on stdin instead of its command line (readable by every local user) on Linux and macOS; the PIN setting is masked; embedded covers are extracted into a fresh owner-only folder instead of a predictable /tmp file; the failed-PIN table is pruned.",
           "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.2.0/remote-control-1.2.0.zip"
         },
