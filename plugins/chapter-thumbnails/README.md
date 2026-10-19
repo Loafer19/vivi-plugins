@@ -44,6 +44,8 @@ displays the images.
 For local videos without chapters of their own, ffmpeg finds the scene changes and they
 become `Scene 1`, `Scene 2`, … chapters (with pictures, like any chapter).
 
+![Scene chapters with their pictures in the Chapters tab (Big Buck Bunny, © Blender Foundation, CC BY 3.0)](../../docs/screenshots/plugins/chapter-thumbnails-scenes.png)
+
 * **When**: `Alt+J`, *Video → Detect scene chapters*, the command palette or *Detect* in
   the settings; `Alt+J` again while it runs cancels. *Scene chapters: detect scenes
   automatically* (off by default) scans every such video one second after it opens.
@@ -57,8 +59,9 @@ become `Scene 1`, `Scene 2`, … chapters (with pictures, like any chapter).
   order, whether they arrive before or after the scan.
 * **Cache**: `<key>/scenes.json` next to the thumbnails (every cut with the threshold and
   scan used, so a new minimum length applies at once; another threshold scans again).
-  Scans made by the old Scene Chapters plugin are reused. *Forget* removes the scene
-  chapters of the playing video and its scan; *Clear* removes it with the thumbnails.
+  Scans made by the old Scene Chapters plugin are reused. *Forget* (also in the command
+  palette) removes the scene chapters of the playing video and its scan; *Clear* removes
+  it with the thumbnails.
 * **From Scene Chapters**: Scene Chapters 1.1.1 notices this plugin, leaves `Alt+J` and
   automatic scans to it, copies its non-default settings here once, and can then be
   uninstalled.

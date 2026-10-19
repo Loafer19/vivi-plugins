@@ -31,6 +31,11 @@ point = "palette.command"
 label = "Detect scene chapters"
 command = "scenes-detect"
 
+[[contributes]]
+point = "palette.command"
+label = "Forget scene chapters"
+command = "scenes-forget"
+
 [[settings]]
 key = "seekbar"
 title = "Seek-bar hover thumbnails"

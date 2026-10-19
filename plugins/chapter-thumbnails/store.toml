@@ -2,12 +2,12 @@
 # so editing it needs no new plugin version.
 categories = ["Video", "Tools"]
 tags = ["thumbnails", "chapters", "scenes", "seek bar", "preview", "ffmpeg"]
-screenshots = ["chapter-thumbnails-player", "chapter-thumbnails-settings"]
+screenshots = ["chapter-thumbnails-player", "chapter-thumbnails-scenes", "chapter-thumbnails-settings"]
 
 [[changelog]]
 version = "1.2.0"
 date = "2026-10-19"
-notes = "Now called Chapters & Previews and includes scene chapters (formerly the Scene Chapters plugin): Alt+J or Video → Detect scene chapters, automatic detection off by default, every frame or keyframes only (about 10× faster), threshold and minimum length, merged with SponsorBlock chapters, lowest CPU / disk priority, Alt+J again cancels; Scene Chapters' cache and settings are taken over. Messages are Vivi toasts only (no mpv OSD text)."
+notes = "Now called Chapters & Previews and includes scene chapters (formerly the Scene Chapters plugin): Alt+J or Video → Detect scene chapters, automatic detection off by default, every frame or keyframes only (about 10× faster), threshold and minimum length, merged with SponsorBlock chapters, lowest CPU / disk priority, Alt+J again cancels, Forget in the command palette; Scene Chapters' cache and settings are taken over. Messages are Vivi toasts only (no mpv OSD text)."
 
 [[changelog]]
 version = "1.1.0"

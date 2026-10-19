@@ -673,8 +673,8 @@
       ],
       "source": "plugins/chapter-thumbnails",
       "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.2.0/chapter-thumbnails-1.2.0.zip",
-      "sha256": "b7e9e6226f53d7540dcd066c7b8741b0f234610244c9d9787359bc723c9e345e",
-      "size": 51344,
+      "sha256": "23395c3c16f0dc92dc61b6acdbe4fadd0c9e79005925376d00f2f096b0c36af3",
+      "size": 51649,
       "settings": [
         {
           "key": "seekbar",
@@ -819,13 +819,14 @@
       ],
       "screenshots": [
         "chapter-thumbnails-player",
+        "chapter-thumbnails-scenes",
         "chapter-thumbnails-settings"
       ],
       "changelog": [
         {
           "version": "1.2.0",
           "date": "2026-10-19",
-          "notes": "Now called Chapters & Previews and includes scene chapters (formerly the Scene Chapters plugin): Alt+J or Video → Detect scene chapters, automatic detection off by default, every frame or keyframes only (about 10× faster), threshold and minimum length, merged with SponsorBlock chapters, lowest CPU / disk priority, Alt+J again cancels; Scene Chapters' cache and settings are taken over. Messages are Vivi toasts only (no mpv OSD text).",
+          "notes": "Now called Chapters & Previews and includes scene chapters (formerly the Scene Chapters plugin): Alt+J or Video → Detect scene chapters, automatic detection off by default, every frame or keyframes only (about 10× faster), threshold and minimum length, merged with SponsorBlock chapters, lowest CPU / disk priority, Alt+J again cancels, Forget in the command palette; Scene Chapters' cache and settings are taken over. Messages are Vivi toasts only (no mpv OSD text).",
           "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.2.0/chapter-thumbnails-1.2.0.zip"
         },
         {
