@@ -13,7 +13,6 @@ main repository; they are listed in the catalog with `"kind": "builtin"`.
 | --- | --- |
 | `plugins/<id>/` | One package: `manifest.toml`, the Lua entry script, `README.md`, and `store.toml` (marketplace listing: categories, tags, screenshots, changelog; not shipped in the zip) |
 | `plugins/index.json` | The catalog the app downloads (built-in + package entries, URLs, sha256, sizes) |
-| `plugins/examples/` | Minimal example scripts |
 | `helpers/` | Native helper programs (`vivi-discord`, `vivi-remote`) and the minimal ffmpeg build |
 | `tests/plugins/` | LuaJIT unit tests with an mpv API stub (`bash tests/plugins/run.sh`) |
 | `scripts/package-plugins.py` | Builds deterministic zips and regenerates `plugins/index.json` |

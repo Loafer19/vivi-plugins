@@ -464,27 +464,6 @@
       ]
     },
     {
-      "id": "script-now-playing",
-      "name": "Now Playing OSD",
-      "description": "Example mpv Lua script: shows the title on the OSD when a file starts.",
-      "version": "1.0",
-      "author": "Vivi",
-      "icon": "script",
-      "lucide": "code-xml",
-      "kind": "script",
-      "default_enabled": true,
-      "source": "plugins/examples/now-playing.lua",
-      "settings": [],
-      "categories": [
-        "Tools"
-      ],
-      "tags": [
-        "example",
-        "lua"
-      ],
-      "screenshots": []
-    },
-    {
       "id": "ab-loop",
       "name": "A-B Loop & Frame Step",
       "description": "Deprecated: built into Vivi since 0.13.0 (same keys, loop on the seek bar). Set and clear A-B loop points from the keyboard, nudge them by a frame, step frame by frame while paused and see the loop on an on-screen bar.",
