@@ -673,8 +673,8 @@
       ],
       "source": "plugins/chapter-thumbnails",
       "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.2.0/chapter-thumbnails-1.2.0.zip",
-      "sha256": "c25dbb27bdda23e2a9c5e607e157bf6d30d6bcbfb13df98adcba65665133f691",
-      "size": 51343,
+      "sha256": "b7e9e6226f53d7540dcd066c7b8741b0f234610244c9d9787359bc723c9e345e",
+      "size": 51344,
       "settings": [
         {
           "key": "seekbar",
