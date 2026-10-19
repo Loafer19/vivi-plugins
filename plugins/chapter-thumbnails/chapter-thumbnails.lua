@@ -1,26 +1,37 @@
 -- @name Chapter Thumbnails
--- @version 1.0.0
+-- @version 1.1.0
 -- @author Vivi
 -- @description Seek-bar hover thumbnails and chapter thumbnails, cached per file (Vivi plugin package).
 --
 -- Keys: Alt+h  chapter list (titles, times; thumbnails are in the side panel's Chapters tab)
--- Script messages: generate, list, clear.
+-- Script messages: generate, list, clear, clear-all; preview-wanted / vivi-preview-wanted
+-- (from Vivi: the pointer went over the seek bar).
 --
 -- For every local video it writes, with ffmpeg (fast keyframe seeks):
---   plugin-data/chapter-thumbnails/<key>/seek-00.jpg … seek-49.jpg  192×108, evenly spaced
---   plugin-data/chapter-thumbnails/<key>/chapter-<n>.jpg            320 px wide, n from 1
+--   plugin-data/chapter-thumbnails/<key>/seek-00.jpg … seek-<n-1>.jpg  192×108, evenly spaced
+--   plugin-data/chapter-thumbnails/<key>/seek.meta                     "frames=<n>" once complete
+--   plugin-data/chapter-thumbnails/<key>/chapter-<i>.jpg               320 px wide, i from 1
+--   plugin-data/chapter-thumbnails/<key>/chapters.meta                 start of each pictured chapter
 -- where <key> is the hash of "path|size|mtime" used by Vivi (src/scenes.rs). Vivi shows
 -- the seek frames when hovering the seek bar and the chapter images in the Chapters tab
 -- (`script-message vivi-preview-frames` / `vivi-chapter-thumbs` tell it to reload). Cached
--- folders are reused when the file is opened again; the oldest are pruned (max-cache).
+-- folders are reused when the file is opened again; the least recently used are pruned
+-- (max-cache files, max-cache-mb).
+--
+-- Seek frames: n = one per ~10 s (Auto, 25 to 200) or the chosen count; made coarse to fine
+-- on the first seek-bar hover (default) or, with "On open", after 10 s of playback of a
+-- video longer than 3 minutes at the lowest CPU / disk priority. Chapter pictures are made
+-- when the file opens and when its chapters change.
 --
 -- ffmpeg: a system ffmpeg first; otherwise Vivi's media ffmpeg build (about 15 MB with
--- ffprobe, downloaded once and shared with Subtitle Auto-Sync).
+-- ffprobe, downloaded once and shared with Subtitle Auto-Sync; no AV1).
 local mp = require "mp"
 local options = require "mp.options"
 local utils = require "mp.utils"
 
-local o = { seekbar = true, chapters = true, frames = "50", ["max-cache"] = "200", download = true }
+local o = { seekbar = true, chapters = true, when = "On hover", frames = "Auto", ["max-cache"] = "200",
+  ["max-cache-mb"] = "500", download = true,
+  pkgdir = "" } -- pkgdir: set by Vivi; declared so mp.options does not warn about it
 
 -- ---------- managed helpers (same block in subtitle-sync, chapter-thumbnails, acoustid) ----------
 -- A system program is always preferred. Otherwise a pinned build is downloaded once
@@ -227,6 +238,9 @@ end
 
 local ROOT = PLUGIN_DATA .. SEP .. "chapter-thumbnails"
 local SEEK_W, SEEK_H = 192, 108
+local ON_OPEN_DELAY = 10  -- s of playback before "On open" starts
+local ON_OPEN_MIN = 180   -- "On open" only for videos longer than this (s)
+local WORKERS = 2         -- ffmpeg processes at a time
 
 local function toast(msg, secs)
   mp.osd_message(msg, secs or 3)
@@ -243,11 +257,35 @@ local function key(path)
   return string.format("%08x", h)
 end
 
+-- Number of seek-bar frames for a file: "Auto" is one every ~10 s, 25 to 200; a number is
+-- used as is (10 to 200). Never more than one per second of video, never fewer than the 10
+-- Vivi needs.
+local function frame_count(duration, choice)
+  local n = tonumber(choice)
+  if not n then n = math.max(25, math.min(200, math.floor(duration / 10 + 0.5))) end
+  n = math.max(10, math.min(200, n))
+  return math.max(10, math.min(n, math.floor(duration)))
+end
+
 -- Times (s) of the seek-bar frames: centre of each of `n` equal slices.
 local function seek_times(duration, n)
   local t = {}
   for i = 0, n - 1 do t[#t + 1] = duration * (i + 0.5) / n end
   return t
+end
+
+-- Frame indices coarse to fine (every 16th first, then every 8th, …), so a few spread-out
+-- frames are ready first and the preview fills in.
+local function order(n)
+  local function level(i) for k, s in ipairs({ 16, 8, 4, 2 }) do if i % s == 0 then return k end end return 5 end
+  local v = {}
+  for i = 0, n - 1 do v[#v + 1] = i end
+  table.sort(v, function(a, b)
+    local la, lb = level(a), level(b)
+    if la ~= lb then return la < lb end
+    return a < b
+  end)
+  return v
 end
 
 local function frame_args(ff, path, t, out, w, h)
@@ -257,154 +295,364 @@ local function frame_args(ff, path, t, out, w, h)
     "-i", path, "-an", "-sn", "-dn", "-frames:v", "1", "-vf", vf, "-q:v", "5", out }
 end
 
+-- Prefix a command with `nice -n 19` / `ionice -c3` (lowest CPU and disk priority) when
+-- those programs exist (Linux, macOS has nice only).
+local function low_priority(args, nice, ionice)
+  local a = {}
+  if nice then a[#a + 1] = nice a[#a + 1] = "-n" a[#a + 1] = "19" end
+  if ionice then a[#a + 1] = ionice a[#a + 1] = "-c3" end
+  for _, x in ipairs(args) do a[#a + 1] = x end
+  return a
+end
+local NICE, IONICE
+if not windows then
+  for _, d in ipairs({ "/usr/bin/", "/bin/" }) do
+    NICE = NICE or (utils.file_info(d .. "nice") and d .. "nice") or nil
+    IONICE = IONICE or (utils.file_info(d .. "ionice") and d .. "ionice") or nil
+  end
+end
+
+-- Video codecs (mpv's `codec` names) Vivi's media ffmpeg build decodes; anything else
+-- (AV1, VC-1, ProRes, …) needs a system ffmpeg.
+local MEDIA_CODECS = { h264 = true, hevc = true, vp8 = true, vp9 = true, mpeg1video = true,
+  mpeg2video = true, mpeg4 = true, mjpeg = true }
+local function managed_decodes(codec) return codec == nil or codec == "" or MEDIA_CODECS[codec] == true end
+
+-- Which cache folders to delete: `list` = { { name, mtime, bytes } }, newest kept first
+-- while under both limits; `keep` (the current file's folder) is never deleted.
+local function select_prune(list, max_files, max_bytes, keep)
+  table.sort(list, function(a, b) if a[2] ~= b[2] then return a[2] > b[2] end return a[1] < b[1] end)
+  local out, files, bytes = {}, 0, 0
+  for _, d in ipairs(list) do
+    if d[1] == keep then files, bytes = files + 1, bytes + d[3] end
+  end
+  for _, d in ipairs(list) do
+    if d[1] ~= keep then
+      if files < max_files and bytes + d[3] <= max_bytes then
+        files, bytes = files + 1, bytes + d[3]
+      else
+        out[#out + 1] = d[1]
+      end
+    end
+  end
+  return out
+end
+
+local function read_file(p)
+  local f = io.open(p, "rb")
+  if not f then return nil end
+  local d = f:read("*a")
+  f:close()
+  return d
+end
+
+-- Write via a temporary file and rename, so a reader never sees half a file (and the
+-- folder's mtime records the use, for pruning).
+local function write_file(p, data)
+  local tmp = p .. ".tmp"
+  local f = io.open(tmp, "wb")
+  if not f then return false end
+  f:write(data)
+  f:close()
+  os.remove(p)
+  return os.rename(tmp, p) ~= nil
+end
+
+local function seek_name(dir, k) return string.format("%s%sseek-%02d.jpg", dir, SEP, k) end
+local function chap_name(dir, i) return string.format("%s%schapter-%d.jpg", dir, SEP, i) end
+local function chap_line(t) return string.format("%.2f", t) end
+
+-- Every seek frame must exist (Vivi maps the hover position onto the frame count):
+-- a missing one borrows its nearest earlier (or later) neighbour.
+local function fill_gaps(dir, n)
+  for k = 0, n - 1 do
+    if not utils.file_info(seek_name(dir, k)) then
+      for d = 1, n do
+        local src = (k - d >= 0 and utils.file_info(seek_name(dir, k - d)) and seek_name(dir, k - d))
+          or (k + d < n and utils.file_info(seek_name(dir, k + d)) and seek_name(dir, k + d))
+        if src then
+          local data = read_file(src)
+          if data then write_file(seek_name(dir, k), data) end
+          break
+        end
+      end
+    end
+  end
+end
+
+-- Frames of `dir` the last complete run made: seek.meta holds "frames=<n>".
+local function seek_done(dir)
+  return tonumber(((read_file(dir .. SEP .. "seek.meta") or ""):match("frames=(%d+)")))
+end
+
+-- Seek frames of another count (or from 1.0.x, which kept them across count changes) would
+-- be mapped onto the wrong times: they are deleted before new ones are made.
+local function clear_seek(dir)
+  os.remove(dir .. SEP .. "seek.meta")
+  for _, f in ipairs(utils.readdir(dir, "files") or {}) do
+    if f:match("^seek%-%d+%.jpg$") or f:match("^seek%-%d+%.part%.jpg$") then os.remove(dir .. SEP .. f) end
+  end
+end
+
+local function rm(p, cb)
+  if windows then run({ "cmd", "/c", "rmdir", "/s", "/q", p }, cb or function() end)
+  else run({ "rm", "-rf", p }, cb or function() end) end
+end
+
+local function dir_size(p)
+  local n = 0
+  for _, f in ipairs(utils.readdir(p, "files") or {}) do
+    local fi = utils.file_info(p .. SEP .. f)
+    n = n + (fi and fi.size or 0)
+  end
+  return n
+end
+
+-- ---------- job queue ----------
 local gen = 0       -- bumped on every file so stale jobs stop
-local busy = false
-local seen_chapters = -1 -- chapter count the last run covered
+local queue, running, inflight = {}, 0, {}
+
+-- One frame: ffmpeg writes <out>.part.jpg, renamed over <out> when it worked. A job whose
+-- keyframe-only seek produced nothing (past the last keyframe) is retried once with
+-- normal decoding. j.done(ok) afterwards.
+local pump
+local function start_job(j)
+  running = running + 1
+  local tmp = j.out:gsub("%.jpg$", ".part.jpg")
+  local args = {}
+  for _, x in ipairs(j.args) do args[#args + 1] = (x == j.out) and tmp or x end
+  local function go(a, retry)
+    local id, finished
+    id = run(a, function()
+      finished = true
+      if id then inflight[id] = nil end
+      if j.gen ~= gen then os.remove(tmp) running = running - 1 return pump() end
+      if not utils.file_info(tmp) and retry then
+        local b = {}
+        for _, x in ipairs(a) do if x ~= "-skip_frame" and x ~= "nokey" then b[#b + 1] = x end end
+        return go(b, false)
+      end
+      local ok = false
+      if utils.file_info(tmp) then
+        os.remove(j.out)
+        ok = os.rename(tmp, j.out) ~= nil
+      end
+      running = running - 1
+      if j.done then j.done(ok) end
+      pump()
+    end)
+    if id and not finished then inflight[id] = true end
+  end
+  go(args, true)
+end
+
+pump = function()
+  while running < WORKERS and #queue > 0 do
+    local j = table.remove(queue, 1)
+    if j.gen == gen then start_job(j) end
+  end
+end
+
+-- New file / cleared cache: drop queued frames and stop the running ffmpegs.
+local function stop_all()
+  gen = gen + 1
+  queue = {}
+  if mp.abort_async_command then
+    for id in pairs(inflight) do mp.abort_async_command(id) end
+  end
+  inflight = {}
+end
+
+-- ---------- per file ----------
+-- cur: { path, dir, duration, n, codec } of the video being played (nil otherwise).
+-- seek_state: nil (not started), "running", "done"; chap_running / chap_again likewise.
+local cur, seek_state, chap_running, chap_again, played, tick_timer
+local codec_warned = {}
 
 local function local_video()
   local path = mp.get_property("path")
   if not path or path:find("://") or not utils.file_info(path) then return nil end
   for _, t in ipairs(mp.get_property_native("track-list") or {}) do
-    if t.type == "video" and not t.albumart and not t.image then return path end
+    if t.type == "video" and not t.albumart and not t.image then return path, t.codec end
   end
   return nil
 end
 
--- Run frame jobs, two at a time; cb() when all are done. A job whose keyframe-only
--- seek produced nothing (past the last keyframe) is retried once with normal decoding.
-local function jobs(list, my, cb)
-  local i, left = 0, #list
-  if left == 0 then return cb() end
-  local function nxt()
-    if my ~= gen then return end
-    i = i + 1
-    local j = list[i]
-    if not j then return end
-    local function go(args, retry)
-      run(args, function()
-        if retry and j.out and not utils.file_info(j.out) then
-          local a = {}
-          for _, x in ipairs(args) do if x ~= "-skip_frame" and x ~= "nokey" then a[#a + 1] = x end end
-          return go(a, false)
-        end
-        left = left - 1
-        if j.done then j.done() end
-        if left == 0 then return cb() end
-        nxt()
-      end)
-    end
-    go(j.args, true)
-  end
-  nxt()
-  nxt()
-end
-
--- Copy a file (binary).
-local function copy(a, b)
-  local f = io.open(a, "rb")
-  if not f then return false end
-  local d = f:read("*a")
-  f:close()
-  local g = io.open(b, "wb")
-  if not g then return false end
-  g:write(d)
-  g:close()
-  return true
-end
-
--- Every seek frame must exist (Vivi maps the hover position onto the frame count):
--- a missing one borrows its nearest earlier (or later) neighbour.
-local function fill_gaps(dir, n)
-  local name = function(k) return string.format("%s%sseek-%02d.jpg", dir, SEP, k) end
-  for k = 0, n - 1 do
-    if not utils.file_info(name(k)) then
-      for d = 1, n do
-        local src = (k - d >= 0 and utils.file_info(name(k - d)) and name(k - d))
-          or (k + d < n and utils.file_info(name(k + d)) and name(k + d))
-        if src then copy(src, name(k)) break end
-      end
-    end
-  end
-end
-
--- Remove the least recently written cache folders beyond max-cache.
+-- Remove the least recently used cache folders beyond max-cache files / max-cache-mb.
 local function prune()
-  local max = tonumber(o["max-cache"]) or 200
-  local dirs = utils.readdir(ROOT, "dirs") or {}
-  if #dirs <= max then return end
   local list = {}
-  for _, d in ipairs(dirs) do
-    local fi = utils.file_info(ROOT .. SEP .. d)
-    list[#list + 1] = { d, fi and fi.mtime or 0 }
+  for _, d in ipairs(utils.readdir(ROOT, "dirs") or {}) do
+    local p = ROOT .. SEP .. d
+    local fi = utils.file_info(p)
+    list[#list + 1] = { d, fi and fi.mtime or 0, dir_size(p) }
   end
-  table.sort(list, function(a, b) return a[2] < b[2] end)
-  for k = 1, #list - max do
-    local p = ROOT .. SEP .. list[k][1]
-    if windows then run({ "cmd", "/c", "rmdir", "/s", "/q", p }, function() end)
-    else run({ "rm", "-rf", p }, function() end) end
+  local keepname = cur and cur.dir and cur.dir:match("[^/\\]+$")
+  local mb = tonumber(o["max-cache-mb"]) or 500
+  for _, d in ipairs(select_prune(list, tonumber(o["max-cache"]) or 200, mb * 1048576, keepname)) do
+    rm(ROOT .. SEP .. d)
   end
 end
 
-local function generate(manual)
-  gen = gen + 1
-  local my = gen
-  local path = local_video()
-  if not path then if manual then toast("Thumbnails: play a local video first") end return end
-  local duration = mp.get_property_number("duration", 0)
-  if duration <= 1 then return end
-  local k = key(path)
-  local dir = ROOT .. SEP .. k
-  seen_chapters = #(mp.get_property_native("chapter-list") or {})
-  local n = math.max(10, math.min(200, tonumber(o.frames) or 50))
-  local seek, chap = {}, {}
-  if o.seekbar then
-    for i, t in ipairs(seek_times(duration, n)) do
-      local out = string.format("%s%sseek-%02d.jpg", dir, SEP, i - 1)
-      if not utils.file_info(out) then seek[#seek + 1] = { t = t, out = out } end
+-- ffmpeg that can decode this file: cb(ff), or cb(nil) after telling why (when `loud`, or
+-- once per codec). Nothing when the file changed meanwhile.
+local function ffmpeg_for(file, loud, cb)
+  get_ffmpeg(o.download, function(ff, err)
+    if cur ~= file then return end
+    if not ff then
+      if loud or o.download then toast("Thumbnails need ffmpeg: " .. tostring(err), 6) end
+      return cb(nil)
     end
-  end
-  if o.chapters then
-    for i, c in ipairs(mp.get_property_native("chapter-list") or {}) do
-      local out = string.format("%s%schapter-%d.jpg", dir, SEP, i)
-      if not utils.file_info(out) then
-        chap[#chap + 1] = { t = math.min(c.time + 1, math.max(0, duration - 1)), out = out }
+    if ff.kind == "managed" and not managed_decodes(file.codec) then
+      if loud or not codec_warned[file.codec] then
+        codec_warned[file.codec] = true
+        toast("Thumbnails: " .. file.codec:upper() .. " video needs ffmpeg installed on the system", 6)
       end
+      return cb(nil)
     end
-  end
-  if #seek == 0 and #chap == 0 then
-    if o.seekbar then mp.commandv("script-message", "vivi-preview-frames", dir) end
-    if o.chapters then mp.commandv("script-message", "vivi-chapter-thumbs", dir) end
-    if manual then toast("Thumbnails are up to date") end
+    cb(ff)
+  end)
+end
+
+local function publish_seek(file) mp.commandv("script-message", "vivi-preview-frames", file.dir) end
+
+-- Seek-bar frames of the current file (coarse to fine). `low`: lowest priority (On open).
+local function start_seek(manual, low)
+  local file = cur
+  if not file or not o.seekbar then
+    if manual and not file then toast("Thumbnails: play a local video first") end
     return
   end
-  busy = true
-  get_ffmpeg(o.download, function(ff, err)
-    if my ~= gen then busy = false return end
-    if not ff then
-      busy = false
-      if manual or o.download then toast("Thumbnails need ffmpeg: " .. tostring(err), 6) end
-      return
-    end
-    mkdir(dir, function()
-      local t0 = mp.get_time()
-      local list = {}
-      -- Chapters first (few), then the seek-bar frames.
-      for _, c in ipairs(chap) do list[#list + 1] = { out = c.out, args = frame_args(ff.ffmpeg, path, c.t, c.out, 320) } end
-      local nchap = #list
-      for _, s in ipairs(seek) do list[#list + 1] = { out = s.out, args = frame_args(ff.ffmpeg, path, s.t, s.out, SEEK_W, SEEK_H) } end
-      if nchap > 0 then
-        list[nchap].done = function() mp.commandv("script-message", "vivi-chapter-thumbs", dir) end
+  if seek_state == "done" then if manual then toast("Thumbnails are up to date") end return end
+  if seek_state == "running" then return end
+  seek_state = "running"
+  ffmpeg_for(file, manual, function(ff)
+    if not ff then seek_state = nil return end
+    mkdir(file.dir, function()
+      if cur ~= file then return end
+      clear_seek(file.dir)
+      local n, my, t0 = file.n, gen, mp.get_time()
+      local times = seek_times(file.duration, n)
+      local done, good = 0, 0
+      local marks = { [4] = true, [math.ceil(n / 4)] = true, [math.ceil(n / 2)] = true }
+      for _, k in ipairs(order(n)) do
+        local out = seek_name(file.dir, k)
+        local args = frame_args(ff.ffmpeg, file.path, times[k + 1], out, SEEK_W, SEEK_H)
+        queue[#queue + 1] = { gen = my, out = out, args = low and low_priority(args, NICE, IONICE) or args,
+          done = function(ok)
+            done = done + 1
+            if ok then good = good + 1 end
+            if done < n then
+              if marks[done] and good > 0 then fill_gaps(file.dir, n) publish_seek(file) end
+              return
+            end
+            if good == 0 then
+              seek_state = nil
+              if manual then toast("Thumbnails: ffmpeg could not read this video", 5) end
+              return
+            end
+            fill_gaps(file.dir, n)
+            write_file(file.dir .. SEP .. "seek.meta", "frames=" .. n .. "\n")
+            seek_state = "done"
+            publish_seek(file)
+            mp.msg.info(string.format("%d seek-bar thumbnails in %.1f s (%s ffmpeg)", n, mp.get_time() - t0, ff.kind))
+            if manual then toast(string.format("%d seek-bar thumbnails generated", n)) end
+            prune()
+          end }
       end
-      jobs(list, my, function()
-        busy = false
-        if #seek > 0 then fill_gaps(dir, n) end
-        if #seek > 0 then mp.commandv("script-message", "vivi-preview-frames", dir) end
-        mp.msg.info(string.format("%d thumbnails in %.1f s (%s ffmpeg)", #list, mp.get_time() - t0, ff.kind))
-        if manual then toast(string.format("%d thumbnails generated", #list)) end
-        prune()
-      end)
+      pump()
     end)
   end)
+end
+
+-- Chapter pictures: those missing or made for another start time (chapters.meta has one
+-- start per line), e.g. after Scene Chapters or SponsorBlock added chapters.
+local function start_chapters(manual)
+  local file = cur
+  if not file or not o.chapters then return end
+  if chap_running then chap_again = true return end
+  local list = mp.get_property_native("chapter-list") or {}
+  local meta_path = file.dir .. SEP .. "chapters.meta"
+  local old = {}
+  for l in (read_file(meta_path) or ""):gmatch("[^\n]+") do old[#old + 1] = l end
+  local lines, todo = {}, {}
+  for i, c in ipairs(list) do
+    local t = math.min(c.time + 1, math.max(0, file.duration - 1))
+    lines[i] = chap_line(c.time)
+    if old[i] ~= lines[i] or not utils.file_info(chap_name(file.dir, i)) then todo[#todo + 1] = { i = i, t = t } end
+  end
+  if #todo == 0 then
+    if #list > 0 then mp.commandv("script-message", "vivi-chapter-thumbs", file.dir) end
+    return
+  end
+  chap_running, chap_again = true, false
+  local function finish()
+    chap_running = false
+    if cur == file and chap_again then chap_again = false start_chapters(false) end
+  end
+  ffmpeg_for(file, manual, function(ff)
+    if not ff then return finish() end
+    mkdir(file.dir, function()
+      if cur ~= file then return end
+      local left, my = #todo, gen
+      local jobs = {}
+      for _, c in ipairs(todo) do
+        local out = chap_name(file.dir, c.i)
+        jobs[#jobs + 1] = { gen = my, out = out, args = frame_args(ff.ffmpeg, file.path, c.t, out, 320),
+          done = function(ok)
+            if not ok then lines[c.i] = "-" end
+            left = left - 1
+            if left > 0 then return end
+            write_file(meta_path, table.concat(lines, "\n") .. "\n")
+            mp.commandv("script-message", "vivi-chapter-thumbs", file.dir)
+            if manual then toast(string.format("%d chapter thumbnails generated", #todo)) end
+            finish()
+          end }
+      end
+      -- Chapters first: few, and shown in the side panel right away.
+      for k = #jobs, 1, -1 do table.insert(queue, 1, jobs[k]) end
+      pump()
+    end)
+  end)
+end
+
+local function on_tick()
+  if not tick_timer then return end
+  if not cur or seek_state then tick_timer:kill() tick_timer = nil return end
+  if mp.get_property_bool("pause", false) or mp.get_property_bool("seeking", false) then return end
+  played = (played or 0) + 1
+  if played >= ON_OPEN_DELAY then
+    tick_timer:kill()
+    tick_timer = nil
+    start_seek(false, true)
+  end
+end
+
+local function on_open_mode() return tostring(o.when):lower():find("open", 1, true) ~= nil end
+
+-- A file was loaded (or the settings changed): cached frames are shown at once; missing
+-- chapter pictures are made now; seek frames on the first seek-bar hover, or with
+-- "On open" after 10 s of playback of a video longer than 3 minutes.
+local function on_file_loaded()
+  stop_all()
+  if tick_timer then tick_timer:kill() tick_timer = nil end
+  cur, seek_state, chap_running, chap_again, played = nil, nil, false, false, 0
+  local path, codec = local_video()
+  if not path then return end
+  local duration = mp.get_property_number("duration", 0)
+  if duration <= 1 then return end
+  cur = { path = path, dir = ROOT .. SEP .. key(path), duration = duration,
+    n = frame_count(duration, o.frames), codec = codec }
+  if o.seekbar then
+    if seek_done(cur.dir) == cur.n and utils.file_info(seek_name(cur.dir, cur.n - 1)) then
+      seek_state = "done"
+      write_file(cur.dir .. SEP .. "seek.meta", "frames=" .. cur.n .. "\n") -- marks the folder as used
+      publish_seek(cur)
+    else
+      clear_seek(cur.dir)
+      if on_open_mode() and duration > ON_OPEN_MIN then tick_timer = mp.add_periodic_timer(1, on_tick) end
+    end
+  end
+  start_chapters(false)
 end
 
 local function fmt_time(t)
@@ -417,35 +665,77 @@ end
 local function chapter_list()
   local list = mp.get_property_native("chapter-list") or {}
   if #list == 0 then toast("This file has no chapters (Scene Chapters can detect scenes)") return end
-  local cur = mp.get_property_number("chapter", -1) + 1
+  local now = mp.get_property_number("chapter", -1) + 1
   local lines = {}
   for i, c in ipairs(list) do
-    lines[#lines + 1] = string.format("%s%s  %s", i == cur and "▶ " or "   ", fmt_time(c.time),
+    lines[#lines + 1] = string.format("%s%s  %s", i == now and "▶ " or "   ", fmt_time(c.time),
       (c.title and c.title ~= "") and c.title or ("Chapter " .. i))
   end
   mp.osd_message(table.concat(lines, "\n"), 6)
 end
 
-local function clear()
-  local path = local_video()
-  if not path then return end
-  local dir = ROOT .. SEP .. key(path)
-  if windows then run({ "cmd", "/c", "rmdir", "/s", "/q", dir }, function() toast("Thumbnails cleared") end)
-  else run({ "rm", "-rf", dir }, function() toast("Thumbnails cleared") end) end
+local function generate()
+  if not cur then toast("Thumbnails: play a local video first") return end
+  start_chapters(true)
+  start_seek(true, false)
 end
 
-options.read_options(o, "chapter-thumbnails", function() generate(false) end)
-mp.register_event("file-loaded", function() generate(false) end)
-mp.register_event("start-file", function() gen = gen + 1 seen_chapters = -1 end)
--- Chapters can arrive later (Scene Chapters, SponsorBlock): make their images too.
-mp.observe_property("chapter-list", "native", function(_, v)
-  if seen_chapters >= 0 and not busy and #(v or {}) ~= seen_chapters then generate(false) end
+local function clear()
+  local file = cur
+  if not file then toast("Thumbnails: play a local video first") return end
+  stop_all()
+  seek_state, chap_running, chap_again = nil, false, false
+  rm(file.dir, function() toast("Thumbnails of this file deleted") end)
+end
+
+local function clear_all()
+  stop_all()
+  seek_state, chap_running, chap_again = nil, false, false
+  local dirs = utils.readdir(ROOT, "dirs") or {}
+  local bytes = 0
+  for _, d in ipairs(dirs) do bytes = bytes + dir_size(ROOT .. SEP .. d) end
+  local left = #dirs
+  if left == 0 then toast("The thumbnail cache is empty") return end
+  for _, d in ipairs(dirs) do
+    rm(ROOT .. SEP .. d, function()
+      left = left - 1
+      if left == 0 then toast(string.format("Deleted the thumbnails of %d file%s (%s)", #dirs, #dirs == 1 and "" or "s", human(bytes))) end
+    end)
+  end
+end
+
+-- Settings changed: start over for the current file; frames that were wanted (hovered or
+-- being made) are made again with the new settings.
+options.read_options(o, "chapter-thumbnails", function()
+  if not mp.get_property("path") then return end
+  local wanted = seek_state ~= nil
+  on_file_loaded()
+  if wanted and cur and not seek_state then start_seek(false, false) end
 end)
+mp.register_event("file-loaded", on_file_loaded)
+mp.register_event("start-file", function()
+  stop_all()
+  if tick_timer then tick_timer:kill() tick_timer = nil end
+  cur, seek_state = nil, nil
+end)
+-- Chapters can arrive later (Scene Chapters, SponsorBlock): make their images too.
+mp.observe_property("chapter-list", "native", function()
+  if cur and cur.path == mp.get_property("path") then start_chapters(false) end
+end)
+-- Vivi asks when the pointer first goes over the seek bar of a file.
+local function hover() if cur and not seek_state then start_seek(false, false) end end
+mp.register_script_message("preview-wanted", hover)
+mp.register_script_message("vivi-preview-wanted", hover)
 mp.add_forced_key_binding("Alt+h", "list", chapter_list)
-mp.register_script_message("generate", function() generate(true) end)
+mp.register_script_message("generate", generate)
 mp.register_script_message("list", chapter_list)
 mp.register_script_message("clear", clear)
+mp.register_script_message("clear-all", clear_all)
 
 if VIVI_TEST then
-  return { key = key, seek_times = seek_times, frame_args = frame_args, fmt_time = fmt_time }
+  return { key = key, seek_times = seek_times, frame_args = frame_args, fmt_time = fmt_time,
+    frame_count = frame_count, order = order, low_priority = low_priority, managed_decodes = managed_decodes,
+    select_prune = select_prune, on_file_loaded = on_file_loaded, on_tick = on_tick, hover = hover,
+    queue = function() return queue end, state = function() return cur, seek_state end,
+    set_ffmpeg = function(f) ff_cache = f end }
 end

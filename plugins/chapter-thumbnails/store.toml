@@ -2,7 +2,12 @@
 # so editing it needs no new plugin version.
 categories = ["Video", "Tools"]
 tags = ["thumbnails", "chapters", "seek bar", "preview", "ffmpeg"]
-screenshots = ["chapter-thumbnails-settings"]
+screenshots = ["chapter-thumbnails-player", "chapter-thumbnails-settings"]
+
+[[changelog]]
+version = "1.1.0"
+date = "2026-10-19"
+notes = "Auto frame count (one per 10 s, 25 to 200) and a choice of when seek-bar previews are made: on the first hover (default) or after 10 s of playback at low priority; coarse-to-fine, so previews appear within a second. Cache size limit in MB and Clear all. Fixes: changing the frame count no longer mixes old and new frames, chapter pictures follow chapters added or moved later (SponsorBlock, Scene Chapters), no lost chapter updates while busy, AV1 and other codecs the bundled ffmpeg can't decode are reported. README rewritten; screenshots."
 
 [[changelog]]
 version = "1.0.1"

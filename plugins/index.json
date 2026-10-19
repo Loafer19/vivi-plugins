@@ -640,8 +640,8 @@
     {
       "id": "chapter-thumbnails",
       "name": "Chapter Thumbnails",
-      "description": "Thumbnail preview while hovering the seek bar and a picture for every chapter in the Chapters tab, generated in the background and cached per file. Alt+H lists the chapters with titles and times. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Subtitle Auto-Sync).",
-      "version": "1.0.1",
+      "description": "Thumbnail preview while hovering the seek bar and a picture for every chapter in the Chapters tab, generated in the background (on the first hover, or when the video opens) and cached per file. Alt+H lists the chapters with titles and times. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Subtitle Auto-Sync).",
+      "version": "1.1.0",
       "author": "Vivi",
       "icon": "chapters",
       "lucide": "gallery-horizontal-end",
@@ -655,9 +655,9 @@
         "subprocess"
       ],
       "source": "plugins/chapter-thumbnails",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.0.1/chapter-thumbnails-1.0.1.zip",
-      "sha256": "172420e9b134ff7f44046f1e6dd4ad6117374409949d6f6978a20a458b047e50",
-      "size": 22346,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.1.0/chapter-thumbnails-1.1.0.zip",
+      "sha256": "f173f3800ae10dd9a87367a02fecec00e58ada84eb3ddb968937e273123f251e",
+      "size": 36681,
       "settings": [
         {
           "key": "seekbar",
@@ -672,15 +672,27 @@
           "default": "true"
         },
         {
-          "key": "frames",
-          "title": "Seek-bar thumbnails per file",
+          "key": "when",
+          "title": "Generate seek-bar thumbnails",
           "type": "choice",
           "options": [
+            "On hover",
+            "On open"
+          ],
+          "default": "On hover"
+        },
+        {
+          "key": "frames",
+          "title": "Seek-bar thumbnails per file (Auto: one per 10 s)",
+          "type": "choice",
+          "options": [
+            "Auto",
+            "25",
             "50",
             "100",
-            "25"
+            "200"
           ],
-          "default": "50"
+          "default": "Auto"
         },
         {
           "key": "download",
@@ -700,6 +712,17 @@
           "default": "200"
         },
         {
+          "key": "max-cache-mb",
+          "title": "Thumbnail cache size limit (MB)",
+          "type": "choice",
+          "options": [
+            "500",
+            "100",
+            "2000"
+          ],
+          "default": "500"
+        },
+        {
           "key": "generate",
           "title": "Generate the thumbnails of this file now",
           "type": "action",
@@ -716,6 +739,12 @@
           "title": "Delete the cached thumbnails of this file",
           "type": "action",
           "label": "Clear"
+        },
+        {
+          "key": "clear-all",
+          "title": "Delete the whole thumbnail cache",
+          "type": "action",
+          "label": "Clear all"
         }
       ],
       "issue": 75,
@@ -731,14 +760,20 @@
         "ffmpeg"
       ],
       "screenshots": [
+        "chapter-thumbnails-player",
         "chapter-thumbnails-settings"
       ],
       "changelog": [
         {
+          "version": "1.1.0",
+          "date": "2026-10-19",
+          "notes": "Auto frame count (one per 10 s, 25 to 200) and a choice of when seek-bar previews are made: on the first hover (default) or after 10 s of playback at low priority; coarse-to-fine, so previews appear within a second. Cache size limit in MB and Clear all. Fixes: changing the frame count no longer mixes old and new frames, chapter pictures follow chapters added or moved later (SponsorBlock, Scene Chapters), no lost chapter updates while busy, AV1 and other codecs the bundled ffmpeg can't decode are reported. README rewritten; screenshots.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.1.0/chapter-thumbnails-1.1.0.zip"
+        },
+        {
           "version": "1.0.1",
           "date": "2026-10-16",
-          "notes": "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.0.1/chapter-thumbnails-1.0.1.zip"
+          "notes": "Downloads the ffmpeg helper from the Loafer19/vivi-plugins releases (same build and checksums)."
         },
         {
           "version": "1.0.0",
