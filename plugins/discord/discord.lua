@@ -1,5 +1,5 @@
 -- @name Discord Rich Presence
--- @version 1.0.0
+-- @version 1.1.0
 -- @author Vivi
 -- @description Discord status from what Vivi plays (Vivi plugin package).
 --
@@ -11,7 +11,11 @@
 local mp = require "mp"
 local options = require "mp.options"
 
-local o = { ["app-id"] = "", ["hide-names"] = false, image = "", pkgdir = "" }
+local o = {
+  ["app-id"] = "", show = "Music and videos", ["hide-names"] = false,
+  ["status-name"] = "Application name", ["cover-art"] = true, ["link-button"] = false,
+  image = "", pkgdir = "",
+}
 local windows = package.config:sub(1, 1) == "\\"
 local job
 
@@ -40,6 +44,22 @@ local function helper(name)
   return dir .. (windows and "\\bin\\" or "/bin/") .. name .. (windows and ".exe" or "")
 end
 
+local function yn(v) return (v == true or v == "yes" or v == "true") and "yes" or "no" end
+
+-- Command line of the helper for the current settings.
+local function helper_args(exe, ipc)
+  local display = ({ Title = "title", Artist = "artist" })[o["status-name"]] or "app"
+  local args = {
+    exe, "--ipc", ipc, "--app-id", o["app-id"], "--image", o.image,
+    "--show", o.show == "Music only" and "music" or "all",
+    "--display", display,
+    "--art", yn(o["cover-art"]),
+    "--button", yn(o["link-button"]),
+  }
+  if yn(o["hide-names"]) == "yes" then args[#args + 1] = "--hide-names" end
+  return args
+end
+
 local function stop()
   if job then
     mp.abort_async_command(job)
@@ -54,21 +74,31 @@ local function start()
     toast("Discord Rich Presence: helper not found, reinstall the plugin")
     return
   end
-  local args = { exe, "--ipc", ipc_path(), "--app-id", o["app-id"], "--image", o.image }
-  if o["hide-names"] then args[#args + 1] = "--hide-names" end
+  -- A stale "Connected" from the previous helper must not show while this one starts.
+  mp.set_property("user-data/discord/status", "Starting…")
   local me
-  me = mp.command_native_async({ name = "subprocess", args = args, playback_only = false }, function(ok, r)
+  me = mp.command_native_async({ name = "subprocess", args = helper_args(exe, ipc_path()),
+                                 playback_only = false }, function(ok, r)
     if job == me then job = nil end
     if r and r.status and r.status ~= 0 and not r.killed_by_us then
       mp.msg.warn("vivi-discord exited with " .. tostring(r.status) .. " " .. tostring(r.error_string or ""))
+      mp.set_property("user-data/discord/status", "The helper stopped (exit " .. tostring(r.status) .. ")")
     end
   end)
   job = me
 end
 
+local function show_status()
+  local s = mp.get_property("user-data/discord/status", "")
+  if s == "" then s = job and "Starting…" or "Not running" end
+  toast("Discord Rich Presence: " .. s)
+end
+
 options.read_options(o, "discord", start)
-mp.register_script_message("status", function()
-  toast(mp.get_property("user-data/discord/status", job and "Starting…" or "Not running"))
-end)
+mp.register_script_message("status", show_status)
 mp.register_event("shutdown", stop)
+
+if VIVI_TEST then
+  return { o = o, helper_args = helper_args, start = start, show_status = show_status }
+end
 start()

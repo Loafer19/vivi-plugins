@@ -1000,8 +1000,8 @@
     {
       "id": "discord",
       "name": "Discord Rich Presence",
-      "description": "Shows the current title, artist and progress in your Discord status. Needs a Discord application ID; Discord must be running on this computer. Ships a small native helper (vivi-discord) that talks to Discord's local IPC.",
-      "version": "1.0.0",
+      "description": "Shows what you play in your Discord status: title, artist, progress, YouTube thumbnails, optional link button; privacy options to hide names or videos. Needs a Discord application ID; Discord must be running on this computer. Ships a small native helper (vivi-discord) that talks to Discord's local IPC.",
+      "version": "1.1.0",
       "author": "Vivi",
       "icon": "discord",
       "lucide": "gamepad-2",
@@ -1013,9 +1013,9 @@
         "subprocess"
       ],
       "source": "plugins/discord",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/discord-1.0.0.zip",
-      "sha256": "1228cba636bc2623bdf90caa41f89828d1874f03404056c0a309fcdc331e4e9a",
-      "size": 4969,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/discord-1.1.0.zip",
+      "sha256": "acb3be7037718e888e8e70dfa942538a1494b08e6c0e190caaf617ad240ee746",
+      "size": 9413,
       "settings": [
         {
           "key": "app-id",
@@ -1024,14 +1024,47 @@
           "default": ""
         },
         {
+          "key": "show",
+          "title": "Show for",
+          "type": "choice",
+          "options": [
+            "Music and videos",
+            "Music only"
+          ],
+          "default": "Music and videos"
+        },
+        {
           "key": "hide-names",
-          "title": "Hide titles and file names",
+          "title": "Hide titles and file names (only \"Listening to music\" / \"Watching a video\")",
+          "type": "toggle",
+          "default": "false"
+        },
+        {
+          "key": "status-name",
+          "title": "Name in the member list (\"Listening to …\")",
+          "type": "choice",
+          "options": [
+            "Application name",
+            "Title",
+            "Artist"
+          ],
+          "default": "Application name"
+        },
+        {
+          "key": "cover-art",
+          "title": "YouTube thumbnail as the picture for YouTube streams",
+          "type": "toggle",
+          "default": "true"
+        },
+        {
+          "key": "link-button",
+          "title": "Link button for public streams (YouTube, SoundCloud, Bandcamp, Vimeo, Twitch, Internet Archive)",
           "type": "toggle",
           "default": "false"
         },
         {
           "key": "image",
-          "title": "Large image key (optional art asset of your Discord application)",
+          "title": "Large image (optional): an art asset key of your Discord application or an https image URL",
           "type": "text",
           "default": ""
         },
@@ -1050,59 +1083,30 @@
       "tags": [
         "discord",
         "rich-presence",
-        "status"
+        "status",
+        "privacy",
+        "youtube"
       ],
       "screenshots": [
         "discord-settings"
       ],
       "changelog": [
         {
+          "version": "1.1.0",
+          "date": "2026-10-19",
+          "notes": "Privacy: stream URLs are never shown as the title (a stream without tags shows its file name or host, never tokens or query strings), file names lose their extension, nothing is shown for finished files or still images; new Show for: Music only. New: YouTube thumbnail as the picture for YouTube streams, an optional link button for public sites (YouTube, SoundCloud, Bandcamp, Vimeo, Twitch, Internet Archive), the title or artist instead of the app name in the member list, the album as the picture's tooltip, an https image URL as the large image. Fixes: the timer follows the playback speed (no resend every few seconds at 1.5×), at most 5 updates per 20 s (Discord drops the rest), no padded empty status line, a hanging Discord no longer blocks the helper, the connection status no longer shows a stale state after a settings change. README rewritten with what is sent to Discord.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/discord-1.1.0.zip"
+        },
+        {
           "version": "1.0.0",
           "date": "2026-10-15",
-          "notes": "First release as a downloadable plugin with the native vivi-discord helper (moved out of the core).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/discord-1.0.0.zip"
+          "notes": "First release as a downloadable plugin with the native vivi-discord helper (moved out of the core)."
         }
       ],
       "needs": [
         "vivi-discord"
       ],
-      "binaries": [
-        {
-          "name": "vivi-discord",
-          "platform": "linux-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-linux-x86_64",
-          "sha256": "a04deaf1f83bc3bc6de30b4ccc61521844739d47d58f4f56204cbf447584c526",
-          "size": 471760
-        },
-        {
-          "name": "vivi-discord",
-          "platform": "linux-aarch64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-linux-aarch64",
-          "sha256": "6e058b4a88ef17aad19223452a162dcfb31b30c3d40d4573f244acf3785e7ee7",
-          "size": 463024
-        },
-        {
-          "name": "vivi-discord",
-          "platform": "windows-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-windows-x86_64.exe",
-          "sha256": "69e204ea1d0386b56efc07258e353f3758ad231ba9682a5814206d01c7840aa9",
-          "size": 200192
-        },
-        {
-          "name": "vivi-discord",
-          "platform": "macos-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-macos-x86_64",
-          "sha256": "71a0a01e4ffced7061db40d0c4ad3f76bff168ab9c5a2bc84e930a9186a6cd73",
-          "size": 354400
-        },
-        {
-          "name": "vivi-discord",
-          "platform": "macos-aarch64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.0.0/vivi-discord-macos-aarch64",
-          "sha256": "710f069536c8a218932a9b3ecd26ad76f881034a55b424abcafa515394ba0778",
-          "size": 353152
-        }
-      ]
+      "binaries": []
     },
     {
       "id": "equalizer",

@@ -1,8 +1,13 @@
 # Marketplace listing (plugins.viviplayer.app). Not part of the package zip,
 # so editing it needs no new plugin version.
 categories = ["Integrations", "Music"]
-tags = ["discord", "rich-presence", "status"]
+tags = ["discord", "rich-presence", "status", "privacy", "youtube"]
 screenshots = ["discord-settings"]
+
+[[changelog]]
+version = "1.1.0"
+date = "2026-10-19"
+notes = "Privacy: stream URLs are never shown as the title (a stream without tags shows its file name or host, never tokens or query strings), file names lose their extension, nothing is shown for finished files or still images; new Show for: Music only. New: YouTube thumbnail as the picture for YouTube streams, an optional link button for public sites (YouTube, SoundCloud, Bandcamp, Vimeo, Twitch, Internet Archive), the title or artist instead of the app name in the member list, the album as the picture's tooltip, an https image URL as the large image. Fixes: the timer follows the playback speed (no resend every few seconds at 1.5×), at most 5 updates per 20 s (Discord drops the rest), no padded empty status line, a hanging Discord no longer blocks the helper, the connection status no longer shows a stale state after a settings change. README rewritten with what is sent to Discord."
 
 [[changelog]]
 version = "1.0.0"
