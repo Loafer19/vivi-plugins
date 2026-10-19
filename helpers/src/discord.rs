@@ -28,6 +28,8 @@ pub struct Playing {
     pub speed: f64,
     /// Opened but not started yet (no `time-pos`): no timer, as the start would move.
     pub loading: bool,
+    /// https cover from Vivi's shared now-playing track (music packages), else "".
+    pub cover: String,
 }
 
 /// Plugin settings that shape the presence.
@@ -35,6 +37,8 @@ pub struct Playing {
 pub struct Opts {
     /// Only "Listening to music" / "Watching a video", no titles, art or links.
     pub hide: bool,
+    /// The same for videos only (music keeps its titles). On by default in the plugin.
+    pub hide_video: bool,
     /// Show nothing while a video plays.
     pub music_only: bool,
     /// Large image: an asset key of the Discord application or an https URL.
@@ -69,7 +73,8 @@ pub fn presence(p: &Playing, o: &Opts, now_ms: i64) -> Option<Presence> {
     if p.path.is_empty() || p.eof || p.image_only || (o.music_only && !p.audio) {
         return None;
     }
-    let (details, state) = if o.hide {
+    let hide = o.hide || (o.hide_video && !p.audio);
+    let (details, state) = if hide {
         let d = if p.audio {
             "Listening to music"
         } else {
@@ -100,20 +105,21 @@ pub fn presence(p: &Playing, o: &Opts, now_ms: i64) -> Option<Presence> {
         )
     };
     let own = o.image.trim().to_string();
-    let thumb = (o.art && !o.hide)
+    let thumb = (o.art && !hide)
         .then(|| youtube_id(&p.path))
         .flatten()
-        .map(|id| format!("https://i.ytimg.com/vi/{id}/hqdefault.jpg"));
+        .map(|id| format!("https://i.ytimg.com/vi/{id}/hqdefault.jpg"))
+        .or_else(|| (o.art && !hide && p.cover.starts_with("https://")).then(|| p.cover.clone()));
     let (image, small_image) = match thumb {
         Some(t) => (t, own),
         None => (own, String::new()),
     };
-    let image_text = if p.audio && !o.hide && !p.album.trim().is_empty() {
+    let image_text = if p.audio && !hide && !p.album.trim().is_empty() {
         clip(p.album.trim())
     } else {
         "Vivi".into()
     };
-    let button = if o.button && !o.hide {
+    let button = if o.button && !hide {
         public_link(&p.path)
     } else {
         None
@@ -135,7 +141,7 @@ pub fn presence(p: &Playing, o: &Opts, now_ms: i64) -> Option<Presence> {
         button,
         // "Artist" in the member list only with an artist (not "Listening to Paused").
         display: match o.display.min(2) {
-            _ if o.hide => 0,
+            _ if hide => 0,
             1 if p.artist.trim().is_empty() => 0,
             d => d,
         },
@@ -604,6 +610,37 @@ mod tests {
         );
         assert!(!v.to_string().contains("secret"));
         assert_eq!(clip("x"), "x ");
+    }
+
+    #[test]
+    fn video_titles_hidden_by_default_option() {
+        let o = Opts {
+            hide_video: true,
+            art: true,
+            button: true,
+            ..Default::default()
+        };
+        let video = Playing {
+            title: "Holiday 2026".into(),
+            path: "https://www.youtube.com/watch?v=dQw4w9WgXcQ".into(),
+            speed: 1.0,
+            ..Default::default()
+        };
+        let p = presence(&video, &o, 0).unwrap();
+        assert_eq!(p.details, "Watching a video");
+        assert!(p.image.is_empty() && p.button.is_none());
+        assert!(!p.activity().to_string().contains("Holiday"));
+        // Music keeps its titles and the cover of the shared now-playing track.
+        let mut s = song();
+        s.cover = "https://img.example/c.jpg".into();
+        let p = presence(&s, &o, 0).unwrap();
+        assert_eq!(p.details, "Song");
+        assert_eq!(p.image, "https://img.example/c.jpg");
+        s.cover = "file:///home/me/c.png".into();
+        assert!(
+            presence(&s, &o, 0).unwrap().image.is_empty(),
+            "no local paths"
+        );
     }
 
     #[test]

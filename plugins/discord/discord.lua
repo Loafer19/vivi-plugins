@@ -12,7 +12,7 @@ local mp = require "mp"
 local options = require "mp.options"
 
 local o = {
-  ["app-id"] = "", show = "Music and videos", ["hide-names"] = false,
+  ["app-id"] = "", show = "Music and videos", ["hide-names"] = false, ["hide-video-titles"] = true,
   ["status-name"] = "Application name", ["cover-art"] = true, ["link-button"] = false,
   image = "", pkgdir = "",
 }
@@ -60,6 +60,7 @@ local function helper_args(exe, ipc)
     "--display", display,
     "--art", yn(o["cover-art"]),
     "--button", yn(o["link-button"]),
+    "--hide-video-titles", yn(o["hide-video-titles"]),
     "--token", token(),
   }
   if yn(o["hide-names"]) == "yes" then args[#args + 1] = "--hide-names" end

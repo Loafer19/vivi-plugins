@@ -1014,8 +1014,8 @@
       ],
       "source": "plugins/discord",
       "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/discord-1.1.0.zip",
-      "sha256": "5474d0efb69e32692e2ea9560b83e3fee41e5fb227dd4b34d59fb21c813e0f0d",
-      "size": 10213,
+      "sha256": "035f0c6a0d2bcdcd5ecc309d0b89c444cb26eabb3f063c542ff15d532e81a7a4",
+      "size": 11194,
       "settings": [
         {
           "key": "app-id",
@@ -1038,6 +1038,12 @@
           "title": "Hide titles and file names (only \"Listening to music\" / \"Watching a video\")",
           "type": "toggle",
           "default": "false"
+        },
+        {
+          "key": "hide-video-titles",
+          "title": "Hide video titles (videos show only \"Watching a video\"; music keeps its titles)",
+          "type": "toggle",
+          "default": "true"
         },
         {
           "key": "status-name",
@@ -1094,8 +1100,8 @@
       "changelog": [
         {
           "version": "1.1.0",
-          "date": "2026-10-19",
-          "notes": "Privacy: stream URLs are never shown as the title (a stream without tags shows its file name or host, never tokens or query strings), file names lose their extension, nothing is shown for finished files or still images; new Show for: Music only. New: YouTube thumbnail as the picture for YouTube streams, an optional link button for public sites (YouTube, SoundCloud, Bandcamp, Vimeo, Twitch, Internet Archive), the title or artist instead of the app name in the member list, the album as the picture's tooltip, an https image URL as the large image. Fixes: the timer follows the playback speed (no resend every few seconds at 1.5×), at most 5 updates per 20 s (Discord drops the rest), no padded empty status line, a hanging Discord no longer blocks the helper, Connection status is a clean Vivi toast (no JSON quotes) in plain words (“Discord did not answer”) and no longer shows a stale state after a settings change; two settings changed in a row can no longer leave two helpers running (an old one, e.g. still showing titles after Hide titles was turned on); while a stream opens the previous status stays instead of flashing the host name. README rewritten with what is sent to Discord.",
+          "date": "2026-10-20",
+          "notes": "Privacy: video titles are hidden by default (new Hide video titles, on: videos show only “Watching a video”, music keeps its titles); stream URLs are never shown as the title (a stream without tags shows its file name or host, never tokens or query strings), file names lose their extension, nothing is shown for finished files or still images; new Show for: Music only. New: YouTube thumbnail as the picture for YouTube streams, an optional link button for public sites (YouTube, SoundCloud, Bandcamp, Vimeo, Twitch, Internet Archive), the title or artist instead of the app name in the member list, the album as the picture's tooltip, an https image URL as the large image. Fixes: the timer follows the playback speed (no resend every few seconds at 1.5×), at most 5 updates per 20 s (Discord drops the rest), no padded empty status line, a hanging Discord no longer blocks the helper, Connection status is a clean Vivi toast (no JSON quotes) in plain words (“Discord did not answer”) and no longer shows a stale state after a settings change; two settings changed in a row can no longer leave two helpers running (an old one, e.g. still showing titles after Hide titles was turned on); while a stream opens the previous status stays instead of flashing the host name. On Vivi 0.13+ titles, artist, album and cover come from Vivi's shared now-playing track (tags, library, radio titles and music-package metadata merged); a music package's stream counts as music. README rewritten with what is sent to Discord.",
           "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/discord-1.1.0.zip"
         },
         {

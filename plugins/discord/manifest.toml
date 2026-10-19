@@ -33,6 +33,12 @@ type = "toggle"
 default = "false"
 
 [[settings]]
+key = "hide-video-titles"
+title = "Hide video titles (videos show only \"Watching a video\"; music keeps its titles)"
+type = "toggle"
+default = "true"
+
+[[settings]]
 key = "status-name"
 title = "Name in the member list (\"Listening to …\")"
 type = "choice"

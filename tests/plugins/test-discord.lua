@@ -1,9 +1,9 @@
 local T = dofile("tests/plugins/stub.lua")
 local P = T.load("plugins/discord/discord.lua", { pkgdir = "/pkg", ["app-id"] = "123" })
 
--- Defaults: everything shown, app name in the member list, YouTube art on, no link button.
+-- Defaults: video titles hidden, music shown, app name in the member list, YouTube art on, no link button.
 local a = table.concat(P.helper_args("/pkg/bin/vivi-discord", "/run/s"), " ")
-T.eq(a, "/pkg/bin/vivi-discord --ipc /run/s --app-id 123 --image  --show all --display app --art yes --button no --token 0-0",
+T.eq(a, "/pkg/bin/vivi-discord --ipc /run/s --app-id 123 --image  --show all --display app --art yes --button no --hide-video-titles yes --token 0-0",
   "default helper args")
 
 -- Privacy and display settings map to the helper's flags.
@@ -20,6 +20,8 @@ T.ok(a:find("--display title", 1, true), "title in the member list")
 T.ok(a:find("--art no", 1, true), "art off")
 T.ok(a:find("--button yes", 1, true), "button on")
 T.eq(args[#args], "--hide-names", "hide names flag last")
+P.o["hide-video-titles"] = false
+T.ok(table.concat(P.helper_args("x", "y"), " "):find("--hide-video-titles no", 1, true), "video titles shown when turned off")
 P.o["status-name"] = "Artist"
 T.ok(table.concat(P.helper_args("x", "y"), " "):find("--display artist", 1, true), "artist")
 

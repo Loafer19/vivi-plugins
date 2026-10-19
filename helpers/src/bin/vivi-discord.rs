@@ -2,7 +2,10 @@
 //!
 //! `vivi-discord --ipc <mpv socket> --app-id <id> [--hide-names] [--image <key or URL>]
 //!  [--show all|music] [--art yes|no] [--button yes|no] [--display app|title|artist]
-//!  [--token <t>]`
+//!  [--hide-video-titles yes|no] [--token <t>]`
+//!
+//! Reads Vivi's shared now-playing track (`user-data/vivi/now-playing`, Vivi 0.13+) when it
+//! describes the playing file, else the tags as before.
 //!
 //! With `--token` the helper exits as soon as `user-data/discord/helper` no longer holds
 //! that token (the script started a newer helper or stopped).
@@ -22,24 +25,50 @@ fn playing(m: &mut Mpv) -> io::Result<Playing> {
     if path.is_empty() {
         return Ok(Playing::default());
     }
+    // Vivi 0.13+: the shared now-playing track (tags, music-package metadata, stream
+    // titles merged), when it describes this file. Older Vivi: tags as before.
+    let np = m
+        .get("user-data/vivi/now-playing")?
+        .filter(|v| v.get("path").and_then(|p| p.as_str()) == Some(path.as_str()));
+    let s = |k: &str| {
+        np.as_ref()
+            .and_then(|v| v.get(k))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .trim()
+            .to_string()
+    };
     let vid = m.get("current-tracks/video/id")?;
     let cover = m.get_bool("current-tracks/video/albumart")?;
     let picture = m.get_bool("current-tracks/video/image")?;
     let has_audio = m.get("current-tracks/audio/id")?.is_some();
-    let mut title = m.get_str("metadata/by-key/title")?;
-    if title.is_empty() {
-        title = m.get_str("media-title")?;
+    let (mut title, mut artist, mut album) = (s("title"), s("artist"), s("album"));
+    if np.is_none() {
+        title = m.get_str("metadata/by-key/title")?;
+        if title.is_empty() {
+            title = m.get_str("media-title")?;
+        }
+        artist = m.get_str("metadata/by-key/artist")?;
+        album = m.get_str("metadata/by-key/album")?;
     }
-    let mut artist = m.get_str("metadata/by-key/artist")?;
+    if artist.is_empty() {
+        artist = s("service");
+    }
     if artist.is_empty() {
         artist = m.get_str("metadata/by-key/icy-name")?;
     }
+    // A music package may call its stream music although it carries a video track.
+    let audio = match s("kind").as_str() {
+        "" => vid.is_none() || cover || picture,
+        k => k != "video",
+    };
     Ok(Playing {
         title,
         artist,
-        album: m.get_str("metadata/by-key/album")?,
+        album,
+        cover: s("cover"),
         path,
-        audio: vid.is_none() || cover || picture,
+        audio,
         // A picture file (not a song's cover art) without sound.
         image_only: picture && !cover && !has_audio,
         paused: m.get_bool("pause")?,
@@ -55,6 +84,7 @@ fn opts(a: &std::collections::HashMap<String, String>) -> Opts {
     let yes = |k: &str, d: bool| a.get(k).map_or(d, |v| v == "yes");
     Opts {
         hide: yes("hide-names", false),
+        hide_video: yes("hide-video-titles", true),
         music_only: a.get("show").is_some_and(|v| v == "music"),
         image: a.get("image").cloned().unwrap_or_default(),
         art: yes("art", true),
