@@ -2,7 +2,12 @@
 # so editing it needs no new plugin version.
 categories = ["Video", "Streaming"]
 tags = ["youtube", "sponsorblock", "skip"]
-screenshots = ["sponsorblock-settings"]
+screenshots = ["sponsorblock-player", "sponsorblock-settings"]
+
+[[changelog]]
+version = "1.2.0"
+date = "2026-10-19"
+notes = "Per-category skip / ask / off (\"intro=ask outro=skip filler=off\"). Segments marked for muting are muted instead of skipped (Alt+Shift+K unmutes), shown as \"(muted)\" chapters. README: undo is Alt+Shift+K with no time limit; new screenshots."
 
 [[changelog]]
 version = "1.1.0"

@@ -1095,8 +1095,8 @@
     {
       "id": "night-mode",
       "name": "Night Mode",
-      "description": "Compresses loud scenes and lifts quiet dialogue so films stay understandable at low volume (mpv dynaudnorm / loudnorm). Toggle with Alt+N.",
-      "version": "1.0.3",
+      "description": "Compresses loud scenes and lifts quiet dialogue so films stay understandable at low volume (mpv dynaudnorm / loudnorm). Toggle with Alt+N, turn it on by schedule (e.g. 22:00-07:00) or only for videos.",
+      "version": "1.1.0",
       "author": "Vivi",
       "icon": "night",
       "lucide": "moon",
@@ -1106,13 +1106,13 @@
       "min_vivi": "0.9.0",
       "permissions": [],
       "source": "plugins/night-mode",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-night-mode-v1.0.3/night-mode-1.0.3.zip",
-      "sha256": "e857e72126c077e420d569711bc3ba65f321b3b25a6199cddb6078bc949159b8",
-      "size": 3197,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-night-mode-v1.1.0/night-mode-1.1.0.zip",
+      "sha256": "a2f2531bc3c21b53d9c0d24b78bf122daef3cf131a7e88dfafd09f4553faca8e",
+      "size": 7911,
       "settings": [
         {
           "key": "active",
-          "title": "Night mode on",
+          "title": "Night mode on (at startup when no schedule is set)",
           "type": "toggle",
           "default": "true"
         },
@@ -1127,6 +1127,18 @@
             "Loudness (EBU R128)"
           ],
           "default": "Medium"
+        },
+        {
+          "key": "schedule",
+          "title": "Schedule: on from-to, e.g. \"22:00-07:00\" (empty: off)",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "key": "only_video",
+          "title": "Only for videos (leave music and audio-only files untouched)",
+          "type": "toggle",
+          "default": "false"
         }
       ],
       "issue": 60,
@@ -1140,14 +1152,20 @@
         "dialogue"
       ],
       "screenshots": [
+        "night-mode-player",
         "night-mode-settings"
       ],
       "changelog": [
         {
+          "version": "1.1.0",
+          "date": "2026-10-19",
+          "notes": "Schedule (e.g. 22:00-07:00): turns on and off by time of day, Alt+N still overrides. Only for videos: leaves music and audio-only files untouched. README: requires Vivi 0.9.0 (not 0.8.0); new screenshots.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-night-mode-v1.1.0/night-mode-1.1.0.zip"
+        },
+        {
           "version": "1.0.3",
           "date": "2026-10-15",
-          "notes": "Requires Vivi 0.9.0 (managed ffmpeg support).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-night-mode-v1.0.3/night-mode-1.0.3.zip"
+          "notes": "Requires Vivi 0.9.0 (managed ffmpeg support)."
         },
         {
           "version": "1.0.2",
@@ -1738,8 +1756,8 @@
     {
       "id": "sponsorblock",
       "name": "SponsorBlock",
-      "description": "Skips sponsor, intro, self-promotion and other segments in YouTube videos opened as streams, using the crowd-sourced SponsorBlock database. Segments are marked as chapters on the seek bar; every skip shows a notice and can be undone (Alt+Shift+K). Also works for videos the YouTube plugin adds or downloads.",
-      "version": "1.1.0",
+      "description": "Skips sponsor, intro, self-promotion and other segments in YouTube videos using the crowd-sourced SponsorBlock database: segments as chapters on the seek bar, a notice with undo (Alt+Shift+K) after every skip, skip / ask / off per category, and muting where a segment is marked for muting. Also works for videos the YouTube plugin adds or downloads.",
+      "version": "1.2.0",
       "author": "Vivi",
       "icon": "skip",
       "lucide": "badge-dollar-sign",
@@ -1752,9 +1770,9 @@
         "subprocess"
       ],
       "source": "plugins/sponsorblock",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-sponsorblock-v1.1.0/sponsorblock-1.1.0.zip",
-      "sha256": "fac7123b166e0bbbc34632a65a16d2435fe4a74a0af40d4a424f6e992c402ee2",
-      "size": 11798,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-sponsorblock-v1.2.0/sponsorblock-1.2.0.zip",
+      "sha256": "eea4b9098a02b62d4e42e46b2ecb72841e7296af219a9d9de8b25cc11842f879",
+      "size": 16562,
       "settings": [
         {
           "key": "categories",
@@ -1771,6 +1789,18 @@
             "Ask (Alt+K skips)"
           ],
           "default": "Skip automatically"
+        },
+        {
+          "key": "per_category",
+          "title": "Per category, overrides the above (e.g. \"intro=ask outro=skip filler=off\")",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "key": "mute",
+          "title": "Mute segments that are marked for muting instead of skipping",
+          "type": "toggle",
+          "default": "true"
         },
         {
           "key": "chapters",
@@ -1798,7 +1828,7 @@
         },
         {
           "key": "undo",
-          "title": "Undo the last skip (Alt+Shift+K)",
+          "title": "Undo the last skip or unmute (Alt+Shift+K)",
           "type": "action",
           "label": "Undo"
         }
@@ -1814,14 +1844,20 @@
         "skip"
       ],
       "screenshots": [
+        "sponsorblock-player",
         "sponsorblock-settings"
       ],
       "changelog": [
         {
+          "version": "1.2.0",
+          "date": "2026-10-19",
+          "notes": "Per-category skip / ask / off (\"intro=ask outro=skip filler=off\"). Segments marked for muting are muted instead of skipped (Alt+Shift+K unmutes), shown as \"(muted)\" chapters. README: undo is Alt+Shift+K with no time limit; new screenshots.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-sponsorblock-v1.2.0/sponsorblock-1.2.0.zip"
+        },
+        {
           "version": "1.1.0",
           "date": "2026-10-15",
-          "notes": "Skip notice with undo (Alt+Shift+K), works for files downloaded by the YouTube plugin (\"[video id]\" in the name).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-sponsorblock-v1.1.0/sponsorblock-1.1.0.zip"
+          "notes": "Skip notice with undo (Alt+Shift+K), works for files downloaded by the YouTube plugin (\"[video id]\" in the name)."
         },
         {
           "version": "1.0.1",

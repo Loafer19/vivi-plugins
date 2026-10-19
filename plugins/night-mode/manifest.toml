@@ -1,7 +1,7 @@
 id = "night-mode"
 name = "Night Mode"
-version = "1.0.3"
-description = "Compresses loud scenes and lifts quiet dialogue so films stay understandable at low volume (mpv dynaudnorm / loudnorm). Toggle with Alt+N."
+version = "1.1.0"
+description = "Compresses loud scenes and lifts quiet dialogue so films stay understandable at low volume (mpv dynaudnorm / loudnorm). Toggle with Alt+N, turn it on by schedule (e.g. 22:00-07:00) or only for videos."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "night-mode.lua"
@@ -13,7 +13,7 @@ issue = 60
 
 [[settings]]
 key = "active"
-title = "Night mode on"
+title = "Night mode on (at startup when no schedule is set)"
 type = "toggle"
 default = "true"
 
@@ -23,3 +23,15 @@ title = "Strength"
 type = "choice"
 options = ["Medium", "Light", "Strong", "Loudness (EBU R128)"]
 default = "Medium"
+
+[[settings]]
+key = "schedule"
+title = "Schedule: on from-to, e.g. \"22:00-07:00\" (empty: off)"
+type = "text"
+default = ""
+
+[[settings]]
+key = "only_video"
+title = "Only for videos (leave music and audio-only files untouched)"
+type = "toggle"
+default = "false"
