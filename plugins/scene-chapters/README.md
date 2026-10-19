@@ -1,9 +1,38 @@
-# Scene Chapters & Thumbnails
+# Scene Chapters
 
-For local videos without chapters, finds scene changes with ffmpeg (`select='gt(scene,T)'` on a 160 px wide copy, no audio) in the background and adds them as chapters (`Scene 1`, `Scene 2`, …, at least *Minimum chapter length* apart). For every chapter (real or detected) it saves a 320 px JPEG thumbnail. Implements #62.
+Adds chapters at scene changes to local videos that have none: ffmpeg finds the cuts in the background and they become `Scene 1`, `Scene 2`, … in the seek bar and the side panel's Chapters tab. Implements #62.
 
-- `Alt+J` or *Detect scenes now*; or turn on *Detect scenes automatically*.
-- Cache: `~/.local/share/vivi/plugin-data/scene-chapters/<key>/` with `scenes.json` and `chapter-<n>.jpg`; the key is derived from the path, size and modification time, so a changed file is analysed again. *Forget cached scenes* deletes it.
-- Needs `ffmpeg` in `PATH`; without it a toast says so.
+Install: Vivi → Settings → Extensions → Browse → **Install**. Requires Vivi 0.9.0+ and `ffmpeg` (see below).
 
-The thumbnails are written to the cache for the chapter list; showing them inside Vivi's Chapters panel needs app UI (tracked in #62). Binding names: `script-binding scene_chapters/detect`.
+![Scene chapters merged with SponsorBlock's Outro chapters; pictures by Chapter Thumbnails (Big Buck Bunny, © Blender Foundation, CC BY 3.0)](../../docs/screenshots/plugins/scene-chapters-player.png)
+
+## Use
+
+- `Alt+J`, *Video → Detect scene chapters*, the command palette (`Ctrl+K`) or *Detect* in the settings. Press `Alt+J` again while it runs to cancel.
+- *Detect scenes automatically*: every local video without chapters is scanned one second after it opens (quietly; a toast tells how many chapters were made).
+- *Forget* removes the scene chapters from the playing video and deletes its cached scan.
+
+Messages are Vivi toasts, never text over the video.
+
+## How it works
+
+- ffmpeg compares frames (`select='gt(scene,T)'` on a 160 px wide copy, no audio), at the lowest CPU and disk priority (`nice` / `ionice`), so playback does not stutter.
+- *Scan*: **Every frame** (default) finds every cut. **Keyframes only** decodes just the keyframes: about 10× faster (a 10-minute 720p60 film: 24 s → 2 s), and encoders put a keyframe at most cuts, so it finds fewer but real ones. Good for long films and automatic mode.
+- *Threshold* (0.1–0.9): lower finds more cuts. *Minimum chapter length* (default 30 s) keeps chapters apart, from the start and from the end, so there is no 5-second last chapter.
+- Videos with chapters of their own are left alone. Chapters other plugins add are kept and merged in time order: SponsorBlock's segments on a downloaded YouTube video (`Title [id].mp4`) end up between the scenes, whether they arrive before or after the scan.
+
+## Chapter pictures
+
+The pictures in the Chapters tab come from [Chapter Thumbnails](../chapter-thumbnails/README.md), which redoes them whenever chapters are added or moved. This plugin no longer makes its own (1.0.x did, a second copy of the same pictures); old ones are deleted when a file is opened again.
+
+## ffmpeg
+
+Your `ffmpeg` in `PATH` first; otherwise Vivi's media ffmpeg build if Chapter Thumbnails or Subtitle Auto-Sync already downloaded it (`plugin-data/shared/ffmpeg-media`). This plugin downloads nothing; without either, the toast says so.
+
+## Cache
+
+`~/.local/share/vivi/plugin-data/scene-chapters/<key>/scenes.json` (key = hash of path, size and modification time, so a changed file is scanned again). It keeps every cut found with the threshold and scan used, so changing the minimum length applies at once without a new scan; another threshold scans again.
+
+Script messages: `script-message-to scene_chapters detect` / `clear`; key binding name `scene_chapters/detect`.
+
+![Settings](../../docs/screenshots/plugins/scene-chapters-settings.png)

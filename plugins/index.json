@@ -1607,9 +1607,9 @@
     },
     {
       "id": "scene-chapters",
-      "name": "Scene Chapters & Thumbnails",
-      "description": "Creates chapters at scene changes for videos without chapters (ffmpeg scene detection, in the background) and saves a thumbnail for every chapter. Results are cached on disk.",
-      "version": "1.0.1",
+      "name": "Scene Chapters",
+      "description": "Creates chapters at scene changes for local videos without chapters (ffmpeg scene detection in the background, merged with SponsorBlock chapters). Chapter pictures come from Chapter Thumbnails. Results are cached per file.",
+      "version": "1.1.0",
       "author": "Vivi",
       "icon": "chapters",
       "lucide": "clapperboard",
@@ -1622,15 +1622,25 @@
         "subprocess"
       ],
       "source": "plugins/scene-chapters",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scene-chapters-v1.0.1/scene-chapters-1.0.1.zip",
-      "sha256": "5424bf21fa349aad2e64ceb43e54577675f1e12e76c9a4472501c2bb7eddc91a",
-      "size": 8633,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scene-chapters-v1.1.0/scene-chapters-1.1.0.zip",
+      "sha256": "e54f6d7a408c912193690ddc01c1f8a7afe75176675abf733c58c74acf555122",
+      "size": 18459,
       "settings": [
         {
           "key": "auto",
           "title": "Detect scenes automatically for videos without chapters",
           "type": "toggle",
           "default": "false"
+        },
+        {
+          "key": "scan",
+          "title": "Scan (Keyframes only: about 10× faster, finds fewer cuts)",
+          "type": "choice",
+          "options": [
+            "Every frame",
+            "Keyframes only"
+          ],
+          "default": "Every frame"
         },
         {
           "key": "threshold",
@@ -1645,20 +1655,16 @@
           "default": "30"
         },
         {
-          "key": "thumbnails",
-          "title": "Save chapter thumbnails",
-          "type": "toggle",
-          "default": "true"
-        },
-        {
           "key": "detect",
-          "title": "Detect scenes now (Alt+J)",
-          "type": "action"
+          "title": "Detect scenes now (Alt+J; again to cancel)",
+          "type": "action",
+          "label": "Detect"
         },
         {
           "key": "clear",
-          "title": "Forget cached scenes for this file",
-          "type": "action"
+          "title": "Remove the scene chapters and forget this file's scan",
+          "type": "action",
+          "label": "Forget"
         }
       ],
       "issue": 62,
@@ -1668,25 +1674,32 @@
       ],
       "tags": [
         "chapters",
-        "thumbnails",
+        "scenes",
         "ffmpeg"
       ],
       "screenshots": [
+        "scene-chapters-player",
         "scene-chapters-settings"
       ],
       "changelog": [
         {
+          "version": "1.1.0",
+          "date": "2026-10-19",
+          "notes": "Keyframes-only scan (about 10× faster), runs at the lowest CPU / disk priority, Alt+J again cancels. Scenes are merged with chapters added by other plugins (SponsorBlock) instead of replacing them or being refused; videos with their own chapters are left alone. No chapter shorter than the minimum at the end; times are right for files that do not start at 0; changing the minimum length applies at once from the cache. Uses Vivi's media ffmpeg when another plugin downloaded it. Chapter pictures are left to Chapter Thumbnails (no second copy; old ones are deleted). Vivi toasts only, no mpv OSD text. Forget also removes the scene chapters. Renamed to Scene Chapters; README rewritten; screenshots.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scene-chapters-v1.1.0/scene-chapters-1.1.0.zip"
+        },
+        {
           "version": "1.0.1",
           "date": "2026-10-15",
-          "notes": "Requires Vivi 0.9.0 (managed ffmpeg support).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scene-chapters-v1.0.1/scene-chapters-1.0.1.zip"
+          "notes": "Requires Vivi 0.9.0 (the plugin package system)."
         },
         {
           "version": "1.0.0",
           "date": "2026-10-15",
           "notes": "First release."
         }
-      ]
+      ],
+      "size_note": "uses ffmpeg"
     },
     {
       "id": "scrobbler",

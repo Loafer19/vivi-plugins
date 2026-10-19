@@ -117,7 +117,12 @@ function M.load(script, opts)
     commandv = function(...) M.calls[#M.calls + 1] = { ... } end,
     command = function(c) M.calls[#M.calls + 1] = { c } end,
     command_native = function(t) M.calls[#M.calls + 1] = t return { status = 1, stdout = "", stderr = "" } end,
-    command_native_async = function(t, cb) M.calls[#M.calls + 1] = t if cb then cb(true, { status = 1, stdout = "", stderr = "" }) end end,
+    command_native_async = function(t, cb)
+      M.calls[#M.calls + 1] = t
+      if M.async then return M.async(t, cb) end -- set_async: the test answers later
+      if cb then cb(true, { status = 1, stdout = "", stderr = "" }) end
+    end,
+    abort_async_command = function() end,
     osd_message = function(m) M.osd[#M.osd + 1] = m end,
     register_event = function() end,
     register_script_message = function(n, f) M.messages[n] = f end,
@@ -152,6 +157,8 @@ function M.load(script, opts)
 end
 
 M.json_encode, M.json_decode = enc, dec
+-- set_async(function(t, cb) … return id end): async commands go there instead of failing at once.
+function M.set_async(f) M.async = f end
 
 local failed = 0
 function M.eq(got, want, what)
