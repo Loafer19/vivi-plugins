@@ -2,7 +2,12 @@
 # so editing it needs no new plugin version.
 categories = ["Music", "Integrations"]
 tags = ["lastfm", "listenbrainz", "scrobbling"]
-screenshots = ["scrobbler-settings"]
+screenshots = ["scrobbler-settings", "scrobbler-love", "scrobbler-filters"]
+
+[[changelog]]
+version = "1.2.0"
+date = "2026-10-19"
+notes = "Love the playing track (Alt+L) on Last.fm and ListenBrainz; skip podcasts, audiobooks (.m4b) and chosen folders; repeat one counts every play; Connect Last.fm finishes by itself once you allow access, plus Disconnect; Status checks the ListenBrainz token and says why a file is not scrobbled; streams described by music packages (YouTube Music) are scrobbled; album artist, track number and MusicBrainz release / artist ids are sent. Privacy: the Last.fm session key moves out of Vivi's config into a private 0600 file, tokens no longer appear on curl's command line or in mpv's log, queue files are 0600, and the ListenBrainz token is only sent over https. Fixes: a wrong Last.fm secret or API key no longer deletes the offline queue, one rejected listen no longer drops a whole batch, messages are Vivi toasts instead of mpv's hidden OSD, the Last.fm session survives restarts on Vivi 0.9.0, MD5 works on Lua 5.1 builds without the bit library, and the needless filesystem permission is gone."
 
 [[changelog]]
 version = "1.1.0"
@@ -12,7 +17,7 @@ notes = "Last.fm scrobbling and now playing (your API key + browser authorisatio
 [[changelog]]
 version = "1.0.1"
 date = "2026-10-15"
-notes = "Requires Vivi 0.9.0 (managed ffmpeg support)."
+notes = "Requires Vivi 0.9.0 (the plugin package system)."
 
 [[changelog]]
 version = "1.0.0"

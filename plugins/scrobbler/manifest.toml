@@ -1,14 +1,14 @@
 id = "scrobbler"
 name = "Scrobbler (Last.fm & ListenBrainz)"
-version = "1.1.0"
-description = "Sends what you listen to to Last.fm and/or ListenBrainz: now playing when a track starts and a scrobble after half the track or 4 minutes. Scrobbles made offline are queued and sent later. Needs your ListenBrainz user token, or your Last.fm API key + shared secret (free) and one browser authorisation."
+version = "1.2.0"
+description = "Sends what you listen to to Last.fm and/or ListenBrainz: now playing when a track starts and a scrobble after half the track or 4 minutes. Offline scrobbles are queued and sent later; love the playing track with Alt+L; podcasts, audiobooks and chosen folders are skipped. Needs your ListenBrainz user token, or your Last.fm API key + shared secret (free) and one browser authorisation."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "scrobbler.lua"
 min_vivi = "0.9.0"
 icon = "scrobble"
 lucide = "radio-tower"
-permissions = ["network", "filesystem", "subprocess"]
+permissions = ["network", "subprocess"]
 issue = 77
 default_enabled = true
 
@@ -38,13 +38,19 @@ label = "Connect Last.fm"
 
 [[settings]]
 key = "lastfm_finish"
-title = "After allowing access in the browser"
+title = "Allowed access but not connected yet?"
 type = "action"
 label = "Finish connecting"
 
 [[settings]]
+key = "lastfm_disconnect"
+title = "Forget the Last.fm session"
+type = "action"
+label = "Disconnect"
+
+[[settings]]
 key = "lastfm_session"
-title = "Last.fm session key (filled in by Connect)"
+title = "Last.fm session key (optional, instead of Connect)"
 type = "secret"
 default = ""
 
@@ -61,17 +67,37 @@ type = "toggle"
 default = "true"
 
 [[settings]]
+key = "skip_genres"
+title = "Skip these genres (Audiobook also skips .m4b)"
+type = "text"
+default = "Podcast, Audiobook, Speech, Spoken Word"
+
+[[settings]]
+key = "skip_folders"
+title = "Skip files in these folders (comma-separated)"
+type = "text"
+default = ""
+
+[[settings]]
 key = "api"
-title = "API server"
+title = "ListenBrainz API server (https)"
 type = "text"
 default = "https://api.listenbrainz.org"
 
 [[settings]]
-key = "flush"
-title = "Send queued listens now"
+key = "love"
+title = "Love the playing track (Alt+L)"
 type = "action"
+label = "Love"
+
+[[settings]]
+key = "flush"
+title = "Send queued scrobbles now"
+type = "action"
+label = "Send now"
 
 [[settings]]
 key = "status"
 title = "Show scrobbler status"
 type = "action"
+label = "Status"

@@ -1806,8 +1806,8 @@
     {
       "id": "scrobbler",
       "name": "Scrobbler (Last.fm & ListenBrainz)",
-      "description": "Sends what you listen to to Last.fm and/or ListenBrainz: now playing when a track starts and a scrobble after half the track or 4 minutes. Scrobbles made offline are queued and sent later. Needs your ListenBrainz user token, or your Last.fm API key + shared secret (free) and one browser authorisation.",
-      "version": "1.1.0",
+      "description": "Sends what you listen to to Last.fm and/or ListenBrainz: now playing when a track starts and a scrobble after half the track or 4 minutes. Offline scrobbles are queued and sent later; love the playing track with Alt+L; podcasts, audiobooks and chosen folders are skipped. Needs your ListenBrainz user token, or your Last.fm API key + shared secret (free) and one browser authorisation.",
+      "version": "1.2.0",
       "author": "Vivi",
       "icon": "scrobble",
       "lucide": "radio-tower",
@@ -1817,13 +1817,12 @@
       "min_vivi": "0.9.0",
       "permissions": [
         "network",
-        "filesystem",
         "subprocess"
       ],
       "source": "plugins/scrobbler",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scrobbler-v1.1.0/scrobbler-1.1.0.zip",
-      "sha256": "cd03edbaef9355df13df7f3d650eb07e1f0f5abd2e82088c99b3f30e4460a2ec",
-      "size": 24111,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scrobbler-v1.2.0/scrobbler-1.2.0.zip",
+      "sha256": "1ffc0bfd56435bb1cbcc6628d682b1434aa9413ec769bea7997c8c4e4f64fd3e",
+      "size": 45913,
       "settings": [
         {
           "key": "token",
@@ -1851,13 +1850,19 @@
         },
         {
           "key": "lastfm_finish",
-          "title": "After allowing access in the browser",
+          "title": "Allowed access but not connected yet?",
           "type": "action",
           "label": "Finish connecting"
         },
         {
+          "key": "lastfm_disconnect",
+          "title": "Forget the Last.fm session",
+          "type": "action",
+          "label": "Disconnect"
+        },
+        {
           "key": "lastfm_session",
-          "title": "Last.fm session key (filled in by Connect)",
+          "title": "Last.fm session key (optional, instead of Connect)",
           "type": "secret",
           "default": ""
         },
@@ -1874,20 +1879,40 @@
           "default": "true"
         },
         {
+          "key": "skip_genres",
+          "title": "Skip these genres (Audiobook also skips .m4b)",
+          "type": "text",
+          "default": "Podcast, Audiobook, Speech, Spoken Word"
+        },
+        {
+          "key": "skip_folders",
+          "title": "Skip files in these folders (comma-separated)",
+          "type": "text",
+          "default": ""
+        },
+        {
           "key": "api",
-          "title": "API server",
+          "title": "ListenBrainz API server (https)",
           "type": "text",
           "default": "https://api.listenbrainz.org"
         },
         {
+          "key": "love",
+          "title": "Love the playing track (Alt+L)",
+          "type": "action",
+          "label": "Love"
+        },
+        {
           "key": "flush",
-          "title": "Send queued listens now",
-          "type": "action"
+          "title": "Send queued scrobbles now",
+          "type": "action",
+          "label": "Send now"
         },
         {
           "key": "status",
           "title": "Show scrobbler status",
-          "type": "action"
+          "type": "action",
+          "label": "Status"
         }
       ],
       "issue": 77,
@@ -1901,19 +1926,26 @@
         "scrobbling"
       ],
       "screenshots": [
-        "scrobbler-settings"
+        "scrobbler-settings",
+        "scrobbler-love",
+        "scrobbler-filters"
       ],
       "changelog": [
         {
+          "version": "1.2.0",
+          "date": "2026-10-19",
+          "notes": "Love the playing track (Alt+L) on Last.fm and ListenBrainz; skip podcasts, audiobooks (.m4b) and chosen folders; repeat one counts every play; Connect Last.fm finishes by itself once you allow access, plus Disconnect; Status checks the ListenBrainz token and says why a file is not scrobbled; streams described by music packages (YouTube Music) are scrobbled; album artist, track number and MusicBrainz release / artist ids are sent. Privacy: the Last.fm session key moves out of Vivi's config into a private 0600 file, tokens no longer appear on curl's command line or in mpv's log, queue files are 0600, and the ListenBrainz token is only sent over https. Fixes: a wrong Last.fm secret or API key no longer deletes the offline queue, one rejected listen no longer drops a whole batch, messages are Vivi toasts instead of mpv's hidden OSD, the Last.fm session survives restarts on Vivi 0.9.0, MD5 works on Lua 5.1 builds without the bit library, and the needless filesystem permission is gone.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scrobbler-v1.2.0/scrobbler-1.2.0.zip"
+        },
+        {
           "version": "1.1.0",
           "date": "2026-10-15",
-          "notes": "Last.fm scrobbling and now playing (your API key + browser authorisation), next to ListenBrainz; separate offline queue per service.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scrobbler-v1.1.0/scrobbler-1.1.0.zip"
+          "notes": "Last.fm scrobbling and now playing (your API key + browser authorisation), next to ListenBrainz; separate offline queue per service."
         },
         {
           "version": "1.0.1",
           "date": "2026-10-15",
-          "notes": "Requires Vivi 0.9.0 (managed ffmpeg support)."
+          "notes": "Requires Vivi 0.9.0 (the plugin package system)."
         },
         {
           "version": "1.0.0",
