@@ -1022,6 +1022,8 @@ mod tests {
         .differs(&a, t));
     }
 
+    // Unix paths (Vivi's control socket is Unix-only; "/c" is not absolute on Windows).
+    #[cfg(unix)]
     #[test]
     fn control_socket_path() {
         use std::ffi::OsString;
