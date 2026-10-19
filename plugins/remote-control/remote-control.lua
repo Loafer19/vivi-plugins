@@ -141,8 +141,16 @@ local function start()
   job = me
 end
 
--- "Show QR code": Vivi's QR dialog with the pairing link, plus a toast for Vivi versions
--- without the dialog.
+-- Vivi 0.11.0+ (has the QR dialog): it sets the script-opt vivi-sub-offsets (0.11.0) or
+-- publishes user-data/vivi/shuffle (after 0.12.0). Older versions have neither.
+local function has_qr_dialog()
+  if mp.get_property_native("user-data/vivi/shuffle") ~= nil then return true end
+  local so = mp.get_property_native("script-opts") or {}
+  return so["vivi-sub-offsets"] ~= nil
+end
+
+-- "Show QR code": Vivi's QR dialog with the pairing link; Vivi versions without the
+-- dialog get the address and PIN as a toast instead.
 local function show_address()
   local url = mp.get_property_native("user-data/remote/url") or ""
   local pair = mp.get_property_native("user-data/remote/pair") or ""
@@ -155,7 +163,7 @@ local function show_address()
     caption = caption .. ". Reachable from any network: keep the PIN secret"
   end
   mp.commandv("script-message", "vivi-qr", "Remote Control", pair, caption)
-  toast("Remote Control: " .. url, 10)
+  if not has_qr_dialog() then toast("Remote Control: " .. url, 10) end
 end
 
 options.read_options(o, "remote-control", function()
@@ -175,6 +183,6 @@ mp.register_event("shutdown", stop)
 
 if VIVI_TEST then
   return { valid_port = valid_port, clean_pin = clean_pin, truthy = truthy, helper_args = helper_args,
-           random_pin = random_pin, start = start, show_address = show_address, o = o }
+           random_pin = random_pin, start = start, show_address = show_address, has_qr_dialog = has_qr_dialog, o = o }
 end
 start()

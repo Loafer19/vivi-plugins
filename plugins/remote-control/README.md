@@ -10,7 +10,9 @@ speed, audio and subtitle track pickers, chapters list (tap to jump), the queue 
 play, ✕ to remove), library search (play now, play next or add to the queue), fullscreen
 toggle, *Open URL* (play now, play next or add to the queue; YouTube links work when yt-dlp
 is installed) and a **sleep timer** (15–90 minutes or the end of the current file; Vivi
-pauses and shows a toast, the page counts down).
+pauses and shows a toast, the page counts down), plus **repeat** (off → queue → this file)
+and **shuffle** on Vivi versions whose buttons follow them (after 0.12.0; hidden on older
+ones, where Vivi's own repeat / shuffle buttons would stay out of date).
 Changes show up live (a Server-Sent-Events stream; the page falls back to polling).
 *Add to Home Screen* installs it like an app (web app manifest + icon).
 
@@ -18,7 +20,8 @@ Changes show up live (a Server-Sent-Events stream; the page falls back to pollin
 
 1. Turn the plugin on (Settings → Extensions). A random 6-digit PIN is made on first start.
 2. *Pair a phone → Show QR code* opens a QR code (Vivi 0.11.0+; older versions show the
-   address and PIN as a toast). Scan it with the phone camera: the link carries the PIN
+   address and PIN as a toast instead). Settings → Controls → Remotes → *Phone remote
+   control* in newer Vivi installs, enables or opens this extension. Scan it with the phone camera: the link carries the PIN
    after `#`, which the browser keeps to itself, and the page remembers it.
 3. Or open `http://<this computer's LAN IP>:8765` and type the PIN.
 
@@ -67,13 +70,18 @@ are extracted with mpv's `screenshot-to-file … video`; `cover/folder/front.jpg
 next to the file are used otherwise. The QR dialog is Vivi's `script-message vivi-qr
 <title> <text> [caption]`, fullscreen is `script-message vivi-fullscreen toggle`
 (both Vivi 0.11.0+). *Play next* is mpv's `loadfile … insert-next-play` (mpv 0.38+; older
-libmpv: append, then `playlist-move`). The sleep timer runs in the helper.
+libmpv: append, then `playlist-move`). The sleep timer runs in the helper. Repeat sets
+mpv's `loop-file` / `loop-playlist`; shuffle writes `user-data/vivi/shuffle` (`yes` / `no`),
+which Vivi turns into `playlist-shuffle` / `playlist-unshuffle` so its own button follows.
+The page offers both only when Vivi publishes that property.
 
 API (all under `/api/`, header `X-Vivi-Pin`): `GET state`, `GET events` (SSE),
 `GET art`, `GET library?q=&kind=audio|video`, `POST cmd` with
-`{"cmd": "pause|stop|seek|seek-rel|volume|mute|speed|next|prev|play-index|remove|chapter|audio|sub|fullscreen|open|sleep", "value": n}`
+`{"cmd": "pause|stop|seek|seek-rel|volume|mute|speed|next|prev|play-index|remove|chapter|audio|sub|fullscreen|open|sleep|repeat|shuffle", "value": n}`
 (`open` takes `"target"` and `"append"` or `"next"`; `sleep` takes minutes, 0 = off,
--1 = end of the current file). `state` has `sleep` (seconds left) and `sleep_eof`.
+-1 = end of the current file; `repeat` 0 = off, 1 = this file, 2 = the queue; `shuffle`
+0 / 1). `state` has `sleep` (seconds left), `sleep_eof`, `repeat` (`off` / `one` / `all`),
+`shuffle` and `loop_sync` (Vivi follows repeat / shuffle).
 
 Needs Vivi 0.9.1+ (package helpers, `<id>-pkgdir`, `vivi-setting`); the QR dialog and the
 fullscreen button need 0.11.0+.

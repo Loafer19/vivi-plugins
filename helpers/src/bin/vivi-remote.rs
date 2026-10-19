@@ -20,8 +20,8 @@ use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use vivi_helpers::remote::{
-    lan_ip, parse_chapters, parse_queue, parse_tracks, serve, vivi_socket, Cmd, Place, Shared,
-    Snapshot,
+    lan_ip, parse_chapters, parse_queue, parse_tracks, repeat_mode, serve, vivi_socket, Cmd, Place,
+    Shared, Snapshot, SHUFFLE_PROP,
 };
 use vivi_helpers::{args, Mpv};
 
@@ -35,7 +35,12 @@ fn snapshot(m: &mut Mpv) -> io::Result<Snapshot> {
         title = m.get_str("media-title")?;
     }
     let speed = m.get_f64("speed")?;
+    let shuffle = m.get_str(SHUFFLE_PROP)?;
+    let repeat = repeat_mode(&m.get_str("loop-file")?, &m.get_str("loop-playlist")?).to_string();
     Ok(Snapshot {
+        repeat,
+        shuffle: shuffle == "yes",
+        loop_sync: !shuffle.is_empty(),
         title,
         artist: m.get_str("metadata/by-key/artist")?,
         album: m.get_str("metadata/by-key/album")?,
@@ -167,6 +172,16 @@ fn apply(m: &mut Mpv, c: Cmd, sleep: &mut Sleep) -> io::Result<()> {
     }
     let a = c.mpv_args();
     let a: Vec<&str> = a.iter().map(String::as_str).collect();
+    if let Cmd::Repeat(_) | Cmd::Shuffle(_) = c {
+        // Older Vivi does not follow these (its buttons would be wrong): the page hides them.
+        if m.get_str(SHUFFLE_PROP)?.is_empty() {
+            return Ok(());
+        }
+        if let Cmd::Repeat(_) = c {
+            ok(m.cmd(&a[..3]))?;
+            return ok(m.cmd(&["set", a[3], a[4]]));
+        }
+    }
     match (m.cmd(&a), &c) {
         // mpv older than 0.38 has no insert-next: append, then move it after the current entry.
         (Err(e), Cmd::Open(t, Place::Next)) if e.kind() == io::ErrorKind::Other => {

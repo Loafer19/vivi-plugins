@@ -47,6 +47,24 @@ end
 T.ok(qr, "vivi-qr sent")
 T.eq(qr[4], "http://192.168.1.5:8765/#pin=123456", "QR carries the pairing link")
 T.ok(qr[5]:find("enter PIN 123456", 1, true), "caption has the PIN")
+local toasted = false
+for _, c in ipairs(T.calls) do if c[2] == "vivi-toast" then toasted = true end end
+T.ok(toasted, "older Vivi (no QR dialog markers): address toast too")
+-- Vivi 0.11.0+ (vivi-sub-offsets script-opt) or later (user-data/vivi/shuffle): no toast.
+for _, mark in ipairs({ "opts", "shuffle" }) do
+  T.props["script-opts"] = mark == "opts" and { ["vivi-sub-offsets"] = "1" } or {}
+  T.props["user-data/vivi/shuffle"] = mark == "shuffle" and "no" or nil
+  T.calls = {}
+  P.show_address()
+  local t, q = false, false
+  for _, c in ipairs(T.calls) do
+    if c[2] == "vivi-toast" then t = true end
+    if c[2] == "vivi-qr" then q = true end
+  end
+  T.ok(q and not t, "QR dialog without the extra toast (" .. mark .. ")")
+end
+T.props["script-opts"] = nil
+T.props["user-data/vivi/shuffle"] = nil
 
 -- A too short PIN is replaced.
 P.o.pin = "12"

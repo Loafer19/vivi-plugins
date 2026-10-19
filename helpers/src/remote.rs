@@ -87,6 +87,11 @@ pub struct Snapshot {
     pub sleep: f64,
     /// Sleep timer set to "end of this file".
     pub sleep_eof: bool,
+    /// `off`, `one` (loop-file) or `all` (loop-playlist).
+    pub repeat: String,
+    pub shuffle: bool,
+    /// Vivi follows repeat / shuffle changes (it publishes `user-data/vivi/shuffle`).
+    pub loop_sync: bool,
 }
 
 fn tracks_json(t: &[Track]) -> Value {
@@ -108,6 +113,7 @@ impl Snapshot {
             "chapter": self.chapter, "audio": tracks_json(&self.audio), "subs": tracks_json(&self.subs),
             "has_video": self.has_video, "library": self.library,
             "sleep": self.sleep.max(0.0).round(), "sleep_eof": self.sleep_eof,
+            "repeat": self.repeat, "shuffle": self.shuffle, "loop_sync": self.loop_sync,
         })
     }
 
@@ -234,6 +240,25 @@ pub enum Cmd {
     /// Sleep timer in minutes (0 = off, -1 = at the end of the current file). Handled by
     /// the helper, not mpv.
     Sleep(f64),
+    /// 0 = off, 1 = repeat the file, 2 = repeat the queue.
+    Repeat(i64),
+    /// Ask Vivi to shuffle (true) or unshuffle the queue.
+    Shuffle(bool),
+}
+
+/// Vivi's shuffle state and request (Vivi after 0.12.0, `src/loopsync.rs` in Loafer19/vivi).
+pub const SHUFFLE_PROP: &str = "user-data/vivi/shuffle";
+
+/// `loop-file` / `loop-playlist` values → `off` / `one` / `all`.
+pub fn repeat_mode(loop_file: &str, loop_playlist: &str) -> &'static str {
+    let on = |v: &str| !v.is_empty() && v != "no" && v != "0" && v != "false";
+    if on(loop_file) {
+        "one"
+    } else if on(loop_playlist) {
+        "all"
+    } else {
+        "off"
+    }
 }
 
 /// Where [`Cmd::Open`] puts the file.
@@ -308,6 +333,8 @@ impl Cmd {
                 Self::Open(t.to_string(), place)
             }
             "sleep" if n == -1.0 || (0.0..=24.0 * 60.0).contains(&n) => Self::Sleep(n),
+            "repeat" if (0..=2).contains(&i) && n == i as f64 => Self::Repeat(i),
+            "shuffle" => Self::Shuffle(n != 0.0),
             _ => return None,
         })
     }
@@ -339,6 +366,16 @@ impl Cmd {
             // mpv 0.38+; the helper falls back to append + playlist-move on older ones.
             Self::Open(t, Place::Next) => s(&["loadfile", t, "insert-next-play"]),
             Self::Sleep(_) => Vec::new(),
+            Self::Repeat(m) => {
+                let (file, list) = match m {
+                    1 => ("inf", "no"),
+                    2 => ("no", "inf"),
+                    _ => ("no", "no"),
+                };
+                // Two properties: the helper sends the second one itself (see apply).
+                s(&["set", "loop-file", file, "loop-playlist", list])
+            }
+            Self::Shuffle(on) => s(&["set", SHUFFLE_PROP, if *on { "yes" } else { "no" }]),
         }
     }
 }
@@ -848,6 +885,25 @@ mod tests {
         assert_eq!(c(r#"{"cmd":"sleep","value":-5}"#), None);
         assert_eq!(c(r#"{"cmd":"sleep","value":100000}"#), None);
         assert!(Cmd::Sleep(5.0).mpv_args().is_empty());
+        assert_eq!(c(r#"{"cmd":"repeat","value":2}"#), Some(Cmd::Repeat(2)));
+        assert_eq!(c(r#"{"cmd":"repeat","value":3}"#), None);
+        assert_eq!(c(r#"{"cmd":"repeat","value":1.5}"#), None);
+        assert_eq!(
+            Cmd::Repeat(1).mpv_args(),
+            ["set", "loop-file", "inf", "loop-playlist", "no"]
+        );
+        assert_eq!(
+            c(r#"{"cmd":"shuffle","value":1}"#),
+            Some(Cmd::Shuffle(true))
+        );
+        assert_eq!(
+            Cmd::Shuffle(false).mpv_args(),
+            ["set", "user-data/vivi/shuffle", "no"]
+        );
+        assert_eq!(repeat_mode("inf", "no"), "one");
+        assert_eq!(repeat_mode("no", "inf"), "all");
+        assert_eq!(repeat_mode("no", "no"), "off");
+        assert_eq!(repeat_mode("", ""), "off");
         for bad in [
             "",
             "lavfi://sine",
