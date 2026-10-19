@@ -1,7 +1,7 @@
 id = "ab-loop"
 name = "A-B Loop & Frame Step"
-version = "1.0.2"
-description = "Set and clear A-B loop points from the keyboard, nudge them by a frame, step frame by frame while paused and see the loop on an on-screen bar."
+version = "1.0.3"
+description = "Deprecated: built into Vivi since 0.13.0 (same keys, loop on the seek bar). Set and clear A-B loop points from the keyboard, nudge them by a frame, step frame by frame while paused and see the loop on an on-screen bar."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "ab-loop.lua"
@@ -10,6 +10,14 @@ icon = "loop"
 lucide = "repeat"
 permissions = []
 issue = 59
+
+# Replaced by the core A-B loop keys (src/abloop.rs in Loafer19/vivi). Copied into
+# plugins/index.json; Vivi hides it from Browse unless installed and offers the replacement.
+[deprecated]
+since = "0.13.0"
+message = "Vivi 0.13.0 has A-B loop and frame stepping built in, with the same keys: Alt+A / Alt+B set the loop points, Alt+C clears, Alt+Left / Alt+Right move the last point by a frame, , and . step a frame while paused. The loop shows on the seek bar. You can uninstall the plugin."
+replacement = "builtin:ab-loop"
+action = "Show shortcuts"
 
 [[settings]]
 key = "markers"

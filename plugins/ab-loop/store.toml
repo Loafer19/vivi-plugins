@@ -5,9 +5,19 @@ tags = ["loop", "frame-step", "practice"]
 screenshots = ["ab-loop-player", "ab-loop-settings"]
 
 [[changelog]]
+version = "1.0.3"
+date = "2026-10-19"
+notes = "README: requires Vivi 0.9.0, matching the manifest."
+
+[[changelog]]
+version = "1.0.3"
+date = "2026-10-19"
+notes = "Deprecated: Vivi 0.13.0 has A-B loop and frame stepping built in with the same keys (Alt+A / Alt+B / Alt+C, Alt+Left / Alt+Right, , / .), drawn on the seek bar. On such Vivi the script stays quiet (no OSD bar, no second key handling). README now says Vivi 0.9.0+ like the manifest."
+
+[[changelog]]
 version = "1.0.2"
 date = "2026-10-15"
-notes = "Requires Vivi 0.9.0 (managed ffmpeg support)."
+notes = "Requires Vivi 0.9.0 (the plugin package system); the script is unchanged."
 
 [[changelog]]
 version = "1.0.1"

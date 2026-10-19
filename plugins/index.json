@@ -487,8 +487,8 @@
     {
       "id": "ab-loop",
       "name": "A-B Loop & Frame Step",
-      "description": "Set and clear A-B loop points from the keyboard, nudge them by a frame, step frame by frame while paused and see the loop on an on-screen bar.",
-      "version": "1.0.2",
+      "description": "Deprecated: built into Vivi since 0.13.0 (same keys, loop on the seek bar). Set and clear A-B loop points from the keyboard, nudge them by a frame, step frame by frame while paused and see the loop on an on-screen bar.",
+      "version": "1.0.3",
       "author": "Vivi",
       "icon": "loop",
       "lucide": "repeat",
@@ -498,9 +498,9 @@
       "min_vivi": "0.9.0",
       "permissions": [],
       "source": "plugins/ab-loop",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-ab-loop-v1.0.2/ab-loop-1.0.2.zip",
-      "sha256": "da33a27e46f3fb85981a56c58b03f79a77dd68ee0cfec65b08056e9c42455539",
-      "size": 5816,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-ab-loop-v1.0.3/ab-loop-1.0.3.zip",
+      "sha256": "7f9f14addf441786ea7a27ddc653e5593a845ee944f0eb76a034e2f57fd1b8a6",
+      "size": 8155,
       "settings": [
         {
           "key": "markers",
@@ -542,10 +542,21 @@
       ],
       "changelog": [
         {
+          "version": "1.0.3",
+          "date": "2026-10-19",
+          "notes": "README: requires Vivi 0.9.0, matching the manifest.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-ab-loop-v1.0.3/ab-loop-1.0.3.zip"
+        },
+        {
+          "version": "1.0.3",
+          "date": "2026-10-19",
+          "notes": "Deprecated: Vivi 0.13.0 has A-B loop and frame stepping built in with the same keys (Alt+A / Alt+B / Alt+C, Alt+Left / Alt+Right, , / .), drawn on the seek bar. On such Vivi the script stays quiet (no OSD bar, no second key handling). README now says Vivi 0.9.0+ like the manifest.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-ab-loop-v1.0.3/ab-loop-1.0.3.zip"
+        },
+        {
           "version": "1.0.2",
           "date": "2026-10-15",
-          "notes": "Requires Vivi 0.9.0 (managed ffmpeg support).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-ab-loop-v1.0.2/ab-loop-1.0.2.zip"
+          "notes": "Requires Vivi 0.9.0 (the plugin package system); the script is unchanged."
         },
         {
           "version": "1.0.1",
@@ -557,7 +568,13 @@
           "date": "2026-10-14",
           "notes": "First release: A-B loop points, frame nudging and stepping, on-screen loop bar."
         }
-      ]
+      ],
+      "deprecated": {
+        "action": "Show shortcuts",
+        "message": "Vivi 0.13.0 has A-B loop and frame stepping built in, with the same keys: Alt+A / Alt+B set the loop points, Alt+C clears, Alt+Left / Alt+Right move the last point by a frame, , and . step a frame while paused. The loop shows on the seek bar. You can uninstall the plugin.",
+        "replacement": "builtin:ab-loop",
+        "since": "0.13.0"
+      }
     },
     {
       "id": "acoustid",

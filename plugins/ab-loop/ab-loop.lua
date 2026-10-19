@@ -1,7 +1,11 @@
 -- @name A-B Loop & Frame Step
--- @version 1.0.2
+-- @version 1.0.3
 -- @author Vivi
 -- @description A-B loop editing and frame stepping (Vivi plugin package).
+--
+-- Deprecated: Vivi 0.13.0 has these keys built in and sets user-data/vivi/ab-loop = 1;
+-- then this script draws nothing and leaves the keys to Vivi (it only keeps the
+-- "Clear loop" action). Older Vivi versions keep the full behaviour below.
 --
 -- Keys (binding names for script-binding ab_loop/<name>):
 --   Alt+a  set-a     set A at the current position
@@ -24,6 +28,11 @@ local o = { markers = true, ["osd-seconds"] = 3 }
 options.read_options(o, "ab-loop")
 
 local overlay = mp.create_osd_overlay("ass-events")
+
+-- Vivi 0.13.0+ does all of this itself (seek-bar markers, toasts, the same keys).
+local function builtin()
+  return tostring(mp.get_property_native("user-data/vivi/ab-loop", "")) == "1"
+end
 local hide_timer
 local last = "a"
 
@@ -39,7 +48,7 @@ local function fmt(t)
 end
 
 local function draw()
-  if not o.markers then overlay:remove(); return end
+  if not o.markers or builtin() then overlay:remove(); return end
   local a, b = num("ab-loop-a"), num("ab-loop-b")
   local dur = num("duration")
   if (not a and not b) or not dur or dur <= 0 then overlay:remove(); return end
@@ -96,14 +105,24 @@ local function step(dir)
   end
 end
 
-mp.add_forced_key_binding("Alt+a", "set-a", function() set("a") end)
-mp.add_forced_key_binding("Alt+b", "set-b", function() set("b") end)
-mp.add_forced_key_binding("Alt+c", "clear", clear)
-mp.add_forced_key_binding("Alt+LEFT", "nudge-back", function() nudge(-1) end, { repeatable = true })
-mp.add_forced_key_binding("Alt+RIGHT", "nudge-forward", function() nudge(1) end, { repeatable = true })
-mp.add_forced_key_binding(",", "frame-back", function() step(-1) end, { repeatable = true })
-mp.add_forced_key_binding(".", "frame-forward", function() step(1) end, { repeatable = true })
+-- With the built-in keys Vivi never forwards these; a script-binding from elsewhere
+-- (input.conf, IPC) still does nothing then, so a loop point is never set twice.
+local function key(f)
+  return function() if not builtin() then f() end end
+end
+
+mp.add_forced_key_binding("Alt+a", "set-a", key(function() set("a") end))
+mp.add_forced_key_binding("Alt+b", "set-b", key(function() set("b") end))
+mp.add_forced_key_binding("Alt+c", "clear", key(clear))
+mp.add_forced_key_binding("Alt+LEFT", "nudge-back", key(function() nudge(-1) end), { repeatable = true })
+mp.add_forced_key_binding("Alt+RIGHT", "nudge-forward", key(function() nudge(1) end), { repeatable = true })
+mp.add_forced_key_binding(",", "frame-back", key(function() step(-1) end), { repeatable = true })
+mp.add_forced_key_binding(".", "frame-forward", key(function() step(1) end), { repeatable = true })
 -- Vivi's "Clear loop" button sends script-message-to ab-loop clear.
 mp.register_script_message("clear", clear)
 mp.observe_property("ab-loop-a", "native", function() draw() end)
 mp.observe_property("ab-loop-b", "native", function() draw() end)
+
+if VIVI_TEST then
+  return { set = set, clear = clear, nudge = nudge, step = step, draw = draw, builtin = builtin, fmt = fmt }
+end
