@@ -2,7 +2,12 @@
 # so editing it needs no new plugin version.
 categories = ["Video", "Streaming"]
 tags = ["youtube", "sponsorblock", "skip"]
-screenshots = ["sponsorblock-player", "sponsorblock-settings"]
+screenshots = ["skip-intro-sponsorblock", "sponsorblock-player", "sponsorblock-settings"]
+
+[[changelog]]
+version = "1.3.0"
+date = "2026-10-19"
+notes = "Vivi 0.13+: segments go to the player's one Skip button (Skip Intro & Credits): \"Skip sponsor\", Undo after automatic skips, \"Unmute\" in muted segments, Alt+K / Alt+Shift+K, and no second button where a chapter-named intro is the same segment. The per-category modes and the mute setting still decide; Vivi's per-category setting can override them. Older Vivi, or Skip Intro & Credits off: skips, asks and mutes itself as before."
 
 [[changelog]]
 version = "1.2.0"

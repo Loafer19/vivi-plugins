@@ -1,7 +1,14 @@
 -- @name SponsorBlock
--- @version 1.2.0
+-- @version 1.3.0
 -- @author Vivi
 -- @description Skip SponsorBlock segments in YouTube streams (Vivi plugin package).
+--
+-- Vivi 0.13.0+ (user-data/vivi/skip-api = 1, i.e. Skip Intro & Credits is on): segments go
+-- to the player's one Skip button with `script-message vivi-skip-ranges sponsorblock <json>`
+-- ({start, end, category, label, action = skip | ask | mute}); Vivi then shows "Skip
+-- sponsor", skips / asks / mutes, offers Undo and owns Alt+K / Alt+Shift+K. This script
+-- only fetches segments and marks chapters. Older Vivi (or Skip Intro & Credits off): the
+-- script skips, asks and mutes itself as below.
 --
 -- Keys: Alt+k        skip   skip the current (or announced) segment
 --       Alt+Shift+k  undo   go back to the start of the last skipped segment (it is
@@ -36,8 +43,14 @@ local last_skip = nil -- { index, from } of the last automatic/manual skip (undo
 local allowed = {}    -- index -> true: undone, play it through
 local muted = nil     -- index of the mute segment we muted (we restore `mute` after it)
 
+-- Vivi's Skip button takes our segments (Vivi 0.13.0+ with Skip Intro & Credits on).
+local function core()
+  return tostring(mp.get_property_native("user-data/vivi/skip-api", "")) == "1"
+end
+
 local function toast(msg, secs)
-  mp.osd_message(msg, secs or 3)
+  -- Vivi 0.13+ shows vivi-toast in its own notice; mpv's OSD text is for older Vivi.
+  if not core() then mp.osd_message(msg, secs or 3) end
   mp.commandv("script-message", "vivi-toast", msg)
 end
 
@@ -109,6 +122,28 @@ end
 
 local function action_types()
   return o.mute and '["skip","mute"]' or '["skip"]'
+end
+
+-- The segments as `vivi-skip-ranges` entries: our per-category mode becomes the action.
+local function core_ranges()
+  local out = {}
+  for _, s in ipairs(segments) do
+    out[#out + 1] = { start = s[1], ["end"] = s[2], category = s[3],
+      label = (NAMES[s[3]] or s[3]):lower(),
+      action = s[4] == "mute" and "mute" or action_for(s[3]) }
+  end
+  return out
+end
+
+-- Hand the segments to Vivi's Skip button (or clear ours there). True when Vivi took them.
+local function send_core()
+  if not core() then return false end
+  if #segments == 0 then
+    mp.commandv("script-message", "vivi-skip-ranges-clear", "sponsorblock")
+  else
+    mp.commandv("script-message", "vivi-skip-ranges", "sponsorblock", utils.format_json(core_ranges()))
+  end
+  return true
 end
 
 local function sha_prefix(id)
@@ -185,10 +220,13 @@ local function fetch(id)
       end
       segments = parse(r.stdout, id)
       mp.msg.info(string.format("%d segment(s) for %s", #segments, id))
+      -- Ranges before chapters: Vivi then knows the chapters are our markers.
+      local by_core = send_core()
       if #segments > 0 then
         toast(string.format("SponsorBlock: %d segment%s", #segments, #segments == 1 and "" or "s"))
         add_chapters()
       end
+      if by_core then mp.msg.info("segments sent to Vivi's Skip button") end
     end)
 end
 
@@ -218,6 +256,7 @@ end
 -- Undo the last skip: back to where it happened; that segment is then played through.
 -- Inside a segment we muted, Undo unmutes it instead.
 local function undo()
+  if core() then mp.commandv("script-message", "vivi-skip-undo") return end
   if muted then
     allowed[muted] = true
     unmute()
@@ -255,6 +294,7 @@ end
 
 local function on_time(_, t)
   if not t or #segments == 0 then return end
+  if core() then unmute() return end -- Vivi's Skip button does it
   check_mute(t)
   for i, s in ipairs(segments) do
     if s[4] ~= "mute" and t >= s[1] and t < s[2] - 0.5 then
@@ -273,6 +313,7 @@ local function on_time(_, t)
 end
 
 local function skip_key()
+  if core() then return end -- Vivi owns Alt+K then (it never reaches us)
   local t = mp.get_property_number("time-pos")
   if announced then skip_to(announced); return end
   for i, s in ipairs(segments) do
@@ -296,6 +337,10 @@ mp.add_forced_key_binding("Alt+k", "skip", skip_key)
 mp.add_forced_key_binding("Alt+K", "undo", undo)
 mp.register_script_message("undo", undo)
 mp.register_event("end-file", unmute)
+-- Skip Intro & Credits switched on / off while playing: hand over / take back.
+mp.observe_property("user-data/vivi/skip-api", "native", function()
+  if #segments > 0 then send_core() end
+end)
 
 -- For tests: `script-message-to sponsorblock selftest` prints parser results and quits.
 mp.register_script_message("selftest", function()
@@ -313,5 +358,6 @@ if VIVI_TEST then
     action_for = action_for, action_types = action_types, add_chapters = add_chapters,
     set_segments = function(v) segments, skipped, allowed, muted, last_skip, announced = v, {}, {}, nil, nil, nil end,
     on_time = on_time, undo = undo, skip_key = skip_key, opts = o,
+    core_ranges = core_ranges, send_core = send_core,
     skipped = function() return skipped end }
 end

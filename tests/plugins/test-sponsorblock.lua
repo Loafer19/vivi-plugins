@@ -83,4 +83,50 @@ P.add_chapters()
 local ch = T.props["chapter-list"]
 T.eq(#ch, 4, "two chapters per segment")
 T.eq(ch[3].title, "Self-promotion (muted)", "muted chapter title")
+-- Vivi 0.13+ (user-data/vivi/skip-api = 1): segments go to the core Skip button,
+-- no own skip / ask / mute / keys.
+T.props["chapter-list"] = {}
+T.props["user-data/vivi/skip-api"] = 1
+P.opts.per_category = "intro=ask"
+P.set_segments({ { 10, 40, "sponsor", "skip" }, { 50, 60, "selfpromo", "mute" }, { 70, 90, "intro", "skip" } })
+local r = P.core_ranges()
+T.eq(#r, 3, "core: all segments")
+T.eq(r[1].start, 10, "core: start")
+T.eq(r[1]["end"], 40, "core: end")
+T.eq(r[1].label, "sponsor", "core: label")
+T.eq(r[1].action, "skip", "core: auto mode -> skip")
+T.eq(r[2].action, "mute", "core: mute action")
+T.eq(r[2].label, "self-promotion", "core: label name")
+T.eq(r[3].action, "ask", "core: per-category ask")
+T.calls = {}
+T.ok(P.send_core(), "core: sent")
+local sent = T.calls[#T.calls]
+T.eq(sent[1], "script-message", "core: script-message")
+T.eq(sent[2], "vivi-skip-ranges", "core: message name")
+T.eq(sent[3], "sponsorblock", "core: source")
+local back = T.json_decode(sent[4])
+T.eq(#back, 3, "core: json array")
+T.eq(back[3].category, "intro", "core: category in json")
+T.props["time-pos"], T.props.mute = 10.2, false
+P.on_time(nil, 10.2)
+T.eq(T.props["time-pos"], 10.2, "core: no own skip")
+P.on_time(nil, 50.5)
+T.eq(T.props.mute, false, "core: no own mute")
+P.skip_key()
+T.eq(T.props["time-pos"], 10.2, "core: Alt+K is Vivi's")
+T.calls = {}
+P.undo()
+T.eq(T.calls[1] and T.calls[1][2], "vivi-skip-undo", "core: Undo goes to Vivi")
+P.set_segments({})
+T.calls = {}
+P.send_core()
+T.eq(T.calls[1] and T.calls[1][2], "vivi-skip-ranges-clear", "core: no segments clears")
+-- Skip Intro & Credits off (0) or older Vivi (unset): own skipping again.
+T.props["user-data/vivi/skip-api"] = 0
+T.ok(not P.send_core(), "fallback: nothing sent")
+P.opts.per_category = ""
+P.set_segments({ { 10, 40, "sponsor", "skip" } })
+P.on_time(nil, 10.2)
+T.eq(T.props["time-pos"], 40, "fallback: skips itself")
+T.props["user-data/vivi/skip-api"] = nil
 T.done("sponsorblock")

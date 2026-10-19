@@ -27,8 +27,8 @@
     {
       "id": "skip-intro",
       "name": "Skip Intro & Credits",
-      "description": "Shows a Skip button during intros and credits found in chapter names (Intro, Opening, OP, Credits, Ending, ED) or set per show. Can skip automatically.",
-      "version": "0.8.0",
+      "description": "One Skip button for intros, credits and the segments extensions such as SponsorBlock find: chapter names (Intro, Opening, OP, Credits, Ending, ED; markers like \"End of intro\" are not skipped), your per-show ranges, or the extension. A segment found twice gets one button. Skip, ask or off per category or source, Undo after automatic skips, mute segments, \"Always skip the intro of this show\", Alt+K / Alt+Shift+K.",
+      "version": "0.13.0",
       "author": "Vivi",
       "icon": "skip",
       "lucide": "skip-forward",
@@ -48,6 +48,24 @@
           "default": "true"
         },
         {
+          "key": "modes",
+          "title": "Per category or source",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "key": "offer",
+          "title": "Offer to always skip for a show",
+          "type": "toggle",
+          "default": "true"
+        },
+        {
+          "key": "auto-shows",
+          "title": "Shows skipped automatically",
+          "type": "text",
+          "default": ""
+        },
+        {
           "key": "ranges",
           "title": "Per-show ranges",
           "type": "text",
@@ -60,7 +78,7 @@
         },
         {
           "key": "clear",
-          "title": "Clear ranges for this show",
+          "title": "Forget this show",
           "type": "action"
         }
       ],
@@ -70,10 +88,27 @@
       "tags": [
         "tv",
         "chapters",
-        "skip"
+        "skip",
+        "credits",
+        "sponsorblock"
       ],
       "screenshots": [
-        "skip-intro"
+        "skip-intro-player",
+        "skip-intro-sponsorblock",
+        "skip-intro-undo",
+        "skip-intro-settings"
+      ],
+      "changelog": [
+        {
+          "version": "0.13.0",
+          "date": "2026-10-19",
+          "notes": "One Skip button for everything: extensions submit segments (vivi-skip-ranges; SponsorBlock 1.3 shows \"Skip sponsor\" here instead of its own prompt), merged with chapter names and per-show ranges so one segment gets one button. Skip / ask / off per category or source, Undo for a few seconds after automatic skips, \"Unmute\" for mute segments, an offer to always skip a show's intro or credits, Alt+K / Alt+Shift+K and palette commands. Fixes: \"End of intro\" style chapter markers and post-credits scenes were taken as ranges; skipping credits in the last file did nothing; show names now ignore [tags] and \" - 05\" episode numbers."
+        },
+        {
+          "version": "0.8.0",
+          "date": "2026-10-14",
+          "notes": "First version: Skip button from chapter names and per-show ranges, Mark from Settings, optional automatic skip."
+        }
       ]
     },
     {
@@ -1884,8 +1919,8 @@
     {
       "id": "sponsorblock",
       "name": "SponsorBlock",
-      "description": "Skips sponsor, intro, self-promotion and other segments in YouTube videos using the crowd-sourced SponsorBlock database: segments as chapters on the seek bar, a notice with undo (Alt+Shift+K) after every skip, skip / ask / off per category, and muting where a segment is marked for muting. Also works for videos the YouTube plugin adds or downloads.",
-      "version": "1.2.0",
+      "description": "Skips sponsor, intro, self-promotion and other segments in YouTube videos using the crowd-sourced SponsorBlock database: segments as chapters on the seek bar, skip / ask / off per category, and muting where a segment is marked for muting. In Vivi 0.13+ the segments appear on the player's one Skip button (Skip sponsor, Undo, Alt+K / Alt+Shift+K). Also works for videos the YouTube plugin adds or downloads.",
+      "version": "1.3.0",
       "author": "Vivi",
       "icon": "skip",
       "lucide": "badge-dollar-sign",
@@ -1898,9 +1933,9 @@
         "subprocess"
       ],
       "source": "plugins/sponsorblock",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-sponsorblock-v1.2.0/sponsorblock-1.2.0.zip",
-      "sha256": "eea4b9098a02b62d4e42e46b2ecb72841e7296af219a9d9de8b25cc11842f879",
-      "size": 16562,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-sponsorblock-v1.3.0/sponsorblock-1.3.0.zip",
+      "sha256": "37dfc955b54349ab10ddd2f2e8279af4c6de944be32d9da4cdc9e8730b1d63a0",
+      "size": 20559,
       "settings": [
         {
           "key": "categories",
@@ -1910,7 +1945,7 @@
         },
         {
           "key": "mode",
-          "title": "When a segment starts",
+          "title": "When a segment starts (Vivi 0.13+: what the Skip button does)",
           "type": "choice",
           "options": [
             "Skip automatically",
@@ -1944,7 +1979,7 @@
         },
         {
           "key": "notice",
-          "title": "Show a notice with undo (Alt+Shift+K) after each skip",
+          "title": "Show a notice with undo (Alt+Shift+K) after each skip (older Vivi; Vivi 0.13+ shows Undo on its Skip button)",
           "type": "toggle",
           "default": "true"
         },
@@ -1972,15 +2007,21 @@
         "skip"
       ],
       "screenshots": [
+        "skip-intro-sponsorblock",
         "sponsorblock-player",
         "sponsorblock-settings"
       ],
       "changelog": [
         {
+          "version": "1.3.0",
+          "date": "2026-10-19",
+          "notes": "Vivi 0.13+: segments go to the player's one Skip button (Skip Intro & Credits): \"Skip sponsor\", Undo after automatic skips, \"Unmute\" in muted segments, Alt+K / Alt+Shift+K, and no second button where a chapter-named intro is the same segment. The per-category modes and the mute setting still decide; Vivi's per-category setting can override them. Older Vivi, or Skip Intro & Credits off: skips, asks and mutes itself as before.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-sponsorblock-v1.3.0/sponsorblock-1.3.0.zip"
+        },
+        {
           "version": "1.2.0",
           "date": "2026-10-19",
-          "notes": "Per-category skip / ask / off (\"intro=ask outro=skip filler=off\"). Segments marked for muting are muted instead of skipped (Alt+Shift+K unmutes), shown as \"(muted)\" chapters. README: undo is Alt+Shift+K with no time limit; new screenshots.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-sponsorblock-v1.2.0/sponsorblock-1.2.0.zip"
+          "notes": "Per-category skip / ask / off (\"intro=ask outro=skip filler=off\"). Segments marked for muting are muted instead of skipped (Alt+Shift+K unmutes), shown as \"(muted)\" chapters. README: undo is Alt+Shift+K with no time limit; new screenshots."
         },
         {
           "version": "1.1.0",
