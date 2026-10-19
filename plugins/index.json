@@ -1659,7 +1659,43 @@
       "needs": [
         "vivi-remote"
       ],
-      "binaries": []
+      "binaries": [
+        {
+          "name": "vivi-remote",
+          "platform": "linux-x86_64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.2.0/vivi-remote-linux-x86_64",
+          "sha256": "497ca54cf5e181ebddfbea50327da8f42ad4ff85c05be19a7ade4db75238bec4",
+          "size": 783200
+        },
+        {
+          "name": "vivi-remote",
+          "platform": "linux-aarch64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.2.0/vivi-remote-linux-aarch64",
+          "sha256": "daaf1de440b9fc72bc6024a97b26ceebfd81d2122c2e1a514a2a3d4922b00f9b",
+          "size": 725336
+        },
+        {
+          "name": "vivi-remote",
+          "platform": "windows-x86_64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.2.0/vivi-remote-windows-x86_64.exe",
+          "sha256": "530cacdd912e140ffa670034b50fb371d7cd9295cf398886e4223d3ff3849e24",
+          "size": 481280
+        },
+        {
+          "name": "vivi-remote",
+          "platform": "macos-x86_64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.2.0/vivi-remote-macos-x86_64",
+          "sha256": "ade76c9adca3c45de6581610226079b3672bfe55bf92b34ca62fc9a01c6ca761",
+          "size": 614432
+        },
+        {
+          "name": "vivi-remote",
+          "platform": "macos-aarch64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.2.0/vivi-remote-macos-aarch64",
+          "sha256": "d817375952af5392588d05efd5e3900262af49ce34eae4d4ddeb4de244164c24",
+          "size": 602800
+        }
+      ]
     },
     {
       "id": "scene-chapters",
