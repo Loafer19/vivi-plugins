@@ -133,7 +133,12 @@ pub fn presence(p: &Playing, o: &Opts, now_ms: i64) -> Option<Presence> {
         image_text,
         small_image,
         button,
-        display: if o.hide { 0 } else { o.display.min(2) },
+        // "Artist" in the member list only with an artist (not "Listening to Paused").
+        display: match o.display.min(2) {
+            _ if o.hide => 0,
+            1 if p.artist.trim().is_empty() => 0,
+            d => d,
+        },
     })
 }
 
@@ -177,7 +182,7 @@ impl Presence {
         if let Some((label, url)) = &self.button {
             a["buttons"] = json!([{"label": label, "url": url}]);
         }
-        if self.display > 0 && !(self.display == 1 && self.state.is_empty()) {
+        if self.display > 0 {
             a["status_display_type"] = json!(self.display);
         }
         a
@@ -650,6 +655,11 @@ mod tests {
         };
         let mut s = song();
         s.artist.clear();
+        s.paused = true;
+        assert_eq!(
+            presence(&song(), &o, 0).unwrap().activity()["status_display_type"],
+            1
+        );
         assert!(presence(&s, &o, 0)
             .unwrap()
             .activity()
