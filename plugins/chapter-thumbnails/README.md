@@ -1,8 +1,10 @@
-# Chapter Thumbnails
+# Chapters & Previews
+
+(Plugin id `chapter-thumbnails`; called Chapter Thumbnails before 1.2.0.)
 
 Seek-bar hover previews and chapter pictures for local videos. This plugin is what provides
 the seek-bar previews in Vivi (Vivi suggests installing it once, the first time you hover the
-seek bar without it). Implements #75 (follow-up to #62). Needs Vivi 0.9.2 or later, which
+seek bar without it). Since 1.2.0 it also makes **scene chapters** for videos without chapters (formerly the Scene Chapters plugin). Implements #75 and #62. Needs Vivi 0.9.2 or later, which
 displays the images.
 
 ![Hover preview on the seek bar and chapter pictures in the Chapters tab (Big Buck Bunny, © Blender Foundation, CC BY 3.0)](../../docs/screenshots/plugins/chapter-thumbnails-player.png)
@@ -19,8 +21,8 @@ displays the images.
   set is redone next time. Vivi versions that still make their own built-in previews don't
   report the hover: use *On open* or *Generate* there.
 * **Chapters**: one 320 px picture per chapter (one second after its start) in the side
-  panel's Chapters tab, made when the file opens, also for chapters added later by Scene
-  Chapters or SponsorBlock (pictures whose chapter moved are redone). `Alt+H` shows the
+  panel's Chapters tab, made when the file opens, also for chapters added later by scene
+  detection or SponsorBlock (pictures whose chapter moved are redone). `Alt+H` shows the
   chapter list (time, title, current chapter) on screen.
 * **Cache**: `~/.local/share/vivi/plugin-data/chapter-thumbnails/<key>/` (`seek-NN.jpg` +
   `seek.meta`, `chapter-N.jpg` + `chapters.meta`), key = hash of path, size and
@@ -37,6 +39,30 @@ displays the images.
   once instead of failing silently: install ffmpeg on the system (with dav1d) for those.
 * Audio files (also with cover art), streams and videos shorter than a second are skipped.
 
+## Scene chapters
+
+For local videos without chapters of their own, ffmpeg finds the scene changes and they
+become `Scene 1`, `Scene 2`, … chapters (with pictures, like any chapter).
+
+* **When**: `Alt+J`, *Video → Detect scene chapters*, the command palette or *Detect* in
+  the settings; `Alt+J` again while it runs cancels. *Scene chapters: detect scenes
+  automatically* (off by default) scans every such video one second after it opens.
+* **How**: `select='gt(scene,T)'` on a 160 px wide copy, no audio, at the lowest CPU and
+  disk priority. *Scene scan*: **Every frame** (default) finds every cut; **Keyframes
+  only** decodes just the keyframes, about 10× faster (a 10-minute 720p60 film: 24 s →
+  2 s) and finds fewer but real cuts. *Threshold* (0.1–0.9, default 0.4): lower finds
+  more. *Minimum scene chapter length* (default 30 s), also from the start and the end.
+* **Other chapters**: videos with chapters of their own are left alone. Chapters other
+  plugins add (SponsorBlock on a downloaded YouTube video) are kept and merged in time
+  order, whether they arrive before or after the scan.
+* **Cache**: `<key>/scenes.json` next to the thumbnails (every cut with the threshold and
+  scan used, so a new minimum length applies at once; another threshold scans again).
+  Scans made by the old Scene Chapters plugin are reused. *Forget* removes the scene
+  chapters of the playing video and its scan; *Clear* removes it with the thumbnails.
+* **From Scene Chapters**: Scene Chapters 1.1.1 notices this plugin, leaves `Alt+J` and
+  automatic scans to it, copies its non-default settings here once, and can then be
+  uninstalled.
+
 ## Settings
 
 | Setting | Default | |
@@ -48,6 +74,11 @@ displays the images.
 | Download ffmpeg when none is installed | on | |
 | Files kept in the thumbnail cache | 200 | 50 / 1000 |
 | Thumbnail cache size limit (MB) | 500 | 100 / 2000 |
+| Scene chapters: detect scenes automatically | off | |
+| Scene scan | Every frame | or Keyframes only |
+| Scene change threshold | 0.4 | 0.1–0.9 |
+| Minimum scene chapter length (s) | 30 | |
 
 Actions: **Generate** (this file, now), **Show** (chapter list, `Alt+H`), **Clear** (this
-file), **Clear all** (the whole cache, with the space freed).
+file), **Clear all** (the whole cache, with the space freed), **Detect** (scene chapters,
+`Alt+J`), **Forget** (this file's scene chapters).

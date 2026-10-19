@@ -131,5 +131,124 @@ P.on_file_loaded()
 T.calls, T.osd = {}, {}
 P.hover()
 T.eq(ffmpeg_calls(), 0, "av1: no frames with the media build")
-T.ok((T.osd[#T.osd] or ""):find("AV1 video needs ffmpeg installed", 1, true), "av1 message")
+local last_toast = ""
+for _, c in ipairs(T.calls) do if c[1] == "script-message" and c[2] == "vivi-toast" then last_toast = c[3] end end
+T.ok(last_toast:find("AV1 video needs ffmpeg installed", 1, true), "av1 message")
+T.eq(#T.osd, 0, "Vivi toasts, no mpv OSD text")
+
+-- ---------- scene chapters (merged from Scene Chapters 1.1.0) ----------
+P = T.load("plugins/chapter-thumbnails/chapter-thumbnails.lua")
+local log = [[
+  Duration: 00:10:34.62, start: 1.400000, bitrate: 2031 kb/s
+[Parsed_showinfo_2 @ 0x1] n:   0 pts: 1 pts_time:41.4 duration: 1
+[Parsed_showinfo_2 @ 0x1] n:   1 pts: 2 pts_time:11.4 duration: 1
+[Parsed_showinfo_2 @ 0x1] n:   2 pts: 3 pts_time:81.65 duration: 1
+]]
+T.eq(table.concat(P.parse_scenes(log), ","), "10,40,80.25", "scenes: start time subtracted, sorted")
+T.eq(#P.parse_scenes(nil), 0, "scenes: no output")
+T.eq(table.concat(P.pick_scenes({ 1, 40.5, 50, 80.25 }, 30), ","), "40.5,80.25", "scenes: 30 s apart")
+T.eq(table.concat(P.pick_scenes({ 40, 80, 618 }, 30, 634), ","), "40,80", "scenes: no short last chapter")
+P.opts["scenes-threshold"] = "5"
+T.eq(P.scene_threshold(), 0.95, "scenes: threshold capped")
+P.opts["scenes-threshold"] = "0.3"
+T.eq(P.scene_mode(), "full", "scenes: every frame by default")
+P.opts["scenes-scan"] = "Keyframes only"
+T.eq(P.scene_mode(), "keyframes", "scenes: keyframes")
+local sa = table.concat(P.scene_args("ffmpeg", "/v.mkv", 0.3, "keyframes"), " ")
+T.ok(sa:find("-skip_frame nokey -i /v.mkv", 1, true), "scenes: skip_frame before -i")
+T.ok(sa:find("select='gt(scene,0.30)'", 1, true), "scenes: threshold in the filter")
+T.ok(not table.concat(P.scene_args("ffmpeg", "/v", 0.4, "full"), " "):find("skip_frame", 1, true), "scenes: full scan")
+if io.open("/usr/bin/nice") then T.eq(P.scene_args("ffmpeg", "/v", 0.4, "full")[1], "/usr/bin/nice", "scenes: lowest priority") end
+local v2 = { version = 2, threshold = 0.4, scan = "full", times = { 1 } }
+T.ok(P.scene_cache_fits(v2, 0.4, "keyframes", true), "scenes: full scan serves keyframes")
+T.ok(not P.scene_cache_fits(v2, 0.3, "full", true), "scenes: other threshold scans again")
+T.ok(P.scene_cache_fits({ legacy = true, times = {} }, 0.4, "full", false), "scenes: 1.0.x cache, automatic")
+T.ok(not P.scene_cache_fits({ legacy = true, times = {} }, 0.4, "full", true), "scenes: 1.0.x cache, manual scans")
+
+local function titles()
+  local t = {}
+  for _, x in ipairs(T.props["chapter-list"] or {}) do t[#t + 1] = x.title end
+  return table.concat(t, ",")
+end
+local function toasts()
+  local t = {}
+  for _, x in ipairs(T.calls) do if x[1] == "script-message" and x[2] == "vivi-toast" then t[#t + 1] = x[3] end end
+  return t
+end
+local function load_file(chapters)
+  T.props.path = "tests/plugins/stub.lua"
+  T.props["track-list"] = { { type = "video", codec = "h264" } }
+  T.props.duration = 634
+  T.props["chapter-list"] = chapters
+  P.set_ffmpeg({ ffmpeg = "ffmpeg", ffprobe = "ffprobe", kind = "system" })
+  P.on_file_loaded()
+  P.scenes_file_loaded()
+end
+P.opts["scenes-scan"], P.opts["scenes-threshold"], P.opts["scenes-min-length"] = "Every frame", "0.4", "30"
+-- own chapters are left alone
+load_file({ { time = 0, title = "Opening" } })
+T.calls = {}
+P.detect_scenes(true)
+T.eq(toasts()[1], "This video has its own chapters", "scenes: own chapters respected")
+-- streams
+T.props.path = "https://youtu.be/aqz-KE-bpKQ"
+P.on_file_loaded()
+T.calls = {}
+P.detect_scenes(true)
+T.eq(toasts()[1], "Scene detection: local files only", "scenes: streams")
+-- a scan merged with SponsorBlock chapters that arrive meanwhile
+load_file({})
+local dir = os.getenv("XDG_DATA_HOME") .. "/vivi/plugin-data/chapter-thumbnails/" .. P.key("tests/plugins/stub.lua")
+os.execute("mkdir -p '" .. dir .. "'")
+os.remove(dir .. "/scenes.json")
+local pending
+T.set_async(function(t, cb)
+  if t.args and table.concat(t.args, " "):find("gt(scene", 1, true) then pending = cb return 7 end
+  if cb then cb(true, { status = 0, stdout = "", stderr = "" }) end
+end)
+T.calls = {}
+P.detect_scenes(true)
+T.ok(P.scanning(), "scenes: scan running")
+T.eq(toasts()[1], "Detecting scenes…", "scenes: toast")
+T.props["chapter-list"] = { { time = 494.6, title = "Outro" }, { time = 618.7, title = "End of outro" } }
+pending(true, { status = 0, stderr = "Duration: 00:10:34.62, start: 0.000000,\npts_time:39.7\npts_time:50\npts_time:73.8\npts_time:620\n" })
+T.eq(titles(), "Scene 1,Scene 2,Scene 3,Outro,End of outro", "scenes: merged with chapters added during the scan")
+T.eq(P.scanning(), nil, "scenes: done")
+-- written by the mkdir callback (stub answers at once)
+T.ok(P.read_scenes(dir) and P.read_scenes(dir).version == 2, "scenes: v2 cache written")
+-- new minimum: from the cache, no new scan
+pending = nil
+P.opts["scenes-min-length"] = "40"
+P.scenes_settings()
+T.eq(titles(), "Scene 1,Scene 2,Outro,End of outro", "scenes: new minimum applied from the cache")
+T.eq(pending, nil, "scenes: no new scan")
+T.calls = {}
+P.detect_scenes(true)
+T.eq(toasts()[1], "2 scene chapters (cached)", "scenes: cached result")
+-- forget, scan again, cancel with a second press
+P.forget_scenes()
+T.eq(titles(), "Outro,End of outro", "scenes: Forget removes our scenes only")
+P.detect_scenes(true)
+T.ok(P.scanning(), "scenes: running again")
+T.calls = {}
+P.detect_scenes(true)
+T.eq(toasts()[1], "Scene detection cancelled", "scenes: second press cancels")
+pending(false, { error_string = "killed" })
+T.eq(titles(), "Outro,End of outro", "scenes: a cancelled scan changes nothing")
+-- the old Scene Chapters cache (same key) is used
+local old = os.getenv("XDG_DATA_HOME") .. "/vivi/plugin-data/scene-chapters/" .. P.key("tests/plugins/stub.lua")
+os.execute("mkdir -p '" .. old .. "'")
+local f = io.open(old .. "/scenes.json", "w")
+f:write('{"version":2,"threshold":0.4,"scan":"full","times":[100,200]}') f:close()
+P.opts["scenes-min-length"] = "30"
+T.props["chapter-list"] = {}
+T.calls = {}
+P.scenes_file_loaded()
+P.detect_scenes(true)
+T.eq(toasts()[1], "3 scene chapters (cached)", "scenes: Scene Chapters cache read")
+os.remove(old .. "/scenes.json") -- XDG_DATA_HOME is shared with test-scene-chapters.lua
+os.remove(dir .. "/scenes.json")
+-- automatic only with the toggle; the old plugin is told to step aside
+T.ok(not P.opts.scenes, "scenes: automatic detection off by default")
+T.set_async(nil)
 T.done("chapter-thumbnails")

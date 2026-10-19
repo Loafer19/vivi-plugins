@@ -129,6 +129,7 @@ function M.load(script, opts)
     observe_property = function() end,
     add_forced_key_binding = function(k, n, f) M.bindings[k] = f end,
     add_key_binding = function(k, n, f) M.bindings[k] = f end,
+    remove_key_binding = function(n) M.removed = M.removed or {} M.removed[n] = true end,
     add_timeout = function() return { kill = function() end } end,
     add_periodic_timer = function() return { kill = function() end, resume = function() end } end,
     get_time = function() return os.clock() end,

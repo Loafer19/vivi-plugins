@@ -1,11 +1,12 @@
--- @name Chapter Thumbnails
--- @version 1.1.0
+-- @name Chapters & Previews
+-- @version 1.2.0
 -- @author Vivi
--- @description Seek-bar hover thumbnails and chapter thumbnails, cached per file (Vivi plugin package).
+-- @description Seek-bar hover thumbnails, chapter thumbnails and scene chapters, cached per file (Vivi plugin package).
 --
 -- Keys: Alt+h  chapter list (titles, times; thumbnails are in the side panel's Chapters tab)
--- Script messages: generate, list, clear, clear-all; preview-wanted / vivi-preview-wanted
--- (from Vivi: the pointer went over the seek bar).
+--       Alt+j  detect scene chapters (again while it runs: cancel)
+-- Script messages: generate, list, clear, clear-all, scenes-detect, scenes-forget;
+-- preview-wanted / vivi-preview-wanted (from Vivi: the pointer went over the seek bar).
 --
 -- For every local video it writes, with ffmpeg (fast keyframe seeks):
 --   plugin-data/chapter-thumbnails/<key>/seek-00.jpg … seek-<n-1>.jpg  192×108, evenly spaced
@@ -23,6 +24,15 @@
 -- video longer than 3 minutes at the lowest CPU / disk priority. Chapter pictures are made
 -- when the file opens and when its chapters change.
 --
+-- Scene chapters (merged from the Scene Chapters plugin 1.1.0, which is deprecated): for
+-- local videos without chapters of their own, ffmpeg's scene score
+-- (`select='gt(scene,T)',showinfo` on a 160 px wide copy, every frame or keyframes only)
+-- marks the cuts; they become "Scene 1", "Scene 2", … at least scenes-min-length seconds
+-- apart (also from the start and the end), merged with chapters other plugins add
+-- (SponsorBlock). Automatic with `scenes` (off by default), otherwise Alt+J / Video menu.
+-- Cache: <key>/scenes.json { version = 2, threshold, scan, times = raw cut times }; the
+-- Scene Chapters cache (plugin-data/scene-chapters/<key>/scenes.json, same key) is read too.
+--
 -- ffmpeg: a system ffmpeg first; otherwise Vivi's media ffmpeg build (about 15 MB with
 -- ffprobe, downloaded once and shared with Subtitle Auto-Sync; no AV1).
 local mp = require "mp"
@@ -31,6 +41,7 @@ local utils = require "mp.utils"
 
 local o = { seekbar = true, chapters = true, when = "On hover", frames = "Auto", ["max-cache"] = "200",
   ["max-cache-mb"] = "500", download = true,
+  scenes = false, ["scenes-scan"] = "Every frame", ["scenes-threshold"] = "0.4", ["scenes-min-length"] = "30",
   pkgdir = "" } -- pkgdir: set by Vivi; declared so mp.options does not warn about it
 
 -- ---------- managed helpers (same block in subtitle-sync, chapter-thumbnails, acoustid) ----------
@@ -146,7 +157,6 @@ local function fetch_verified(what, url, sha, dir, name, unpack, cb)
   mkdir(dir, function()
     local tmp = dir .. SEP .. name .. ".part"
     remote_size(url, function(sz)
-      mp.osd_message("Downloading " .. what .. " (" .. human(sz) .. ")…", 5)
       mp.commandv("script-message", "vivi-toast", "Downloading " .. what .. " (" .. human(sz) .. ")…")
       run({ "curl", "-fsSL", "--retry", "2", "-o", tmp, url }, function(r)
         if r.status ~= 0 then os.remove(tmp) return cb(nil, what .. " download failed: " .. (r.stderr or "")) end
@@ -242,10 +252,8 @@ local ON_OPEN_DELAY = 10  -- s of playback before "On open" starts
 local ON_OPEN_MIN = 180   -- "On open" only for videos longer than this (s)
 local WORKERS = 2         -- ffmpeg processes at a time
 
-local function toast(msg, secs)
-  mp.osd_message(msg, secs or 3)
-  mp.commandv("script-message", "vivi-toast", msg)
-end
+-- Vivi's own toast (no mpv OSD text over the video). `secs` is ignored: Vivi times its toasts.
+local function toast(msg, secs) mp.commandv("script-message", "vivi-toast", msg) end
 
 -- Same key as Vivi's scenes::key: 32-bit "h*33 + byte" hash of path|size|mtime, hex.
 local function key(path)
@@ -704,6 +712,229 @@ local function clear_all()
   end
 end
 
+-- ---------- scene chapters ----------
+-- Threshold and minimum length from the settings, kept in a sane range.
+local function scene_threshold()
+  return math.max(0.05, math.min(0.95, tonumber(o["scenes-threshold"]) or 0.4))
+end
+local function scene_gap() return math.max(1, tonumber(o["scenes-min-length"]) or 30) end
+local function scene_mode() return tostring(o["scenes-scan"]):lower():find("key", 1, true) and "keyframes" or "full" end
+
+-- Cut times from ffmpeg's showinfo output, relative to the input's start time (the
+-- "start:" of the Duration line; mpv's time starts at 0), sorted.
+local function parse_scenes(text)
+  text = text or ""
+  local start = tonumber(text:match("Duration:[^\n]-, start: (%-?[%d%.]+)")) or 0
+  local out = {}
+  for t in text:gmatch("pts_time:(%-?[%d%.]+)") do
+    t = tonumber(t)
+    if t then
+      t = t - start
+      if t > 0 then out[#out + 1] = t end
+    end
+  end
+  table.sort(out)
+  return out
+end
+
+-- Chapter starts from cut times: at least `gap` s apart, from 0 and (when the duration
+-- is known) from the end, so no chapter is shorter than the minimum.
+local function pick_scenes(times, gap, duration)
+  local out, last = {}, 0
+  for _, t in ipairs(times or {}) do
+    if t - last >= gap and not (duration and duration > 0 and duration - t < gap) then
+      out[#out + 1] = t
+      last = t
+    end
+  end
+  return out
+end
+
+local function scene_args(ff, path, th, mode)
+  local a = { ff, "-nostdin", "-hide_banner" }
+  if mode == "keyframes" then a[#a + 1] = "-skip_frame" a[#a + 1] = "nokey" end
+  for _, x in ipairs({ "-i", path, "-an", "-sn", "-dn",
+    "-vf", string.format("scale=160:-2,select='gt(scene,%.2f)',showinfo", th), "-f", "null", "-" }) do
+    a[#a + 1] = x
+  end
+  return low_priority(a, NICE, IONICE)
+end
+
+-- scenes.json of a folder: v2 table, a Scene Chapters 1.0.x list ({ legacy = true }) or nil.
+local function read_scenes(dir)
+  local d = read_file(dir .. SEP .. "scenes.json")
+  local v = d and utils.parse_json(d)
+  if type(v) ~= "table" then return nil end
+  if v.version == 2 and type(v.times) == "table" then return v end
+  if #v > 0 or next(v) == nil then return { legacy = true, times = v } end
+  return nil
+end
+-- Own cache first, then the deprecated Scene Chapters plugin's (same key).
+local function scene_cache(file)
+  return read_scenes(file.dir)
+    or read_scenes(PLUGIN_DATA .. SEP .. "scene-chapters" .. SEP .. file.dir:match("[^/\\]+$"))
+end
+
+-- Is the cache good for a scan with threshold `th` and `mode`? A full scan also serves
+-- "Keyframes only". Scene Chapters 1.0.x lists (no threshold recorded) only for automatic runs.
+local function scene_cache_fits(c, th, mode, manual)
+  if not c then return false end
+  if c.legacy then return not manual end
+  return math.abs((tonumber(c.threshold) or -1) - th) < 0.001 and (c.scan == mode or c.scan == "full")
+end
+
+-- State of the current file: chapters the file itself has (counted when it loaded), the
+-- scene chapters we added, the running scan.
+local file_chapters, ours, scan_job, scene_gen, scene_ff_warned = 0, {}, nil, 0, false
+
+local function is_ours(c)
+  for _, x in ipairs(ours) do
+    if c.title == x.title and math.abs((c.time or -1) - x.time) < 0.001 then return true end
+  end
+  return false
+end
+
+-- Put `starts` in as "Scene 1" (at 0), "Scene 2", …, replacing the scenes added before and
+-- keeping every other chapter (SponsorBlock's), sorted by time.
+local function apply_scenes(starts)
+  local list = {}
+  for _, c in ipairs(mp.get_property_native("chapter-list") or {}) do
+    if not is_ours(c) then list[#list + 1] = c end
+  end
+  ours = { { time = 0, title = "Scene 1" } }
+  for i, t in ipairs(starts) do ours[#ours + 1] = { time = t, title = "Scene " .. (i + 1) } end
+  for _, c in ipairs(ours) do list[#list + 1] = { time = c.time, title = c.title } end
+  table.sort(list, function(a, b) return a.time < b.time end)
+  mp.set_property_native("chapter-list", list)
+end
+
+local function remove_scenes()
+  if #ours == 0 then return false end
+  local list = {}
+  for _, c in ipairs(mp.get_property_native("chapter-list") or {}) do
+    if not is_ours(c) then list[#list + 1] = c end
+  end
+  ours = {}
+  mp.set_property_native("chapter-list", list)
+  return true
+end
+
+-- Chapters from cut times; returns how many scene chapters there are (0: none found).
+local function use_scenes(times)
+  local starts = pick_scenes(times, scene_gap(), mp.get_property_number("duration"))
+  if #starts == 0 then remove_scenes() return 0 end
+  apply_scenes(starts)
+  return #starts + 1
+end
+
+local function cancel_scan(quiet)
+  if not scan_job then return false end
+  scan_job.cancelled = true
+  if scan_job.id and mp.abort_async_command then mp.abort_async_command(scan_job.id) end
+  scan_job = nil
+  if not quiet then toast("Scene detection cancelled") end
+  return true
+end
+
+local function detect_scenes(manual)
+  local file = cur
+  if not file then
+    if manual then
+      local path = mp.get_property("path")
+      toast((path and path:find("://")) and "Scene detection: local files only" or "Scene detection: play a local video first")
+    end
+    return
+  end
+  if scan_job then
+    if manual then cancel_scan(false) end
+    return
+  end
+  if file_chapters > 0 then
+    if manual then toast("This video has its own chapters") end
+    return
+  end
+  local th, mode = scene_threshold(), scene_mode()
+  local cached = scene_cache(file)
+  if scene_cache_fits(cached, th, mode, manual) then
+    local n = use_scenes(cached.times)
+    if manual then toast(n > 0 and string.format("%d scene chapters (cached)", n) or "No scene changes found (cached)") end
+    return
+  end
+  local me, my, t0 = { path = file.path }, scene_gen, mp.get_time()
+  scan_job = me
+  if manual then toast(mode == "keyframes" and "Detecting scenes (keyframes)…" or "Detecting scenes…") end
+  -- Not ffmpeg_for: a settings change replaces `cur` (same path) while this runs.
+  get_ffmpeg(o.download, function(ff, err)
+    if scan_job ~= me or me.cancelled then return end
+    if not ff then
+      scan_job = nil
+      -- Automatic runs say it once per session, not for every video.
+      if manual or not scene_ff_warned then toast("Scene detection needs ffmpeg: " .. tostring(err), 6) end
+      scene_ff_warned = true
+      return
+    end
+    if ff.kind == "managed" and not managed_decodes(file.codec) then
+      scan_job = nil
+      if manual then toast("Scene detection: " .. tostring(file.codec):upper() .. " video needs ffmpeg installed on the system", 6) end
+      return
+    end
+    me.id = mp.command_native_async({ name = "subprocess", playback_only = false, capture_stdout = true,
+      capture_stderr = true, args = scene_args(ff.ffmpeg, file.path, th, mode) },
+      function(ok, r)
+        if scan_job ~= me or me.cancelled then return end
+        scan_job = nil
+        r = r or {}
+        if not ok or r.status ~= 0 then
+          local why = ok and ("exit " .. tostring(r.status)) or tostring(r.error_string)
+          mp.msg.warn("scene scan failed: " .. why .. " " .. tostring(r.stderr):sub(-300))
+          if manual then toast("Scene detection failed (ffmpeg " .. why .. ")") end
+          return
+        end
+        local times = parse_scenes(r.stderr)
+        mkdir(file.dir, function()
+          write_file(file.dir .. SEP .. "scenes.json",
+            utils.format_json({ version = 2, threshold = th, scan = mode, times = times }))
+        end)
+        mp.msg.info(string.format("%d cuts in %.1f s (%s, threshold %.2f, %s ffmpeg)", #times,
+          mp.get_time() - t0, mode, th, ff.kind))
+        if my ~= scene_gen or not cur or cur.path ~= file.path or file_chapters > 0 then return end
+        local n = use_scenes(times)
+        if n > 0 then toast(string.format("%d scene chapters", n))
+        elseif manual then toast("No scene changes found (try a lower threshold)") end
+      end)
+  end)
+end
+
+-- Remove the scene chapters and forget this file's scan (thumbnails stay).
+local function forget_scenes()
+  if not cur then toast("Scene detection: play a local video first") return end
+  cancel_scan(true)
+  os.remove(cur.dir .. SEP .. "scenes.json")
+  os.remove(PLUGIN_DATA .. SEP .. "scene-chapters" .. SEP .. cur.dir:match("[^/\\]+$") .. SEP .. "scenes.json")
+  toast(remove_scenes() and "Scene chapters removed" or "Cached scenes removed")
+end
+
+-- After on_file_loaded (file-loaded only, not on settings changes): count the file's own
+-- chapters, maybe start the automatic scan.
+local function scenes_file_loaded()
+  cancel_scan(true)
+  scene_gen = scene_gen + 1
+  ours = {}
+  file_chapters = #(mp.get_property_native("chapter-list") or {})
+  if o.scenes and cur then
+    local my = scene_gen
+    mp.add_timeout(1, function() if my == scene_gen then detect_scenes(false) end end)
+  end
+end
+
+-- Settings changed: a new minimum length (or a threshold with a cached scan) applies to
+-- the scenes on screen right away.
+local function scenes_settings()
+  if #ours == 0 or scan_job or not cur then return end
+  local c = scene_cache(cur)
+  if scene_cache_fits(c, scene_threshold(), scene_mode(), false) then use_scenes(c.times) end
+end
+
 -- Settings changed: start over for the current file; frames that were wanted (hovered or
 -- being made) are made again with the new settings.
 options.read_options(o, "chapter-thumbnails", function()
@@ -711,10 +942,13 @@ options.read_options(o, "chapter-thumbnails", function()
   local wanted = seek_state ~= nil
   on_file_loaded()
   if wanted and cur and not seek_state then start_seek(false, false) end
+  scenes_settings()
 end)
-mp.register_event("file-loaded", on_file_loaded)
+mp.register_event("file-loaded", function() on_file_loaded() scenes_file_loaded() end)
 mp.register_event("start-file", function()
   stop_all()
+  cancel_scan(true)
+  scene_gen = scene_gen + 1
   if tick_timer then tick_timer:kill() tick_timer = nil end
   cur, seek_state = nil, nil
 end)
@@ -731,11 +965,23 @@ mp.register_script_message("generate", generate)
 mp.register_script_message("list", chapter_list)
 mp.register_script_message("clear", clear)
 mp.register_script_message("clear-all", clear_all)
+mp.add_forced_key_binding("Alt+j", "scenes-detect", function() detect_scenes(true) end)
+mp.register_script_message("scenes-detect", function() detect_scenes(true) end)
+mp.register_script_message("scenes-forget", forget_scenes)
+-- The deprecated Scene Chapters plugin steps aside (no second Alt+J, no second automatic
+-- scan) when it hears this; it asks with scene-chapters-hello if it loaded after us.
+mp.commandv("script-message", "scene-chapters-superseded")
+mp.register_script_message("scene-chapters-hello", function() mp.commandv("script-message", "scene-chapters-superseded") end)
 
 if VIVI_TEST then
   return { key = key, seek_times = seek_times, frame_args = frame_args, fmt_time = fmt_time,
     frame_count = frame_count, order = order, low_priority = low_priority, managed_decodes = managed_decodes,
     select_prune = select_prune, on_file_loaded = on_file_loaded, on_tick = on_tick, hover = hover,
     queue = function() return queue end, state = function() return cur, seek_state end,
-    set_ffmpeg = function(f) ff_cache = f end }
+    set_ffmpeg = function(f) ff_cache = f end,
+    parse_scenes = parse_scenes, pick_scenes = pick_scenes, scene_args = scene_args,
+    scene_cache_fits = scene_cache_fits, read_scenes = read_scenes, scene_threshold = scene_threshold,
+    scene_mode = scene_mode, apply_scenes = apply_scenes, detect_scenes = detect_scenes,
+    forget_scenes = forget_scenes, scenes_file_loaded = scenes_file_loaded, scenes_settings = scenes_settings,
+    opts = o, scanning = function() return scan_job end, ours = function() return ours end }
 end

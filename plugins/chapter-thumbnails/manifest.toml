@@ -1,7 +1,7 @@
 id = "chapter-thumbnails"
-name = "Chapter Thumbnails"
-version = "1.1.0"
-description = "Thumbnail preview while hovering the seek bar and a picture for every chapter in the Chapters tab, generated in the background (on the first hover, or when the video opens) and cached per file. Alt+H lists the chapters with titles and times. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Subtitle Auto-Sync)."
+name = "Chapters & Previews"
+version = "1.2.0"
+description = "Thumbnail preview while hovering the seek bar and a picture for every chapter in the Chapters tab, generated in the background and cached per file. Optional scene chapters for videos without chapters (ffmpeg scene detection, Alt+J; merged with SponsorBlock chapters). Alt+H lists the chapters. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Subtitle Auto-Sync)."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "chapter-thumbnails.lua"
@@ -12,6 +12,24 @@ permissions = ["network", "filesystem", "subprocess"]
 size_note = "+ ffmpeg if needed"
 issue = 75
 default_enabled = true
+role = "feature"
+
+# Where it shows up in Vivi 0.13+ (older Vivi ignores these and uses its built-in default,
+# the "Generate chapter thumbnails" palette command; Alt+J still detects scenes there).
+[[contributes]]
+point = "palette.command"
+label = "Generate chapter thumbnails"
+command = "generate"
+
+[[contributes]]
+point = "menu.video"
+label = "Detect scene chapters"
+command = "scenes-detect"
+
+[[contributes]]
+point = "palette.command"
+label = "Detect scene chapters"
+command = "scenes-detect"
 
 [[settings]]
 key = "seekbar"
@@ -58,6 +76,43 @@ title = "Thumbnail cache size limit (MB)"
 type = "choice"
 options = ["500", "100", "2000"]
 default = "500"
+
+[[settings]]
+key = "scenes"
+title = "Scene chapters: detect scenes automatically in videos without chapters"
+type = "toggle"
+default = "false"
+
+[[settings]]
+key = "scenes-scan"
+title = "Scene scan (Keyframes only: about 10× faster, finds fewer cuts)"
+type = "choice"
+options = ["Every frame", "Keyframes only"]
+default = "Every frame"
+
+[[settings]]
+key = "scenes-threshold"
+title = "Scene change threshold (0.1–0.9, lower = more chapters)"
+type = "text"
+default = "0.4"
+
+[[settings]]
+key = "scenes-min-length"
+title = "Minimum scene chapter length (seconds)"
+type = "text"
+default = "30"
+
+[[settings]]
+key = "scenes-detect"
+title = "Detect scene chapters now (Alt+J; again to cancel)"
+type = "action"
+label = "Detect"
+
+[[settings]]
+key = "scenes-forget"
+title = "Remove the scene chapters and forget this file's scan"
+type = "action"
+label = "Forget"
 
 [[settings]]
 key = "generate"

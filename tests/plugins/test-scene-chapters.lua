@@ -141,4 +141,33 @@ T.eq(P.running(), nil, "cancelled")
 pending(false, { error_string = "killed" })
 T.eq(titles(), "Outro,End of outro", "a cancelled scan changes nothing")
 T.set_async(nil)
+
+-- deprecated: Chapters & Previews 1.2 takes over (Alt+J, automatic scans, settings copied once)
+P = T.load("plugins/scene-chapters/scene-chapters.lua", { auto = true, scan = "Keyframes only", min_gap = "45" })
+local hello = false
+for _, c in ipairs(T.calls) do if c[2] == "scene-chapters-hello" then hello = true end end
+T.ok(hello, "asks whether Chapters & Previews is there")
+T.calls = {}
+P.on_superseded()
+local set = {}
+for _, c in ipairs(T.calls) do
+  if c[1] == "script-message" and c[2] == "vivi-setting" and c[3] == "chapter-thumbnails" then set[c[4]] = c[5] end
+end
+T.eq(set.scenes, "true", "automatic setting copied")
+T.eq(set["scenes-scan"], "Keyframes only", "scan copied")
+T.eq(set["scenes-min-length"], "45", "minimum length copied")
+T.eq(set["scenes-threshold"], nil, "default threshold not copied")
+T.ok(T.removed and T.removed.detect, "Alt+J left to Chapters & Previews")
+T.calls = {}
+P.detect(true)
+T.eq(T.calls[1] and table.concat(T.calls[1], " "), "script-message-to chapter_thumbnails scenes-detect", "Detect forwarded")
+T.calls = {}
+P.on_superseded()
+T.eq(#T.calls, 0, "once")
+P = T.load("plugins/scene-chapters/scene-chapters.lua", { auto = true })
+T.calls = {}
+P.on_superseded()
+local n = 0
+for _, c in ipairs(T.calls) do if c[2] == "vivi-setting" then n = n + 1 end end
+T.eq(n, 0, "settings copied only the first time (marker file)")
 T.done("scene-chapters")

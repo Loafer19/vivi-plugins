@@ -2,6 +2,8 @@
 
 Adds chapters at scene changes to local videos that have none: ffmpeg finds the cuts in the background and they become `Scene 1`, `Scene 2`, … in the seek bar and the side panel's Chapters tab. Implements #62.
 
+> **Deprecated.** Scene detection is now part of [Chapters & Previews](../chapter-thumbnails/README.md) (the Chapter Thumbnails plugin, 1.2.0 or later): the same scan, settings under *Scene chapters*, `Alt+J` and *Video → Detect scene chapters*, automatic detection off by default. With Chapters & Previews installed, Scene Chapters 1.1.1 steps aside (no second `Alt+J` or automatic scan; *Detect* / *Forget* are passed on), copies its non-default settings there once, and its cache is reused. Then uninstall Scene Chapters. Without Chapters & Previews 1.2 it keeps working as described below.
+
 Install: Vivi → Settings → Extensions → Browse → **Install**. Requires Vivi 0.9.0+ and `ffmpeg` (see below).
 
 ![Scene chapters merged with SponsorBlock's Outro chapters; pictures by Chapter Thumbnails (Big Buck Bunny, © Blender Foundation, CC BY 3.0)](../../docs/screenshots/plugins/scene-chapters-player.png)
@@ -23,7 +25,7 @@ Messages are Vivi toasts, never text over the video.
 
 ## Chapter pictures
 
-The pictures in the Chapters tab come from [Chapter Thumbnails](../chapter-thumbnails/README.md), which redoes them whenever chapters are added or moved. This plugin no longer makes its own (1.0.x did, a second copy of the same pictures); old ones are deleted when a file is opened again.
+The pictures in the Chapters tab come from [Chapters & Previews](../chapter-thumbnails/README.md), which redoes them whenever chapters are added or moved. This plugin no longer makes its own (1.0.x did, a second copy of the same pictures); old ones are deleted when a file is opened again.
 
 ## ffmpeg
 

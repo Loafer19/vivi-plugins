@@ -5,6 +5,11 @@ tags = ["chapters", "scenes", "ffmpeg"]
 screenshots = ["scene-chapters-player", "scene-chapters-settings"]
 
 [[changelog]]
+version = "1.1.1"
+date = "2026-10-19"
+notes = "Deprecated: scene detection is now part of Chapters & Previews (chapter-thumbnails 1.2.0). With it installed this plugin steps aside (no second Alt+J or automatic scan, Detect / Forget passed on) and copies its non-default settings there once; then uninstall it."
+
+[[changelog]]
 version = "1.1.0"
 date = "2026-10-19"
 notes = "Keyframes-only scan (about 10× faster), runs at the lowest CPU / disk priority, Alt+J again cancels. Scenes are merged with chapters added by other plugins (SponsorBlock) instead of replacing them or being refused; videos with their own chapters are left alone. No chapter shorter than the minimum at the end; times are right for files that do not start at 0; changing the minimum length applies at once from the cache. Uses Vivi's media ffmpeg when another plugin downloaded it. Chapter pictures are left to Chapter Thumbnails (no second copy; old ones are deleted). Vivi toasts only, no mpv OSD text. Forget also removes the scene chapters. Renamed to Scene Chapters; README rewritten; screenshots."

@@ -1,7 +1,7 @@
 id = "scene-chapters"
 name = "Scene Chapters"
-version = "1.1.0"
-description = "Creates chapters at scene changes for local videos without chapters (ffmpeg scene detection in the background, merged with SponsorBlock chapters). Chapter pictures come from Chapter Thumbnails. Results are cached per file."
+version = "1.1.1"
+description = "Deprecated: scene chapters are now part of Chapters & Previews (chapter-thumbnails 1.2). Creates chapters at scene changes for local videos without chapters (ffmpeg scene detection in the background, merged with SponsorBlock chapters). Chapter pictures come from Chapters & Previews. Results are cached per file."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "scene-chapters.lua"
@@ -12,6 +12,13 @@ permissions = ["filesystem", "subprocess"]
 size_note = "uses ffmpeg"
 issue = 62
 default_enabled = true
+
+# Scene detection moved into Chapters & Previews (chapter-thumbnails 1.2.0). With that
+# plugin loaded this one steps aside (see scene-chapters.lua) and copies its settings once.
+[deprecated]
+message = "Scene detection is now part of Chapters & Previews (the Chapter Thumbnails plugin, 1.2 or later). With it installed, Scene Chapters steps aside and copies its settings there once; then you can uninstall Scene Chapters."
+replacement = "plugin:chapter-thumbnails"
+action = "Open Chapters & Previews"
 
 [[settings]]
 key = "auto"

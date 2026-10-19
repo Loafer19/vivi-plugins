@@ -1,7 +1,13 @@
 -- @name Scene Chapters
--- @version 1.1.0
+-- @version 1.1.1
 -- @author Vivi
 -- @description Chapters at scene changes for local videos without chapters, via ffmpeg (Vivi plugin package).
+--
+-- DEPRECATED: scene detection is part of Chapters & Previews (chapter-thumbnails 1.2.0).
+-- When that plugin is loaded it says `scene-chapters-superseded`; this one then steps
+-- aside: Alt+J and automatic scans are left to it, Detect / Forget are forwarded to it,
+-- and non-default settings are copied over once (vivi-setting). Without it, this works
+-- as before.
 --
 -- Keys: Alt+j  detect (again while it runs: cancel)
 -- Script messages: detect, clear.
@@ -163,6 +169,8 @@ local ours = {}       -- chapters we added: { {time, title}, … }
 local job = nil       -- running scan: { path, id, cancelled }
 local gen = 0         -- bumped on every file, so a late timer or scan result is ignored
 local ff_warned = false -- "needs ffmpeg" was shown (automatic runs show it once)
+local superseded = false -- Chapters & Previews 1.2+ is loaded and does scene detection
+local NEW = "chapter_thumbnails" -- its script name
 
 local function is_ours(c)
   for _, x in ipairs(ours) do
@@ -239,6 +247,10 @@ local function run_scan(list, path, th, mode, cb)
 end
 
 local function detect(manual)
+  if superseded then
+    if manual then mp.commandv("script-message-to", NEW, "scenes-detect") end
+    return
+  end
   local path, why = local_video()
   if not path then if manual then toast("Scene detection: " .. why) end return end
   if job then
@@ -292,6 +304,7 @@ local function detect(manual)
 end
 
 local function clear()
+  if superseded and #ours == 0 then mp.commandv("script-message-to", NEW, "scenes-forget") return end
   local path = mp.get_property("path")
   local k = path and key(path)
   if not k then toast("Scene detection: play a local video first") return end
@@ -331,10 +344,39 @@ mp.add_forced_key_binding("Alt+j", "detect", function() detect(true) end)
 mp.register_script_message("detect", function() detect(true) end)
 mp.register_script_message("clear", clear)
 
+-- Settings of this plugin that differ from the defaults, as Chapters & Previews settings.
+local function migrated_settings()
+  local out = {}
+  if o.auto then out[#out + 1] = { "scenes", "true" } end
+  if scan_mode() == "keyframes" then out[#out + 1] = { "scenes-scan", "Keyframes only" } end
+  if tostring(o.threshold) ~= "0.4" then out[#out + 1] = { "scenes-threshold", tostring(o.threshold) } end
+  if tostring(o.min_gap) ~= "30" then out[#out + 1] = { "scenes-min-length", tostring(o.min_gap) } end
+  return out
+end
+
+local function on_superseded()
+  if superseded then return end
+  superseded = true
+  cancel(true)
+  mp.remove_key_binding("detect")
+  local mark = root .. SEP .. "migrated"
+  if not utils.file_info(mark) then
+    local list = migrated_settings()
+    for _, kv in ipairs(list) do mp.commandv("script-message", "vivi-setting", "chapter-thumbnails", kv[1], kv[2]) end
+    mkdir(root)
+    local f = io.open(mark, "w")
+    if f then f:write("settings copied to chapter-thumbnails\n") f:close() end
+    if #list > 0 then mp.msg.info(#list .. " setting(s) copied to Chapters & Previews") end
+  end
+end
+mp.register_script_message("scene-chapters-superseded", on_superseded)
+mp.commandv("script-message", "scene-chapters-hello") -- in case Chapters & Previews loaded first
+
 if VIVI_TEST then
   return { key = key, parse_scenes = parse_scenes, pick = pick, scan_args = scan_args,
     cache_fits = cache_fits, read_cache = read_cache, write_cache = write_cache, threshold = threshold,
     scan_mode = scan_mode, apply = apply, detect = detect, clear = clear, on_file_loaded = on_file_loaded,
     on_settings = on_settings, opts = o, root = root, ours = function() return ours end,
-    running = function() return job end }
+    running = function() return job end, on_superseded = on_superseded,
+    migrated_settings = migrated_settings }
 end

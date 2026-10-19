@@ -656,9 +656,9 @@
     },
     {
       "id": "chapter-thumbnails",
-      "name": "Chapter Thumbnails",
-      "description": "Thumbnail preview while hovering the seek bar and a picture for every chapter in the Chapters tab, generated in the background (on the first hover, or when the video opens) and cached per file. Alt+H lists the chapters with titles and times. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Subtitle Auto-Sync).",
-      "version": "1.1.0",
+      "name": "Chapters & Previews",
+      "description": "Thumbnail preview while hovering the seek bar and a picture for every chapter in the Chapters tab, generated in the background and cached per file. Optional scene chapters for videos without chapters (ffmpeg scene detection, Alt+J; merged with SponsorBlock chapters). Alt+H lists the chapters. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Subtitle Auto-Sync).",
+      "version": "1.2.0",
       "author": "Vivi",
       "icon": "chapters",
       "lucide": "gallery-horizontal-end",
@@ -672,9 +672,9 @@
         "subprocess"
       ],
       "source": "plugins/chapter-thumbnails",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.1.0/chapter-thumbnails-1.1.0.zip",
-      "sha256": "f173f3800ae10dd9a87367a02fecec00e58ada84eb3ddb968937e273123f251e",
-      "size": 36681,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.2.0/chapter-thumbnails-1.2.0.zip",
+      "sha256": "c25dbb27bdda23e2a9c5e607e157bf6d30d6bcbfb13df98adcba65665133f691",
+      "size": 51343,
       "settings": [
         {
           "key": "seekbar",
@@ -740,6 +740,46 @@
           "default": "500"
         },
         {
+          "key": "scenes",
+          "title": "Scene chapters: detect scenes automatically in videos without chapters",
+          "type": "toggle",
+          "default": "false"
+        },
+        {
+          "key": "scenes-scan",
+          "title": "Scene scan (Keyframes only: about 10× faster, finds fewer cuts)",
+          "type": "choice",
+          "options": [
+            "Every frame",
+            "Keyframes only"
+          ],
+          "default": "Every frame"
+        },
+        {
+          "key": "scenes-threshold",
+          "title": "Scene change threshold (0.1–0.9, lower = more chapters)",
+          "type": "text",
+          "default": "0.4"
+        },
+        {
+          "key": "scenes-min-length",
+          "title": "Minimum scene chapter length (seconds)",
+          "type": "text",
+          "default": "30"
+        },
+        {
+          "key": "scenes-detect",
+          "title": "Detect scene chapters now (Alt+J; again to cancel)",
+          "type": "action",
+          "label": "Detect"
+        },
+        {
+          "key": "scenes-forget",
+          "title": "Remove the scene chapters and forget this file's scan",
+          "type": "action",
+          "label": "Forget"
+        },
+        {
           "key": "generate",
           "title": "Generate the thumbnails of this file now",
           "type": "action",
@@ -772,6 +812,7 @@
       "tags": [
         "thumbnails",
         "chapters",
+        "scenes",
         "seek bar",
         "preview",
         "ffmpeg"
@@ -782,10 +823,15 @@
       ],
       "changelog": [
         {
+          "version": "1.2.0",
+          "date": "2026-10-19",
+          "notes": "Now called Chapters & Previews and includes scene chapters (formerly the Scene Chapters plugin): Alt+J or Video → Detect scene chapters, automatic detection off by default, every frame or keyframes only (about 10× faster), threshold and minimum length, merged with SponsorBlock chapters, lowest CPU / disk priority, Alt+J again cancels; Scene Chapters' cache and settings are taken over. Messages are Vivi toasts only (no mpv OSD text).",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.2.0/chapter-thumbnails-1.2.0.zip"
+        },
+        {
           "version": "1.1.0",
           "date": "2026-10-19",
-          "notes": "Auto frame count (one per 10 s, 25 to 200) and a choice of when seek-bar previews are made: on the first hover (default) or after 10 s of playback at low priority; coarse-to-fine, so previews appear within a second. Cache size limit in MB and Clear all. Fixes: changing the frame count no longer mixes old and new frames, chapter pictures follow chapters added or moved later (SponsorBlock, Scene Chapters), no lost chapter updates while busy, AV1 and other codecs the bundled ffmpeg can't decode are reported. README rewritten; screenshots.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-chapter-thumbnails-v1.1.0/chapter-thumbnails-1.1.0.zip"
+          "notes": "Auto frame count (one per 10 s, 25 to 200) and a choice of when seek-bar previews are made: on the first hover (default) or after 10 s of playback at low priority; coarse-to-fine, so previews appear within a second. Cache size limit in MB and Clear all. Fixes: changing the frame count no longer mixes old and new frames, chapter pictures follow chapters added or moved later (SponsorBlock, Scene Chapters), no lost chapter updates while busy, AV1 and other codecs the bundled ffmpeg can't decode are reported. README rewritten; screenshots."
         },
         {
           "version": "1.0.1",
@@ -1633,8 +1679,8 @@
     {
       "id": "scene-chapters",
       "name": "Scene Chapters",
-      "description": "Creates chapters at scene changes for local videos without chapters (ffmpeg scene detection in the background, merged with SponsorBlock chapters). Chapter pictures come from Chapter Thumbnails. Results are cached per file.",
-      "version": "1.1.0",
+      "description": "Deprecated: scene chapters are now part of Chapters & Previews (chapter-thumbnails 1.2). Creates chapters at scene changes for local videos without chapters (ffmpeg scene detection in the background, merged with SponsorBlock chapters). Chapter pictures come from Chapters & Previews. Results are cached per file.",
+      "version": "1.1.1",
       "author": "Vivi",
       "icon": "chapters",
       "lucide": "clapperboard",
@@ -1647,9 +1693,9 @@
         "subprocess"
       ],
       "source": "plugins/scene-chapters",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scene-chapters-v1.1.0/scene-chapters-1.1.0.zip",
-      "sha256": "e54f6d7a408c912193690ddc01c1f8a7afe75176675abf733c58c74acf555122",
-      "size": 18459,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scene-chapters-v1.1.1/scene-chapters-1.1.1.zip",
+      "sha256": "0a8314d73809c06fb10cb13cafe2f07508dbd1dd4f2d5f99147f90b5c3ea1746",
+      "size": 21739,
       "settings": [
         {
           "key": "auto",
@@ -1708,10 +1754,15 @@
       ],
       "changelog": [
         {
+          "version": "1.1.1",
+          "date": "2026-10-19",
+          "notes": "Deprecated: scene detection is now part of Chapters & Previews (chapter-thumbnails 1.2.0). With it installed this plugin steps aside (no second Alt+J or automatic scan, Detect / Forget passed on) and copies its non-default settings there once; then uninstall it.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scene-chapters-v1.1.1/scene-chapters-1.1.1.zip"
+        },
+        {
           "version": "1.1.0",
           "date": "2026-10-19",
-          "notes": "Keyframes-only scan (about 10× faster), runs at the lowest CPU / disk priority, Alt+J again cancels. Scenes are merged with chapters added by other plugins (SponsorBlock) instead of replacing them or being refused; videos with their own chapters are left alone. No chapter shorter than the minimum at the end; times are right for files that do not start at 0; changing the minimum length applies at once from the cache. Uses Vivi's media ffmpeg when another plugin downloaded it. Chapter pictures are left to Chapter Thumbnails (no second copy; old ones are deleted). Vivi toasts only, no mpv OSD text. Forget also removes the scene chapters. Renamed to Scene Chapters; README rewritten; screenshots.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scene-chapters-v1.1.0/scene-chapters-1.1.0.zip"
+          "notes": "Keyframes-only scan (about 10× faster), runs at the lowest CPU / disk priority, Alt+J again cancels. Scenes are merged with chapters added by other plugins (SponsorBlock) instead of replacing them or being refused; videos with their own chapters are left alone. No chapter shorter than the minimum at the end; times are right for files that do not start at 0; changing the minimum length applies at once from the cache. Uses Vivi's media ffmpeg when another plugin downloaded it. Chapter pictures are left to Chapter Thumbnails (no second copy; old ones are deleted). Vivi toasts only, no mpv OSD text. Forget also removes the scene chapters. Renamed to Scene Chapters; README rewritten; screenshots."
         },
         {
           "version": "1.0.1",
@@ -1724,7 +1775,12 @@
           "notes": "First release."
         }
       ],
-      "size_note": "uses ffmpeg"
+      "size_note": "uses ffmpeg",
+      "deprecated": {
+        "action": "Open Chapters & Previews",
+        "message": "Scene detection is now part of Chapters & Previews (the Chapter Thumbnails plugin, 1.2 or later). With it installed, Scene Chapters steps aside and copies its settings there once; then you can uninstall Scene Chapters.",
+        "replacement": "plugin:chapter-thumbnails"
+      }
     },
     {
       "id": "scrobbler",
