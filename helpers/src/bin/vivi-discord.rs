@@ -1,7 +1,11 @@
 //! Discord Rich Presence helper of the `discord` plugin.
 //!
 //! `vivi-discord --ipc <mpv socket> --app-id <id> [--hide-names] [--image <key or URL>]
-//!  [--show all|music] [--art yes|no] [--button yes|no] [--display app|title|artist]`
+//!  [--show all|music] [--art yes|no] [--button yes|no] [--display app|title|artist]
+//!  [--token <t>]`
+//!
+//! With `--token` the helper exits as soon as `user-data/discord/helper` no longer holds
+//! that token (the script started a newer helper or stopped).
 //!
 //! Polls mpv every second; sends the activity when the title, picture, pause state or
 //! position (seek) changes, at most 5 updates per 20 s (Discord's limit). Retries Discord
@@ -40,6 +44,7 @@ fn playing(m: &mut Mpv) -> io::Result<Playing> {
         image_only: picture && !cover && !has_audio,
         paused: m.get_bool("pause")?,
         eof: m.get_bool("eof-reached")?,
+        loading: m.get("time-pos")?.is_none(),
         pos: m.get_f64("time-pos")?,
         dur: m.get_f64("duration")?,
         speed: m.get_f64("speed")?,
@@ -70,6 +75,8 @@ fn main() {
         .map(|s| s.trim().to_string())
         .unwrap_or_default();
     let o = opts(&a);
+    // Set by the plugin script for the helper that should run (`user-data/discord/helper`).
+    let token = a.get("token").cloned();
     let mut m = match Mpv::connect(&ipc) {
         Ok(m) => m,
         Err(e) => {
@@ -93,8 +100,24 @@ fn main() {
     let mut sent: Option<Option<Presence>> = None;
     let mut next_try = Instant::now();
     let mut limit = Limiter::default();
+    let mut waited = 0;
     // Ends when mpv quits (IPC error).
     while let Ok(p) = playing(&mut m) {
+        // Replaced by a newer helper (a settings change) or the plugin stopped: leave.
+        if let Some(t) = &token {
+            match m.get_str("user-data/discord/helper") {
+                Ok(cur) if cur == *t => {}
+                _ => break,
+            }
+        }
+        // While a file opens (a web stream takes seconds) keep the last status, so it
+        // does not flash the URL's host; a file that does not start in 10 s is shown.
+        if p.loading && waited < 10 && sent.is_some() {
+            waited += 1;
+            std::thread::sleep(Duration::from_secs(1));
+            continue;
+        }
+        waited = if p.loading { waited } else { 0 };
         let now = now_ms();
         let cur = presence(&p, &o, now);
         let same = match (&sent, &cur) {

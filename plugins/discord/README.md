@@ -7,6 +7,8 @@ was built into Vivi up to 0.9.0, a downloadable plugin with a native helper sinc
 
 ![Settings](../../docs/screenshots/plugins/discord-settings.png)
 
+![Connection status as a Vivi toast while music plays (synthetic test tone)](../../docs/screenshots/plugins/discord-status.png)
+
 ## Setup
 
 1. Create an application at <https://discord.com/developers/applications>. Its name is
@@ -40,7 +42,7 @@ button. Discord then shows this to people who can see your status.
   or host only, without user name, password, port, query string (e.g. `api_key=`) or
   fragment.
 * Nothing is shown when nothing plays, when a file has finished, or for a still image.
-* The helper logs connection states only (no titles, paths or IDs besides mpv's socket).
+* The helper logs connection states only (no titles or paths).
 
 ## How it works
 
@@ -50,5 +52,8 @@ The helper polls mpv once a second over IPC and sends `SET_ACTIVITY` frames to D
 local IPC socket (`discord-ipc-0`…`9` in `$XDG_RUNTIME_DIR`, `$TMPDIR` or `/tmp`, also
 under `app/com.discordapp.Discord/`, `snap.discord/` and Vesktop's Flatpak folder;
 `\\.\pipe\discord-ipc-N` on Windows), at most 5 updates per 20 s (Discord's own limit),
-retrying every 15 s while Discord is closed. The timer follows the playback speed.
+retrying every 15 s while Discord is closed (5 s after a lost connection). The timer
+follows the playback speed. Each helper gets a token (`user-data/discord/helper`) and
+exits when the script hands it to a newer helper, so a settings change never leaves two
+running.
 Flatpak Vivi has access to `xdg-run/discord-ipc-0` and `xdg-run/app/com.discordapp.Discord`.

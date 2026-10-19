@@ -18,6 +18,11 @@ local o = {
 }
 local windows = package.config:sub(1, 1) == "\\"
 local job
+-- Token of the helper that should run: a helper whose token is no longer in
+-- user-data/discord/helper exits by itself. abort_async_command alone can lose the race
+-- when settings change twice in a row (two helpers kept running).
+local gen = 0
+local function token() return mp.get_property("pid", "0") .. "-" .. gen end
 
 local function toast(msg)
   mp.commandv("script-message", "vivi-toast", msg)
@@ -55,12 +60,14 @@ local function helper_args(exe, ipc)
     "--display", display,
     "--art", yn(o["cover-art"]),
     "--button", yn(o["link-button"]),
+    "--token", token(),
   }
   if yn(o["hide-names"]) == "yes" then args[#args + 1] = "--hide-names" end
   return args
 end
 
 local function stop()
+  mp.set_property("user-data/discord/helper", "")
   if job then
     mp.abort_async_command(job)
     job = nil
@@ -74,6 +81,8 @@ local function start()
     toast("Discord Rich Presence: helper not found, reinstall the plugin")
     return
   end
+  gen = gen + 1
+  mp.set_property("user-data/discord/helper", token())
   -- A stale "Connected" from the previous helper must not show while this one starts.
   mp.set_property("user-data/discord/status", "Starting…")
   local me
@@ -89,7 +98,9 @@ local function start()
 end
 
 local function show_status()
-  local s = mp.get_property("user-data/discord/status", "")
+  -- native: mp.get_property formats a user-data string as JSON (with quotes).
+  local s = mp.get_property_native("user-data/discord/status", "")
+  if type(s) ~= "string" then s = "" end
   if s == "" then s = job and "Starting…" or "Not running" end
   toast("Discord Rich Presence: " .. s)
 end

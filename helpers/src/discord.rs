@@ -26,6 +26,8 @@ pub struct Playing {
     pub pos: f64,
     pub dur: f64,
     pub speed: f64,
+    /// Opened but not started yet (no `time-pos`): no timer, as the start would move.
+    pub loading: bool,
 }
 
 /// Plugin settings that shape the presence.
@@ -86,7 +88,7 @@ pub fn presence(p: &Playing, o: &Opts, now_ms: i64) -> Option<Presence> {
         (true, false) => format!("{state} · Paused"),
         _ => state,
     };
-    let (start, end) = if p.paused {
+    let (start, end) = if p.paused || p.loading {
         (None, None)
     } else {
         // Real time, so 1.5× playback ends earlier and the timer does not drift.
@@ -455,6 +457,18 @@ fn read_frame(s: &mut dyn Stream) -> io::Result<(u32, Value)> {
     Ok((op, serde_json::from_slice(&b).unwrap_or(Value::Null)))
 }
 
+/// Plain words for the errors people see in *Connection status*.
+fn friendly(e: io::Error) -> io::Error {
+    use io::ErrorKind::*;
+    match e.kind() {
+        WouldBlock | TimedOut => io::Error::new(TimedOut, "Discord did not answer"),
+        ConnectionRefused | ConnectionReset | BrokenPipe | UnexpectedEof => {
+            io::Error::new(e.kind(), "Discord closed the connection or is not running")
+        }
+        _ => e,
+    }
+}
+
 impl Client {
     /// Connect and handshake with the first reachable Discord.
     pub fn connect(app_id: &str) -> io::Result<Self> {
@@ -463,7 +477,7 @@ impl Client {
             match open(&p).and_then(|s| Self::handshake(s, app_id)) {
                 Ok(c) => return Ok(c),
                 Err(e) if e.kind() == io::ErrorKind::NotFound => {}
-                Err(e) => last = e,
+                Err(e) => last = friendly(e),
             }
         }
         Err(last)
@@ -480,6 +494,9 @@ impl Client {
         Ok(Self { s, nonce: 0 })
     }
     pub fn set(&mut self, p: Option<&Presence>) -> io::Result<()> {
+        self.send(p).map_err(friendly)
+    }
+    fn send(&mut self, p: Option<&Presence>) -> io::Result<()> {
         self.nonce += 1;
         let f = json!({
             "cmd": "SET_ACTIVITY",
@@ -638,6 +655,16 @@ mod tests {
             .activity()
             .get("status_display_type")
             .is_none());
+    }
+
+    #[test]
+    fn loading_has_no_timer() {
+        let mut s = song();
+        s.loading = true;
+        let a = presence(&s, &Opts::default(), 1_000).unwrap();
+        let b = presence(&s, &Opts::default(), 3_000).unwrap();
+        assert_eq!(a.start, None);
+        assert!(a.same(&b), "no resend while the start time would move");
     }
 
     #[test]

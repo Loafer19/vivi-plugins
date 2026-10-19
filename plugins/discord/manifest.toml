@@ -15,7 +15,7 @@ binaries = ["vivi-discord"]
 
 [[settings]]
 key = "app-id"
-title = "Discord application ID (create one at discord.com/developers/applications; its name is shown as \"Listening to <name>\")"
+title = "Discord application ID (from discord.com/developers/applications)"
 type = "text"
 default = ""
 
@@ -53,7 +53,7 @@ default = "false"
 
 [[settings]]
 key = "image"
-title = "Large image (optional): an art asset key of your Discord application or an https image URL"
+title = "Large image: art asset key of your Discord app or an https URL"
 type = "text"
 default = ""
 
