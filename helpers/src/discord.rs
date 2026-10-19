@@ -214,7 +214,9 @@ pub fn clean_title(title: &str, path: &str) -> String {
     if t.contains("://") {
         return url_label(t);
     }
-    if t.is_empty() && path.contains("://") {
+    // Without tags mpv names a URL after its last part, query and fragment included
+    // ("stream.mp3?api_key=…#t"): label the URL instead.
+    if path.contains("://") && (t.is_empty() || path.ends_with(t)) {
         return url_label(path);
     }
     let file = path.rsplit(['/', '\\']).next().unwrap_or("");
@@ -662,6 +664,23 @@ mod tests {
         );
         assert_eq!(url_label("https://a.b/My%20Song.ogg"), "My Song");
         assert!(!clean_title("http://h/x?api_key=SECRET", "").contains("SECRET"));
+        // mpv's media-title of an untagged URL (seen live): last part with query and fragment.
+        assert_eq!(
+            clean_title(
+                "untagged.mp3?api_key=SECRET123#frag",
+                "http://user:pw@127.0.0.1:18765/untagged.mp3?api_key=SECRET123#frag"
+            ),
+            "untagged"
+        );
+        assert_eq!(
+            clean_title("live?token=abc", "https://radio.example/live?token=abc"),
+            "radio.example"
+        );
+        // A real stream title (icy / tags) stays.
+        assert_eq!(
+            clean_title("Artist - Song", "https://radio.example/live"),
+            "Artist - Song"
+        );
     }
 
     #[test]
