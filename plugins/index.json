@@ -1569,8 +1569,8 @@
     {
       "id": "remote-control",
       "name": "Remote Control",
-      "description": "Control Vivi from your phone: a dark, touch-friendly web page with cover art, seek, play/pause/next, volume and mute, speed, audio and subtitle tracks, chapters, the queue, library search, fullscreen and open URL, updated live. Pair by scanning a QR code; PIN protected and local-network only by default. Installs to the home screen. Ships a small native helper (vivi-remote) that serves the page.",
-      "version": "1.1.0",
+      "description": "Control Vivi from your phone: a dark, touch-friendly web page with cover art, seek, play/pause/next, volume and mute, speed, audio and subtitle tracks, chapters, the queue, library search, fullscreen, open URL, play next and a sleep timer, updated live. Pair by scanning a QR code; PIN protected and local-network only by default. Installs to the home screen. Ships a small native helper (vivi-remote) that serves the page.",
+      "version": "1.2.0",
       "author": "Vivi",
       "icon": "remote",
       "lucide": "smartphone",
@@ -1583,9 +1583,9 @@
         "subprocess"
       ],
       "source": "plugins/remote-control",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.1.0/remote-control-1.1.0.zip",
-      "sha256": "6dc45cdee5cbec10c98db14b49aff11c163adb7e7ec7d740e06130c0a4743d83",
-      "size": 11218,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.2.0/remote-control-1.2.0.zip",
+      "sha256": "4d15668239769d7df03744f33c337b18f76722000104a0a40271c18ba4290c2b",
+      "size": 12826,
       "settings": [
         {
           "key": "port",
@@ -1596,7 +1596,7 @@
         {
           "key": "pin",
           "title": "PIN (empty: a random 6-digit PIN is made)",
-          "type": "text",
+          "type": "secret",
           "default": ""
         },
         {
@@ -1639,10 +1639,15 @@
       ],
       "changelog": [
         {
+          "version": "1.2.0",
+          "date": "2026-10-19",
+          "notes": "New: sleep timer on the phone page (15–90 minutes or the end of the current file; Vivi pauses with a toast, the page counts down) and Play next for library results and Open URL. Fixes: a phone that was connected when the PIN changed (New PIN) kept polling with the old PIN, cleared the PIN being typed every second and locked itself out for a minute; the Library tab never found Vivi's control socket without XDG_RUNTIME_DIR (macOS), as it looked in ~/.cache instead of ~/.cache/vivi; the helper retries the port for a few seconds after a restart instead of failing with \"address in use\"; the docs said the QR dialog and fullscreen need Vivi 0.10.1, it is 0.11.0; the Library hint names the actual setting (Allow AI agents and scripts). Security: the PIN reaches the helper on stdin instead of its command line (readable by every local user) on Linux and macOS; the PIN setting is masked; embedded covers are extracted into a fresh owner-only folder instead of a predictable /tmp file; the failed-PIN table is pruned.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.2.0/remote-control-1.2.0.zip"
+        },
+        {
           "version": "1.1.0",
           "date": "2026-10-16",
-          "notes": "Redesigned phone page in Vivi's style (dark, orange accent, Inter, Lucide icons, big touch targets; phone portrait/landscape and tablet layouts). New: live updates, mute, speed, audio/subtitle track picker, chapters, queue remove, library search (with Settings → General → Remote control), fullscreen, open URL, add to home screen (web app manifest and icon). Pair by QR code (Show QR code; the QR dialog and fullscreen need Vivi 0.10.1+, older versions show a toast), New PIN action, Local network only setting; the PIN is no longer put in URLs and DNS-rebinding requests are refused. Fixes: quotes around the address in the toast, a stale cover after switching files, cover art for files that were still loading, queue names without file extensions, sizes in the catalog include the helper.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.1.0/remote-control-1.1.0.zip"
+          "notes": "Redesigned phone page in Vivi's style (dark, orange accent, Inter, Lucide icons, big touch targets; phone portrait/landscape and tablet layouts). New: live updates, mute, speed, audio/subtitle track picker, chapters, queue remove, library search (with Settings → General → Remote control → Allow AI agents and scripts), fullscreen, open URL, add to home screen (web app manifest and icon). Pair by QR code (Show QR code; the QR dialog and fullscreen need Vivi 0.11.0+, older versions show a toast), New PIN action, Local network only setting; the PIN is no longer put in URLs and DNS-rebinding requests are refused. Fixes: quotes around the address in the toast, a stale cover after switching files, cover art for files that were still loading, queue names without file extensions, sizes in the catalog include the helper."
         },
         {
           "version": "1.0.0",
@@ -1653,43 +1658,7 @@
       "needs": [
         "vivi-remote"
       ],
-      "binaries": [
-        {
-          "name": "vivi-remote",
-          "platform": "linux-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.1.0/vivi-remote-linux-x86_64",
-          "sha256": "2d79639e77c93ff045309d1f5a8b2b00bedb0ead9813cc520e3960e4d45f1969",
-          "size": 758560
-        },
-        {
-          "name": "vivi-remote",
-          "platform": "linux-aarch64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.1.0/vivi-remote-linux-aarch64",
-          "sha256": "f05e14a56f5fb36123628e2578f3bdae25825fea8e7b92a6fe7f6012b6a64ab1",
-          "size": 725280
-        },
-        {
-          "name": "vivi-remote",
-          "platform": "windows-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.1.0/vivi-remote-windows-x86_64.exe",
-          "sha256": "226aafd82a2a687a1b588ceb97eda082e5f9e7c670381880fb66dfb3e9a3d123",
-          "size": 458752
-        },
-        {
-          "name": "vivi-remote",
-          "platform": "macos-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.1.0/vivi-remote-macos-x86_64",
-          "sha256": "f110384f5bee06e26ebdb32dcb16fb33ea9f324fbf069c7988b26fb1ed0139fd",
-          "size": 597736
-        },
-        {
-          "name": "vivi-remote",
-          "platform": "macos-aarch64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-remote-control-v1.1.0/vivi-remote-macos-aarch64",
-          "sha256": "4427e09ce24f08d6d11169998b9b1ac90651c9a4836417c95612797bbfabdd6b",
-          "size": 586016
-        }
-      ]
+      "binaries": []
     },
     {
       "id": "scene-chapters",

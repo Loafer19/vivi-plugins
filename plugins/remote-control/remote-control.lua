@@ -1,5 +1,5 @@
 -- @name Remote Control
--- @version 1.1.0
+-- @version 1.2.0
 -- @author Vivi
 -- @description Phone remote control page on the local network (Vivi plugin package).
 --
@@ -9,7 +9,9 @@
 -- restarts it when the port, PIN or network setting changes. The helper drives the player
 -- over IPC and publishes user-data/remote/url (address and PIN) and user-data/remote/pair
 -- (address with the PIN in the URL fragment), which "Show QR code" hands to Vivi's QR
--- dialog (`script-message vivi-qr`, Vivi 0.10.1+; older versions show a toast only).
+-- dialog (`script-message vivi-qr`, Vivi 0.11.0+; older versions show a toast only).
+-- The PIN reaches the helper on stdin, not in its command line (which every local user
+-- can read); mpv cannot feed stdin on Windows, so there it is an argument.
 local mp = require "mp"
 local options = require "mp.options"
 
@@ -74,8 +76,16 @@ local function truthy(v)
   return v ~= "false" and v ~= "no" and v ~= "0" and v ~= "off"
 end
 
-local function helper_args(exe, ipc, port, pin, lan_only)
-  return { exe, "--ipc", ipc, "--port", tostring(port), "--pin", pin, "--lan-only", lan_only and "yes" or "no" }
+-- Helper command line and stdin data (the PIN, Unix only).
+local function helper_args(exe, ipc, port, pin, lan_only, win)
+  local a = { exe, "--ipc", ipc, "--port", tostring(port), "--lan-only", lan_only and "yes" or "no" }
+  if win then
+    a[#a + 1] = "--pin"
+    a[#a + 1] = pin
+    return a, nil
+  end
+  a[#a + 1] = "--pin-stdin"
+  return a, pin .. "\n"
 end
 
 local function stop()
@@ -119,10 +129,10 @@ local function start()
       toast("Remote Control: the PIN needs at least 4 characters, a new one was made")
     end
   end
-  local args = helper_args(exe, ipc_path(), port, pin, truthy(o.lan_only))
+  local args, stdin = helper_args(exe, ipc_path(), port, pin, truthy(o.lan_only), windows)
   mp.set_property("user-data/remote/url", "starting…")
   local me
-  me = mp.command_native_async({ name = "subprocess", args = args, playback_only = false }, function(_, r)
+  me = mp.command_native_async({ name = "subprocess", args = args, stdin_data = stdin, playback_only = false }, function(_, r)
     if job == me then job = nil end
     if r and r.status and r.status ~= 0 and not r.killed_by_us then
       mp.msg.warn("vivi-remote exited with " .. tostring(r.status) .. " " .. tostring(r.error_string or ""))
@@ -145,7 +155,7 @@ local function show_address()
     caption = caption .. ". Reachable from any network: keep the PIN secret"
   end
   mp.commandv("script-message", "vivi-qr", "Remote Control", pair, caption)
-  toast("Remote control: " .. url, 10)
+  toast("Remote Control: " .. url, 10)
 end
 
 options.read_options(o, "remote-control", function()

@@ -10,8 +10,12 @@ T.eq(P.clean_pin("123"), nil, "pin too short")
 T.ok(P.random_pin():match("^%d%d%d%d%d%d$"), "random pin")
 T.eq(P.truthy("true"), true, "lan only on")
 T.eq(P.truthy("false"), false, "lan only off")
-local a = P.helper_args("/pkg/bin/vivi-remote", "/tmp/s", 8765, "1234", false)
-T.eq(table.concat(a, " "), "/pkg/bin/vivi-remote --ipc /tmp/s --port 8765 --pin 1234 --lan-only no", "helper args")
+local a, stdin = P.helper_args("/pkg/bin/vivi-remote", "/tmp/s", 8765, "1234", false)
+T.eq(table.concat(a, " "), "/pkg/bin/vivi-remote --ipc /tmp/s --port 8765 --lan-only no --pin-stdin", "helper args")
+T.eq(stdin, "1234\n", "PIN on stdin, not in the command line")
+local w, wstdin = P.helper_args("C:\\p\\vivi-remote.exe", "\\\\.\\pipe\\x", 8765, "1234", true, true)
+T.eq(w[#w - 1] .. " " .. w[#w], "--pin 1234", "Windows: PIN as an argument")
+T.eq(wstdin, nil, "Windows: no stdin data")
 
 -- First start without a PIN: one is made, saved with vivi-setting, the helper started.
 P.start()
@@ -23,7 +27,9 @@ end
 T.ok(saved and saved[3] == "remote-control" and saved[4] == "pin" and saved[5]:match("^%d+$"), "pin saved")
 T.ok(spawned, "helper started")
 T.eq(spawned.args[1], "/pkg/bin/vivi-remote", "helper path")
-T.eq(spawned.args[#spawned.args], "yes", "LAN only by default")
+T.eq(spawned.args[#spawned.args - 1], "yes", "LAN only by default")
+T.ok(spawned.stdin_data and spawned.stdin_data:match("^%d%d%d%d%d%d\n$"), "PIN fed on stdin")
+for _, x in ipairs(spawned.args) do T.ok(x ~= saved[5], "PIN not in the command line") end
 
 -- Show QR code: vivi-qr with the pairing link from the helper (helper still running).
 local mp = package.loaded["mp"]

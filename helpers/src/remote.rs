@@ -83,6 +83,10 @@ pub struct Snapshot {
     pub has_video: bool,
     /// Vivi's library search is reachable (control socket on).
     pub library: bool,
+    /// Sleep timer: seconds until playback pauses (0 = off).
+    pub sleep: f64,
+    /// Sleep timer set to "end of this file".
+    pub sleep_eof: bool,
 }
 
 fn tracks_json(t: &[Track]) -> Value {
@@ -103,21 +107,28 @@ impl Snapshot {
             "chapters": self.chapters.iter().map(|c| json!({"title": c.title, "time": c.time})).collect::<Vec<_>>(),
             "chapter": self.chapter, "audio": tracks_json(&self.audio), "subs": tracks_json(&self.subs),
             "has_video": self.has_video, "library": self.library,
+            "sleep": self.sleep.max(0.0).round(), "sleep_eof": self.sleep_eof,
         })
     }
 
-    /// Whether the page must be told: anything but the playing position changed, or the
-    /// position is more than a second away from where it would be by now (seek, stall).
+    /// Whether the page must be told: anything but the playing position and the sleep
+    /// countdown changed, the position is more than a second away from where it would be
+    /// by now (seek, stall), or the sleep timer was set, changed or ran out.
     pub fn differs(&self, sent: &Snapshot, since: Duration) -> bool {
         let a = Snapshot {
             position: 0.0,
+            sleep: 0.0,
             ..self.clone()
         };
         let b = Snapshot {
             position: 0.0,
+            sleep: 0.0,
             ..sent.clone()
         };
-        if a != b {
+        if a != b || (self.sleep > 0.0) != (sent.sleep > 0.0) {
+            return true;
+        }
+        if self.sleep > 0.0 && (self.sleep - (sent.sleep - since.as_secs_f64())).abs() > 2.0 {
             return true;
         }
         let expected = if sent.paused {
@@ -218,8 +229,19 @@ pub enum Cmd {
     /// Subtitle track id, 0 = off.
     Sub(i64),
     Fullscreen,
-    /// Load a URL or a library path; `true` = add to the queue.
-    Open(String, bool),
+    /// Load a URL or a library path: play now, add to the queue, or play next.
+    Open(String, Place),
+    /// Sleep timer in minutes (0 = off, -1 = at the end of the current file). Handled by
+    /// the helper, not mpv.
+    Sleep(f64),
+}
+
+/// Where [`Cmd::Open`] puts the file.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Place {
+    Now,
+    Queue,
+    Next,
 }
 
 /// URL or absolute path the page may open: common streaming schemes or a local path
@@ -276,13 +298,21 @@ impl Cmd {
                 if !valid_target(t) {
                     return None;
                 }
-                Self::Open(t.to_string(), v["append"].as_bool().unwrap_or(false))
+                let place = if v["next"].as_bool() == Some(true) {
+                    Place::Next
+                } else if v["append"].as_bool() == Some(true) {
+                    Place::Queue
+                } else {
+                    Place::Now
+                };
+                Self::Open(t.to_string(), place)
             }
+            "sleep" if n == -1.0 || (0.0..=24.0 * 60.0).contains(&n) => Self::Sleep(n),
             _ => return None,
         })
     }
 
-    /// The mpv command for it.
+    /// The mpv command for it (empty for [`Cmd::Sleep`], which the helper handles).
     pub fn mpv_args(&self) -> Vec<String> {
         let s = |a: &[&str]| a.iter().map(|x| x.to_string()).collect::<Vec<_>>();
         match self {
@@ -302,10 +332,13 @@ impl Cmd {
             Self::Audio(i) => s(&["set", "aid", &i.to_string()]),
             Self::Sub(0) => s(&["set", "sid", "no"]),
             Self::Sub(i) => s(&["set", "sid", &i.to_string()]),
-            // Vivi (0.10.1+) owns the window: it handles this broadcast.
+            // Vivi (0.11.0+) owns the window: it handles this broadcast.
             Self::Fullscreen => s(&["script-message", "vivi-fullscreen", "toggle"]),
-            Self::Open(t, false) => s(&["loadfile", t, "replace"]),
-            Self::Open(t, true) => s(&["loadfile", t, "append-play"]),
+            Self::Open(t, Place::Now) => s(&["loadfile", t, "replace"]),
+            Self::Open(t, Place::Queue) => s(&["loadfile", t, "append-play"]),
+            // mpv 0.38+; the helper falls back to append + playlist-move on older ones.
+            Self::Open(t, Place::Next) => s(&["loadfile", t, "insert-next-play"]),
+            Self::Sleep(_) => Vec::new(),
         }
     }
 }
@@ -374,22 +407,31 @@ pub fn random_pin() -> String {
     format!("{:06}", h.finish() % 1_000_000)
 }
 
-/// Vivi's control socket (Settings → General → Remote control; keep in sync with
-/// `socket_path` in Loafer19/vivi `src/ipc.rs`). Unix only.
+/// Vivi's control socket (Settings → General → Remote control → Allow AI agents and
+/// scripts; keep in sync with `socket_path` in Loafer19/vivi `src/ipc.rs`). Unix only.
 #[cfg(unix)]
 pub fn vivi_socket() -> Option<std::path::PathBuf> {
-    use std::path::PathBuf;
-    let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty());
-    let p = if let Some(p) = env("VIVI_SOCKET") {
-        PathBuf::from(p)
-    } else if let Some(d) = env("XDG_RUNTIME_DIR") {
-        PathBuf::from(d).join("vivi.sock")
-    } else if let Some(d) = env("XDG_CACHE_HOME") {
-        PathBuf::from(d).join("vivi.sock")
-    } else {
-        PathBuf::from(env("HOME")?).join(".cache/vivi.sock")
-    };
+    let p = socket_path_from(|k| std::env::var_os(k))?;
     p.exists().then_some(p)
+}
+
+/// `$VIVI_SOCKET`, else `$XDG_RUNTIME_DIR/vivi.sock`, else `<cache dir>/vivi/vivi.sock`
+/// (`$XDG_CACHE_HOME` when absolute, else `~/.cache`), as Vivi and vivi-mcp do.
+pub fn socket_path_from(
+    env: impl Fn(&str) -> Option<std::ffi::OsString>,
+) -> Option<std::path::PathBuf> {
+    use std::path::PathBuf;
+    if let Some(p) = env("VIVI_SOCKET").filter(|v| !v.is_empty()) {
+        return Some(PathBuf::from(p));
+    }
+    if let Some(d) = env("XDG_RUNTIME_DIR").filter(|v| !v.is_empty()) {
+        return Some(PathBuf::from(d).join("vivi.sock"));
+    }
+    let cache = env("XDG_CACHE_HOME")
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .or_else(|| env("HOME").map(|h| PathBuf::from(h).join(".cache")))?;
+    Some(cache.join("vivi").join("vivi.sock"))
 }
 #[cfg(not(unix))]
 pub fn vivi_socket() -> Option<std::path::PathBuf> {
@@ -399,7 +441,7 @@ pub fn vivi_socket() -> Option<std::path::PathBuf> {
 /// Library search through Vivi's control socket (`search` command).
 #[cfg(unix)]
 pub fn library_search(q: &str, kind: &str) -> Result<Value, String> {
-    let p = vivi_socket().ok_or("Turn on Settings → General → Remote control in Vivi")?;
+    let p = vivi_socket().ok_or("Turn on Settings → General → Remote control → Allow AI agents and scripts in Vivi and restart it")?;
     let mut s = std::os::unix::net::UnixStream::connect(p).map_err(|e| e.to_string())?;
     let _ = s.set_read_timeout(Some(Duration::from_secs(8)));
     let _ = s.set_write_timeout(Some(Duration::from_secs(2)));
@@ -632,6 +674,9 @@ fn handle(mut s: TcpStream, sh: &Shared, tx: &Sender<Cmd>) {
     }
     {
         let mut f = lock(&sh.fails);
+        if f.len() > 256 {
+            f.retain(|_, (_, t)| t.elapsed() < Duration::from_secs(60));
+        }
         if let Some((n, t)) = f.get(&peer.ip()) {
             if *n >= 5 && t.elapsed() < Duration::from_secs(60) {
                 return respond(&mut s, "429 Too Many Requests", "text/plain", b"wait");
@@ -783,12 +828,26 @@ mod tests {
         );
         assert_eq!(
             c(r#"{"cmd":"open","target":" https://example.com/a.mp4 ","append":true}"#),
-            Some(Cmd::Open("https://example.com/a.mp4".into(), true))
+            Some(Cmd::Open("https://example.com/a.mp4".into(), Place::Queue))
         );
         assert_eq!(
-            Cmd::Open("/m/a.flac".into(), false).mpv_args(),
+            Cmd::Open("/m/a.flac".into(), Place::Now).mpv_args(),
             ["loadfile", "/m/a.flac", "replace"]
         );
+        assert_eq!(
+            c(r#"{"cmd":"open","target":"/m/b.flac","next":true}"#),
+            Some(Cmd::Open("/m/b.flac".into(), Place::Next))
+        );
+        assert_eq!(
+            Cmd::Open("/m/b.flac".into(), Place::Next).mpv_args(),
+            ["loadfile", "/m/b.flac", "insert-next-play"]
+        );
+        assert_eq!(c(r#"{"cmd":"sleep","value":30}"#), Some(Cmd::Sleep(30.0)));
+        assert_eq!(c(r#"{"cmd":"sleep","value":-1}"#), Some(Cmd::Sleep(-1.0)));
+        assert_eq!(c(r#"{"cmd":"sleep","value":0}"#), Some(Cmd::Sleep(0.0)));
+        assert_eq!(c(r#"{"cmd":"sleep","value":-5}"#), None);
+        assert_eq!(c(r#"{"cmd":"sleep","value":100000}"#), None);
+        assert!(Cmd::Sleep(5.0).mpv_args().is_empty());
         for bad in [
             "",
             "lavfi://sine",
@@ -876,6 +935,72 @@ mod tests {
             ..a.clone()
         }
         .differs(&a, t));
+        // Sleep timer: set, counting down as expected (no push), changed, run out.
+        let s = Snapshot {
+            position: 12.0,
+            sleep: 600.0,
+            ..a.clone()
+        };
+        assert!(s.differs(&a, t));
+        assert!(!Snapshot {
+            position: 14.0,
+            sleep: 598.0,
+            ..s.clone()
+        }
+        .differs(&s, t));
+        assert!(Snapshot {
+            position: 14.0,
+            sleep: 1800.0,
+            ..s.clone()
+        }
+        .differs(&s, t));
+        assert!(Snapshot {
+            position: 14.0,
+            ..a.clone()
+        }
+        .differs(&s, t));
+        assert!(Snapshot {
+            sleep_eof: true,
+            ..a.clone()
+        }
+        .differs(&a, t));
+    }
+
+    #[test]
+    fn control_socket_path() {
+        use std::ffi::OsString;
+        use std::path::PathBuf;
+        let env = |pairs: &'static [(&'static str, &'static str)]| {
+            move |k: &str| {
+                pairs
+                    .iter()
+                    .find(|(n, _)| *n == k)
+                    .map(|(_, v)| OsString::from(v))
+            }
+        };
+        let p = |pairs| socket_path_from(env(pairs));
+        assert_eq!(
+            p(&[("VIVI_SOCKET", "/s/v.sock"), ("XDG_RUNTIME_DIR", "/run/u")]),
+            Some(PathBuf::from("/s/v.sock"))
+        );
+        assert_eq!(
+            p(&[("XDG_RUNTIME_DIR", "/run/u"), ("HOME", "/h")]),
+            Some(PathBuf::from("/run/u/vivi.sock"))
+        );
+        // Like Vivi's cache_dir(): <cache>/vivi/vivi.sock (macOS has no XDG_RUNTIME_DIR).
+        assert_eq!(
+            p(&[("XDG_RUNTIME_DIR", ""), ("HOME", "/h")]),
+            Some(PathBuf::from("/h/.cache/vivi/vivi.sock"))
+        );
+        assert_eq!(
+            p(&[("XDG_CACHE_HOME", "/c"), ("HOME", "/h")]),
+            Some(PathBuf::from("/c/vivi/vivi.sock"))
+        );
+        assert_eq!(
+            p(&[("XDG_CACHE_HOME", "rel"), ("HOME", "/h")]),
+            Some(PathBuf::from("/h/.cache/vivi/vivi.sock"))
+        );
+        assert_eq!(p(&[]), None);
     }
 
     fn http(port: u16, req: &str) -> String {

@@ -5,9 +5,14 @@ tags = ["remote", "phone", "web", "qr", "pwa"]
 screenshots = ["remote-control-phone", "remote-control-qr", "remote-control-landscape", "remote-control-tablet", "remote-control-settings"]
 
 [[changelog]]
+version = "1.2.0"
+date = "2026-10-19"
+notes = "New: sleep timer on the phone page (15–90 minutes or the end of the current file; Vivi pauses with a toast, the page counts down) and Play next for library results and Open URL. Fixes: a phone that was connected when the PIN changed (New PIN) kept polling with the old PIN, cleared the PIN being typed every second and locked itself out for a minute; the Library tab never found Vivi's control socket without XDG_RUNTIME_DIR (macOS), as it looked in ~/.cache instead of ~/.cache/vivi; the helper retries the port for a few seconds after a restart instead of failing with \"address in use\"; the docs said the QR dialog and fullscreen need Vivi 0.10.1, it is 0.11.0; the Library hint names the actual setting (Allow AI agents and scripts). Security: the PIN reaches the helper on stdin instead of its command line (readable by every local user) on Linux and macOS; the PIN setting is masked; embedded covers are extracted into a fresh owner-only folder instead of a predictable /tmp file; the failed-PIN table is pruned."
+
+[[changelog]]
 version = "1.1.0"
 date = "2026-10-16"
-notes = "Redesigned phone page in Vivi's style (dark, orange accent, Inter, Lucide icons, big touch targets; phone portrait/landscape and tablet layouts). New: live updates, mute, speed, audio/subtitle track picker, chapters, queue remove, library search (with Settings → General → Remote control), fullscreen, open URL, add to home screen (web app manifest and icon). Pair by QR code (Show QR code; the QR dialog and fullscreen need Vivi 0.10.1+, older versions show a toast), New PIN action, Local network only setting; the PIN is no longer put in URLs and DNS-rebinding requests are refused. Fixes: quotes around the address in the toast, a stale cover after switching files, cover art for files that were still loading, queue names without file extensions, sizes in the catalog include the helper."
+notes = "Redesigned phone page in Vivi's style (dark, orange accent, Inter, Lucide icons, big touch targets; phone portrait/landscape and tablet layouts). New: live updates, mute, speed, audio/subtitle track picker, chapters, queue remove, library search (with Settings → General → Remote control → Allow AI agents and scripts), fullscreen, open URL, add to home screen (web app manifest and icon). Pair by QR code (Show QR code; the QR dialog and fullscreen need Vivi 0.11.0+, older versions show a toast), New PIN action, Local network only setting; the PIN is no longer put in URLs and DNS-rebinding requests are refused. Fixes: quotes around the address in the toast, a stale cover after switching files, cover art for files that were still loading, queue names without file extensions, sizes in the catalog include the helper."
 
 [[changelog]]
 version = "1.0.0"

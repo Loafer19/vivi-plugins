@@ -7,15 +7,17 @@ layouts for phone portrait, phone landscape and tablets. Implements #58.
 **On the page:** cover art and title/artist/album, current chapter, seek bar with
 chapter marks and times, play/pause, previous/next, ±10 s, volume and mute, playback
 speed, audio and subtitle track pickers, chapters list (tap to jump), the queue (tap to
-play, ✕ to remove), library search (play or add to the queue), fullscreen toggle and
-*Open URL* (play now or add to the queue; YouTube links work when yt-dlp is installed).
+play, ✕ to remove), library search (play now, play next or add to the queue), fullscreen
+toggle, *Open URL* (play now, play next or add to the queue; YouTube links work when yt-dlp
+is installed) and a **sleep timer** (15–90 minutes or the end of the current file; Vivi
+pauses and shows a toast, the page counts down).
 Changes show up live (a Server-Sent-Events stream; the page falls back to polling).
 *Add to Home Screen* installs it like an app (web app manifest + icon).
 
 ## Pairing
 
 1. Turn the plugin on (Settings → Extensions). A random 6-digit PIN is made on first start.
-2. *Pair a phone → Show QR code* opens a QR code (Vivi 0.10.1+; older versions show the
+2. *Pair a phone → Show QR code* opens a QR code (Vivi 0.11.0+; older versions show the
    address and PIN as a toast). Scan it with the phone camera: the link carries the PIN
    after `#`, which the browser keeps to itself, and the page remembers it.
 3. Or open `http://<this computer's LAN IP>:8765` and type the PIN.
@@ -25,7 +27,8 @@ Changes show up live (a Server-Sent-Events stream; the page falls back to pollin
 ## Settings
 
 - **Port** (default 8765, 1024–65535). The helper restarts when it changes.
-- **PIN**: at least 4 characters; left empty, a random 6-digit PIN is made and saved.
+- **PIN**: at least 4 characters; left empty, a random 6-digit PIN is made and saved. The
+  field is masked; *Show QR code* shows it.
 - **Only devices on the local network** (on by default): connections from addresses that
   are not loopback, private (RFC 1918 / unique-local) or link-local are dropped. Turn it
   off only for VPN setups with public addresses; the PIN is still required.
@@ -40,10 +43,18 @@ rebinding, and the page is served with a strict Content-Security-Policy. *Open U
 accepts http(s)/rtmp(s)/rtsp(s)/mms/srt/ytdl links and absolute paths only, not mpv's
 special protocols. Plain HTTP on the LAN: anyone who can sniff your Wi-Fi can see the PIN.
 
+The server listens on all interfaces but answers nothing without the PIN, and with *Only
+devices on the local network* on (the default) it drops other addresses unanswered. On
+Linux and macOS the PIN reaches the helper on stdin, so other users of the computer cannot
+read it from the process list; the helper logs only the address. Embedded covers are
+extracted into a fresh owner-only folder that is removed right away.
+
 ## Library
 
-The Library tab uses Vivi's control socket: turn on **Settings → General → Remote
-control** in Vivi (Linux and macOS). Without it the tab explains what to enable.
+The Library tab uses Vivi's control socket: turn on **Settings → General → Remote control →
+Allow AI agents and scripts** in Vivi and restart it (Linux and macOS). Without it the tab
+explains what to enable. The helper finds the socket where Vivi puts it (`$VIVI_SOCKET`,
+`$XDG_RUNTIME_DIR/vivi.sock`, else `~/.cache/vivi/vivi.sock`).
 
 ## How it works
 
@@ -55,9 +66,14 @@ to open pages when something changed, and sends the page's commands back. Embedd
 are extracted with mpv's `screenshot-to-file … video`; `cover/folder/front.jpg|png|webp`
 next to the file are used otherwise. The QR dialog is Vivi's `script-message vivi-qr
 <title> <text> [caption]`, fullscreen is `script-message vivi-fullscreen toggle`
-(both Vivi 0.10.1+).
+(both Vivi 0.11.0+). *Play next* is mpv's `loadfile … insert-next-play` (mpv 0.38+; older
+libmpv: append, then `playlist-move`). The sleep timer runs in the helper.
 
 API (all under `/api/`, header `X-Vivi-Pin`): `GET state`, `GET events` (SSE),
 `GET art`, `GET library?q=&kind=audio|video`, `POST cmd` with
-`{"cmd": "pause|stop|seek|seek-rel|volume|mute|speed|next|prev|play-index|remove|chapter|audio|sub|fullscreen|open", "value": n}`
-(`open` takes `"target"` and `"append"`).
+`{"cmd": "pause|stop|seek|seek-rel|volume|mute|speed|next|prev|play-index|remove|chapter|audio|sub|fullscreen|open|sleep", "value": n}`
+(`open` takes `"target"` and `"append"` or `"next"`; `sleep` takes minutes, 0 = off,
+-1 = end of the current file). `state` has `sleep` (seconds left) and `sleep_eof`.
+
+Needs Vivi 0.9.1+ (package helpers, `<id>-pkgdir`, `vivi-setting`); the QR dialog and the
+fullscreen button need 0.11.0+.
