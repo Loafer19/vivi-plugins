@@ -1384,8 +1384,8 @@
     {
       "id": "playback-stats",
       "name": "Playback Statistics",
-      "description": "Counts time watched and listened per day, with top artists and shows. Kept locally in a small TSV file; Alt+S shows a summary, export as CSV or clear any time.",
-      "version": "1.0.2",
+      "description": "Counts time watched and listened per day, with top artists and shows, today / 7 / 30 / 365-day totals and your day streak. Kept locally in a small TSV file; Alt+S shows a summary, pause recording, export as CSV or clear any time.",
+      "version": "1.1.0",
       "author": "Vivi",
       "icon": "stats",
       "lucide": "chart-column",
@@ -1397,10 +1397,16 @@
         "filesystem"
       ],
       "source": "plugins/playback-stats",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-playback-stats-v1.0.2/playback-stats-1.0.2.zip",
-      "sha256": "db46ba1d155c89c53838c62bd1ff99010e979cd097093387e5c2b360e4369528",
-      "size": 7980,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-playback-stats-v1.1.0/playback-stats-1.1.0.zip",
+      "sha256": "da613a5635cf8f7bc22844f04043a3ac252ef098aec8f903fdae09be2455098d",
+      "size": 29655,
       "settings": [
+        {
+          "key": "record",
+          "title": "Record statistics (off: nothing is counted until it is switched on again)",
+          "type": "toggle",
+          "default": "true"
+        },
         {
           "key": "days",
           "title": "Summary covers",
@@ -1418,13 +1424,18 @@
           "type": "action"
         },
         {
+          "key": "toggle-record",
+          "title": "Pause / resume recording",
+          "type": "action"
+        },
+        {
           "key": "export",
           "title": "Export CSV to ~/vivi-stats.csv",
           "type": "action"
         },
         {
           "key": "clear",
-          "title": "Clear statistics",
+          "title": "Clear statistics (asks first)",
           "type": "action"
         }
       ],
@@ -1440,14 +1451,22 @@
       ],
       "screenshots": [
         "playback-stats-player",
+        "playback-stats-days",
+        "playback-stats-home",
+        "playback-stats-extensions",
         "playback-stats-settings"
       ],
       "changelog": [
         {
+          "version": "1.1.0",
+          "date": "2026-10-19",
+          "notes": "Statistics in Vivi's own plugin dialog (Alt+S, the new Home widget, the side-drawer tab and the palette): Today / 7 / 30 / 365-day chips, grouped by artist or show, title or day with bars, a filter field, totals and a day streak; older Vivi keeps an OSD panel, now below the title bar (it covered the first line), and the toast is one line instead of the whole chart. Record statistics switch to pause counting. Pauses and buffering are timed exactly (up to 5 s were lost or added per pause). Summary covers applies live. Clear asks first. README: requires Vivi 0.9.0 (not 0.8.0); new screenshots.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-playback-stats-v1.1.0/playback-stats-1.1.0.zip"
+        },
+        {
           "version": "1.0.2",
           "date": "2026-10-15",
-          "notes": "Requires Vivi 0.9.0 (managed ffmpeg support).",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-playback-stats-v1.0.2/playback-stats-1.0.2.zip"
+          "notes": "Requires Vivi 0.9.0 (managed ffmpeg support)."
         },
         {
           "version": "1.0.1",

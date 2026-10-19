@@ -1,7 +1,7 @@
 id = "playback-stats"
 name = "Playback Statistics"
-version = "1.0.2"
-description = "Counts time watched and listened per day, with top artists and shows. Kept locally in a small TSV file; Alt+S shows a summary, export as CSV or clear any time."
+version = "1.1.0"
+description = "Counts time watched and listened per day, with top artists and shows, today / 7 / 30 / 365-day totals and your day streak. Kept locally in a small TSV file; Alt+S shows a summary, pause recording, export as CSV or clear any time."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "playback-stats.lua"
@@ -10,6 +10,41 @@ icon = "stats"
 lucide = "chart-column"
 permissions = ["filesystem"]
 issue = 66
+role = "feature"
+
+# Where it shows up in Vivi 0.13+ (older Vivi ignores these and uses its built-in
+# default, the "Show playback statistics" palette command). The Home card opens the
+# statistics dialog; the side-drawer tab shows the action buttons below and a toast.
+[[contributes]]
+point = "home.widget"
+label = "Playback statistics"
+command = "open"
+
+[[contributes]]
+point = "drawer.panel"
+label = "Playback Statistics"
+command = "drawer"
+
+[[contributes]]
+point = "palette.command"
+label = "Show playback statistics"
+command = "show"
+
+[[contributes]]
+point = "palette.command"
+label = "Playback statistics: pause / resume recording"
+command = "toggle-record"
+
+[[contributes]]
+point = "palette.command"
+label = "Playback statistics: export CSV"
+command = "export"
+
+[[settings]]
+key = "record"
+title = "Record statistics (off: nothing is counted until it is switched on again)"
+type = "toggle"
+default = "true"
 
 [[settings]]
 key = "days"
@@ -24,11 +59,16 @@ title = "Show summary"
 type = "action"
 
 [[settings]]
+key = "toggle-record"
+title = "Pause / resume recording"
+type = "action"
+
+[[settings]]
 key = "export"
 title = "Export CSV to ~/vivi-stats.csv"
 type = "action"
 
 [[settings]]
 key = "clear"
-title = "Clear statistics"
+title = "Clear statistics (asks first)"
 type = "action"
