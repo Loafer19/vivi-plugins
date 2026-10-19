@@ -103,4 +103,16 @@ T.eq(P.record().url, "https://radio.example/b.pls", "record the clipboard URL")
 T.props["clipboard/text"] = ""
 T.eq(P.record(), nil, "nothing to record")
 T.eq(P.record("https://x.example/c.mp3").record, true, "record an explicit URL")
+-- yt-dlp formats always fall back (no single file with video + audio on YouTube now)
+T.eq(P.format_for("https://www.youtube.com/watch?v=x", "Best single file", true), "b/bv*+ba/ba", "best single file falls back to merging")
+T.eq(P.format_for("https://www.youtube.com/watch?v=x", "Best single file", false), "b/ba", "no ffmpeg: audio fallback")
+T.eq(P.format_for("https://music.youtube.com/watch?v=x", "Best single file", true), "ba[ext=m4a]/ba/b", "YouTube Music: audio")
+T.eq(P.format_for("https://www.youtube.com/watch?v=x", "720p", true), "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b/ba", "height")
+T.eq(P.format_for("https://www.youtube.com/watch?v=x", "Best", true), "bv*+ba/b/ba", "best")
+T.eq(P.format_for("https://www.youtube.com/watch?v=x", "Audio only", false), "ba[ext=m4a]/ba/b", "audio only")
+-- Vivi's panel flag: the integer 1 (new) or a string "1" (earlier builds)
+T.props["user-data/vivi/downloads"] = 1
+T.calls = {}
+P.show()
+T.eq(T.calls[1] and T.calls[1][2], "vivi-downloads-show", "integer panel flag")
 T.done("offline-downloads")

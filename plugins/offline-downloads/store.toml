@@ -2,6 +2,12 @@
 # so editing it needs no new plugin version.
 categories = ["Music", "Streaming", "Tools"]
 tags = ["download", "offline", "queue", "yt-dlp", "radio", "jamendo", "archive.org"]
+screenshots = ["offline-downloads-panel"]
+
+[[changelog]]
+version = "1.1.2"
+date = "2026-10-19"
+notes = "Download for offline works for YouTube and YouTube Music items that have no single file with video and audio any more (\"Requested format is not available\"): every quality falls back to merging or audio only, YouTube Music links download the best audio. Downloads show in Vivi's Downloads panel again (the panel check read Vivi's flag wrongly). Own download icon in Vivi 0.13+. README: copyright / Terms of Service note, keys and settings, a Downloads panel screenshot."
 
 [[changelog]]
 version = "1.1.1"

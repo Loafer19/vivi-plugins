@@ -1,5 +1,5 @@
 -- @name Offline Downloads
--- @version 1.1.1
+-- @version 1.1.2
 -- @author Vivi
 -- @description Download queue for YouTube/yt-dlp sites, direct music files (Jamendo, Internet Archive, …) and radio streams (Vivi plugin package).
 --
@@ -180,7 +180,9 @@ local next_id = 1
 local PLUGIN = "offline-downloads"
 local PANEL_STATE = { pending = "queued", active = "active", paused = "paused", done = "done", failed = "failed" }
 
-local function panel() return mp.get_property("user-data/vivi/downloads", "") == "1" end
+-- Read natively: Vivi up to 0.13's first builds set a string node, which
+-- mp.get_property returns quoted ("1"); newer ones set the integer 1.
+local function panel() return tostring(mp.get_property_native("user-data/vivi/downloads", "")) == "1" end
 
 -- Stable across restarts and unique even when ids are reused after the list was cleared.
 local function job_id(it) return tostring(it.added or 0) .. "-" .. tostring(it.id) end
@@ -359,19 +361,26 @@ local function curl_job(it, max_time)
   end)
 end
 
+-- yt-dlp -f for the quality setting. Every choice ends in fallbacks: YouTube often has no
+-- single file with video and audio (format 18) any more, and plain "b" then failed with
+-- "Requested format is not available". YouTube Music links are songs: best audio.
+local function format_for(url, q, have_ffmpeg)
+  local host = (url:match("^%a+://([^/:]+)") or ""):lower()
+  if host == "music.youtube.com" or q == "Audio only" then return "ba[ext=m4a]/ba/b" end
+  local merge = have_ffmpeg and "/bv*+ba" or ""
+  local h = q:match("(%d+)p")
+  if have_ffmpeg and h then return "bv*[height<=" .. h .. "]+ba/b[height<=" .. h .. "]/bv*+ba/b/ba" end
+  if have_ffmpeg and q == "Best" then return "bv*+ba/b/ba" end
+  return "b" .. merge .. "/ba"
+end
+
 local function ytdlp_job(it)
   local y = ytdlp()
   if not y then
     return finish(it, false, "no yt-dlp: install yt-dlp or the YouTube & yt-dlp plugin (its managed copy is reused here)")
   end
   local ff, ffdir = ffmpeg()
-  local q = o["video-quality"]
-  local fmt
-  if q == "Audio only" then fmt = "ba/b"
-  elseif ff and q ~= "Best single file" then
-    local h = q:match("(%d+)p")
-    fmt = h and ("bv*[height<=" .. h .. "]+ba/b[height<=" .. h .. "]/b") or "bv*+ba/b"
-  else fmt = "b" end
+  local fmt = format_for(it.url, o["video-quality"], ff ~= nil)
   local log = TMP .. SEP .. "vivi-offline-" .. mp.get_property("pid", "0") .. ".log"
   os.remove(log)
   os.remove(log .. ".path")
@@ -664,7 +673,7 @@ end)
 if VIVI_TEST then
   return { classify = classify, classify_headers = classify_headers, first_list_url = first_list_url,
     file_name = file_name, parse_progress = parse_progress, enqueue = enqueue, retry = retry,
-    clear_done = clear_done, known_site = known_site, queue = function() return queue end, describe = describe, human = human,
+    clear_done = clear_done, known_site = known_site, format_for = format_for, queue = function() return queue end, describe = describe, human = human,
     set_active = function(a) active = a end, job_id = job_id, panel_row = panel_row,
     job_pause = job_pause, job_resume = job_resume, job_cancel = job_cancel, job_retry = job_retry,
     show = show, report_unfinished = report_unfinished, record = record }
