@@ -102,8 +102,8 @@ local function dec(s)
   return nil, v
 end
 
-function M.load(script, opts)
-  M.calls, M.osd, M.messages, M.bindings, M.props = {}, {}, {}, {}, {}
+function M.load(script, opts, props)
+  M.calls, M.osd, M.messages, M.bindings, M.props = {}, {}, {}, {}, props or {}
   local mp = {
     msg = { info = function() end, warn = function() end, verbose = function() end,
             error = function() end, debug = function() end },

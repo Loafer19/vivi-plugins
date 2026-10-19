@@ -309,4 +309,53 @@ P.enqueue("lb", { { listened_at = 9, track_metadata = { artist_name = "A", track
 P.flush(true)
 T.eq(#reqs, 0, "no request to a plain-http remote server")
 T.ok(P.state().err.lb:find("https"), "https error noted")
+
+-- ---- Vivi 0.13+: secret settings from the private file, shared now-playing track
+local sf = P.dir .. "/vivi-secrets.json"
+local h = io.open(sf, "w")
+h:write('{"token":"file-SECRET-5","lastfm_secret":"file-SECRET-6","lastfm_session":""}')
+h:close()
+local NP = "user-data/vivi/now-playing"
+local P2 = T.load("plugins/scrobbler/scrobbler.lua",
+  { token = "", lastfm_key = KEY, secrets = "1:" .. sf },
+  { ["user-data/vivi/now-playing-api"] = 1, path = "/m/old.flac" })
+T.eq(P2.opts.token, "file-SECRET-5", "token read from the secrets file")
+T.eq(P2.opts.lastfm_secret, "file-SECRET-6", "Last.fm secret read from the secrets file")
+T.eq(T.messages["vivi-media-meta"], nil, "no own copy of vivi-media-meta when Vivi merges it")
+-- file-loaded before Vivi published the new file: wait for the shared track
+T.props.path = "https://music.example/v1"
+T.props.duration = 200
+T.props[NP] = { path = "/m/old.flac", title = "Old", artist = "X", source = "tags", kind = "music", id = 1 }
+P2.on_file_loaded()
+T.eq(P2.state().cur, nil, "stale shared track ignored")
+local np = { path = "https://music.example/v1", title = "Song", artist = "Band", album = "LP",
+  album_artist = "Band", track = 2, duration = 200, kind = "video", source = "plugin:ytmusic",
+  service = "YouTube Music", mbid = "8f3471b5-7e6a-48da-86a9-c1c07a0f47ae", id = 2 }
+T.props[NP] = np
+P2.on_now_playing(NP, np)
+local c2 = P2.state().cur
+T.ok(c2, "listen started from the shared track")
+T.eq(c2.meta.track_name, "Song", "title from the shared track")
+T.eq(c2.meta.release_name, "LP", "album from the shared track")
+T.eq(c2.track_number, 2, "track number from the shared track")
+T.eq(c2.meta.additional_info.recording_mbid, np.mbid, "mbid from the shared track")
+T.eq(c2.meta.additional_info.music_service_name, "YouTube Music", "service from the shared track")
+-- a later update of the same file (cover rendered) does not start a new listen
+c2.played = 50
+P2.on_now_playing(NP, { path = np.path, title = "Song", artist = "Band", cover = "file:///c.png",
+  source = "plugin:ytmusic", kind = "video", id = 3 })
+T.eq(P2.state().cur.played, 50, "same file: same listen")
+-- filters on the shared track: local video, live radio, file-name-only titles
+local function why(t)
+  T.props.path = t.path
+  T.props[NP] = t
+  P2.on_file_loaded()
+  return P2.state().skipped
+end
+T.eq(why({ path = "/v/a.mkv", title = "Clip", artist = "A", kind = "video", source = "tags" }),
+  "video (Only music is on)", "local video skipped")
+T.eq(why({ path = "http://radio/live", title = "Song", artist = "A", kind = "stream", source = "stream" }),
+  "live stream", "live radio skipped")
+T.eq(why({ path = "/m/b.mp3", title = "b.mp3", artist = "", kind = "music", source = "file" }),
+  "no artist / title tags", "file name only skipped")
 T.done("scrobbler")

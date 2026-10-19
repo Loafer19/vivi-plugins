@@ -1821,8 +1821,8 @@
       ],
       "source": "plugins/scrobbler",
       "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scrobbler-v1.2.0/scrobbler-1.2.0.zip",
-      "sha256": "1ffc0bfd56435bb1cbcc6628d682b1434aa9413ec769bea7997c8c4e4f64fd3e",
-      "size": 45913,
+      "sha256": "fcbdc983c82df239928af644472b6c96454736aa46d3af5f83a179eeb67ee5d7",
+      "size": 50401,
       "settings": [
         {
           "key": "token",
@@ -1933,8 +1933,8 @@
       "changelog": [
         {
           "version": "1.2.0",
-          "date": "2026-10-19",
-          "notes": "Love the playing track (Alt+L) on Last.fm and ListenBrainz; skip podcasts, audiobooks (.m4b) and chosen folders; repeat one counts every play; Connect Last.fm finishes by itself once you allow access, plus Disconnect; Status checks the ListenBrainz token and says why a file is not scrobbled; streams described by music packages (YouTube Music) are scrobbled; album artist, track number and MusicBrainz release / artist ids are sent. Privacy: the Last.fm session key moves out of Vivi's config into a private 0600 file, tokens no longer appear on curl's command line or in mpv's log, queue files are 0600, and the ListenBrainz token is only sent over https. Fixes: a wrong Last.fm secret or API key no longer deletes the offline queue, one rejected listen no longer drops a whole batch, messages are Vivi toasts instead of mpv's hidden OSD, the Last.fm session survives restarts on Vivi 0.9.0, MD5 works on Lua 5.1 builds without the bit library, and the needless filesystem permission is gone.",
+          "date": "2026-10-20",
+          "notes": "Love the playing track (Alt+L) on Last.fm and ListenBrainz; skip podcasts, audiobooks (.m4b) and chosen folders; repeat one counts every play; Connect Last.fm finishes by itself once you allow access, plus Disconnect; Status checks the ListenBrainz token and says why a file is not scrobbled; streams described by music packages (YouTube Music) are scrobbled; album artist, track number and MusicBrainz release / artist ids are sent. Privacy: the Last.fm session key moves out of Vivi's config into a private 0600 file, tokens no longer appear on curl's command line or in mpv's log, queue files are 0600, and the ListenBrainz token is only sent over https. Fixes: a wrong Last.fm secret or API key no longer deletes the offline queue, one rejected listen no longer drops a whole batch, messages are Vivi toasts instead of mpv's hidden OSD, the Last.fm session survives restarts on Vivi 0.9.0, MD5 works on Lua 5.1 builds without the bit library, and the needless filesystem permission is gone. On Vivi 0.13+: track data comes from Vivi's shared now-playing track (tags, library and music-package metadata merged; no own copy of vivi-media-meta), secret settings come from a private file instead of mpv's script-opts (which mpv logs), and live radio is not scrobbled.",
           "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-scrobbler-v1.2.0/scrobbler-1.2.0.zip"
         },
         {

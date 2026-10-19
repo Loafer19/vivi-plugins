@@ -38,7 +38,9 @@ local o = {
   token = "", now_playing = true, audio_only = true, skip_genres = DEFAULT_GENRES, skip_folders = "",
   api = "https://api.listenbrainz.org", lastfm_key = "", lastfm_secret = "", lastfm_session = "",
   pkgdir = "", -- passed by Vivi to every package (unused; declared so mp.options does not warn)
+  secrets = "", -- Vivi 0.13+: "<revision>:<path>" of the private file with the secret settings
 }
+local SECRET_KEYS = { "token", "lastfm_secret", "lastfm_session" }
 -- Overridable for tests against a local mock server only.
 local LB_API = os.getenv("VIVI_SCROBBLER_LB_API")
 local LASTFM = os.getenv("VIVI_SCROBBLER_LASTFM_API") or "https://ws.audioscrobbler.com/2.0/"
@@ -499,21 +501,59 @@ local function track_no(s)
   return n and n > 0 and n or nil
 end
 
--- The playing track as ListenBrainz track_metadata (+ extra fields for Last.fm), or nil, reason.
-local function current_track()
-  local path = mp.get_property("path", "")
-  local pm = stream_meta[path]
-  local artist, title = prop("artist"), prop("title")
-  local album, album_artist = prop("album"), prop("album_artist") or prop("albumartist")
-  if pm then
-    artist = trim(pm.artist) ~= "" and trim(pm.artist) or artist
-    title = trim(pm.title) ~= "" and trim(pm.title) or title
-    album = trim(pm.album) ~= "" and trim(pm.album) or album
+-- Vivi 0.13+ publishes the playing track, merged from tags, music-package metadata,
+-- stream titles and the library, as `user-data/vivi/now-playing` (flag
+-- `user-data/vivi/now-playing-api`). Older Vivi: tags + our own copy of `vivi-media-meta`.
+local function np_api()
+  return (tonumber(mp.get_property_native("user-data/vivi/now-playing-api")) or 0) >= 1
+end
+
+local function shared_now_playing()
+  local np = mp.get_property_native("user-data/vivi/now-playing")
+  return type(np) == "table" and np or nil
+end
+
+-- What is playing, from Vivi's shared track (`np`, must describe `path`) or from tags.
+local function raw_track(path, np)
+  local s = function(v) v = trim(v); return v ~= "" and v or nil end
+  if np then
+    local src = tostring(np.source or "")
+    return {
+      artist = s(np.artist), title = src ~= "file" and s(np.title) or nil, album = s(np.album),
+      album_artist = s(np.album_artist), genre = s(np.genre), mbid = s(np.mbid),
+      track = tonumber(np.track) and np.track > 0 and math.floor(np.track) or nil,
+      duration = tonumber(np.duration) or 0, video = np.kind == "video",
+      stream = np.kind == "stream", from_plugin = src:sub(1, 7) == "plugin:", service = s(np.service),
+    }
   end
+  local pm = stream_meta[path]
+  local t = {
+    artist = prop("artist"), title = prop("title"), album = prop("album"),
+    album_artist = prop("album_artist") or prop("albumartist"), genre = prop("genre"),
+    mbid = prop("musicbrainz_trackid") or prop("MusicBrainz Track Id"),
+    track = track_no(prop("track") or prop("tracknumber")),
+    duration = mp.get_property_number("duration", 0) or 0, video = is_video(), from_plugin = pm ~= nil,
+  }
+  if pm then
+    t.artist = trim(pm.artist) ~= "" and trim(pm.artist) or t.artist
+    t.title = trim(pm.title) ~= "" and trim(pm.title) or t.title
+    t.album = trim(pm.album) ~= "" and trim(pm.album) or t.album
+    t.service = trim(pm.info) ~= "" and trim(pm.info) or nil
+  end
+  return t
+end
+
+-- The playing track as ListenBrainz track_metadata (+ extra fields for Last.fm), or nil, reason.
+local function current_track(np)
+  local path = mp.get_property("path", "")
+  if np and np.path ~= path then np = nil end
+  local r = raw_track(path, np)
+  local artist, title, album, album_artist = r.artist, r.title, r.album, r.album_artist
   if not artist or not title then return nil, "no artist / title tags" end
-  local why = skip_reason({ path = path, genre = prop("genre"), video = is_video(), from_plugin = pm ~= nil })
+  if r.stream then return nil, "live stream" end
+  local why = skip_reason({ path = path, genre = r.genre, video = r.video, from_plugin = r.from_plugin })
   if why then return nil, why end
-  local duration = mp.get_property_number("duration", 0) or 0
+  local duration = r.duration > 0 and r.duration or (mp.get_property_number("duration", 0) or 0)
   local info = {
     media_player = "Vivi",
     submission_client = "Vivi scrobbler",
@@ -522,17 +562,17 @@ local function current_track()
   local meta = { artist_name = artist, track_name = title, additional_info = info }
   if album then meta.release_name = album end
   if duration > 0 then info.duration_ms = math.floor(duration * 1000) end
-  local rec = mbid(prop("musicbrainz_trackid") or prop("MusicBrainz Track Id"))
+  local rec = mbid(r.mbid)
   if rec then info.recording_mbid = rec end
   local rel = mbid(prop("musicbrainz_albumid") or prop("MusicBrainz Album Id"))
   if rel then info.release_mbid = rel end
   local arts = mbids(prop("musicbrainz_artistid") or prop("MusicBrainz Artist Id"))
   if arts then info.artist_mbids = arts end
-  local tn = track_no(prop("track") or prop("tracknumber"))
+  local tn = r.track
   if tn then info.tracknumber = tn end
-  if pm then
+  if r.from_plugin then
     if path:match("^https?://") then info.origin_url = path end
-    if trim(pm.info) ~= "" then info.music_service_name = trim(pm.info) end
+    if r.service then info.music_service_name = r.service end
   end
   return {
     meta = meta, duration = duration, album_artist = album_artist, track_number = tn, path = path,
@@ -689,9 +729,9 @@ local function now_playing(c)
   end
 end
 
-local function start_track()
+local function start_track(np)
   cur, last_pos, seeked, skipped = nil, nil, false, nil
-  local t, why = current_track()
+  local t, why = current_track(np)
   if not t then
     skipped = why
     mp.msg.verbose("not scrobbled: " .. why)
@@ -924,13 +964,65 @@ local function clean_requests()
   end
 end
 
-mp.register_event("file-loaded", start_track)
+-- Vivi 0.13+ (`secrets_file = true`): secret settings come from a private file instead of
+-- script-opts (mpv logs script-opts with their values). Older Vivi: script-opts as before.
+local function read_secrets()
+  local f = trim(o.secrets):match("^%d+:(.+)$")
+  if not f then return false end
+  local h = io.open(f, "r")
+  if not h then
+    mp.msg.warn("secret settings file missing")
+    return false
+  end
+  local j = utils.parse_json(h:read("*a") or "")
+  h:close()
+  if type(j) ~= "table" then return false end
+  for _, k in ipairs(SECRET_KEYS) do
+    if type(j[k]) == "string" then o[k] = j[k] end
+  end
+  return true
+end
+
+-- Which file the shared now-playing track was last acted on for.
+local np_path = nil
+
+-- Vivi 0.13+: start a listen when the shared track describes the newly loaded file (it is
+-- published after mpv's file-loaded, with the merged metadata). Same file loaded again:
+-- the track does not change, so file-loaded starts it.
+local function on_now_playing(_, np)
+  if type(np) ~= "table" then return end
+  local path = mp.get_property("path", "")
+  if np.path ~= path or path == "" then return end
+  if np_path ~= path then
+    np_path = path
+    return start_track(np)
+  end
+  -- Same file, better metadata (sent later by a package): start over only if it had none.
+  if not cur and skipped == "no artist / title tags" then start_track(np) end
+end
+
+local function on_file_loaded()
+  if not np_api() then return start_track() end
+  local np = shared_now_playing()
+  local path = mp.get_property("path", "")
+  if np and np.path == path then
+    np_path = path
+    start_track(np)
+  else
+    np_path = nil -- the observer starts it once Vivi published this file
+  end
+end
+
+mp.register_event("file-loaded", on_file_loaded)
 mp.observe_property("playback-time", "number", on_time)
 mp.register_event("seek", function() last_pos, seeked = nil, true end)
+if np_api() then mp.observe_property("user-data/vivi/now-playing", "native", on_now_playing) end
 
 options.read_options(o, ID, function(changed)
-  if changed.lastfm_session then adopt_setting_session() end
+  if changed.secrets then read_secrets() end
+  if changed.lastfm_session or changed.secrets then adopt_setting_session() end
 end)
+read_secrets()
 load_session()
 adopt_setting_session()
 clean_requests()
@@ -941,7 +1033,8 @@ mp.register_script_message("love", love)
 mp.register_script_message("lastfm_connect", lastfm_connect)
 mp.register_script_message("lastfm_finish", function() lastfm_finish(false) end)
 mp.register_script_message("lastfm_disconnect", lastfm_disconnect)
-mp.register_script_message("vivi-media-meta", on_media_meta)
+-- Vivi 0.13+ merges music-package metadata into the shared track itself.
+if not np_api() then mp.register_script_message("vivi-media-meta", on_media_meta) end
 mp.add_forced_key_binding("Alt+l", "scrobbler-love", love)
 
 mp.add_timeout(5, function() flush(false) end)
@@ -952,6 +1045,7 @@ if VIVI_TEST then
   M.form, M.lastfm_item, M.curl_config, M.curl_quote, M.safe_url = form, lastfm_item, curl_config, curl_quote, safe_url
   M.skip_reason, M.current_track, M.lastfm_result, M.mbid, M.mbids, M.track_no = skip_reason, current_track, lastfm_result, mbid, mbids, track_no
   M.start_track, M.on_time, M.on_seek = start_track, on_time, function() last_pos, seeked = nil, true end
+  M.on_file_loaded, M.on_now_playing, M.read_secrets, M.raw_track = on_file_loaded, on_now_playing, read_secrets, raw_track
   M.on_media_meta, M.flush, M.status_text, M.read_queue, M.enqueue = on_media_meta, flush, status_text, read_queue, enqueue
   M.love, M.lastfm_connect, M.lastfm_finish, M.lastfm_disconnect = love, lastfm_connect, lastfm_finish, lastfm_disconnect
   M.opts, M.dir, M.SESSION, M.QUEUES = o, dir, SESSION, QUEUES

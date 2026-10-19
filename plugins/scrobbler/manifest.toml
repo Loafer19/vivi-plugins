@@ -11,6 +11,7 @@ lucide = "radio-tower"
 permissions = ["network", "subprocess"]
 issue = 77
 default_enabled = true
+secrets_file = true
 
 [[settings]]
 key = "token"

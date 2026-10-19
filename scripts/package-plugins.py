@@ -44,7 +44,7 @@ CATEGORIES = {"Music", "Video", "Subtitles", "Streaming", "Integrations", "Tools
 NOT_PACKAGED = {"store.toml"}
 HELPERS = ROOT / "dist/helpers"
 PLATFORMS = ["linux-x86_64", "linux-aarch64", "windows-x86_64", "macos-x86_64", "macos-aarch64"]
-RESERVED = {"pkgdir"}
+RESERVED = {"pkgdir", "secrets"}
 # [deprecated] in manifest.toml: since (Vivi version that replaces it), message, replacement
 # ("builtin:<feature>" or "plugin:<id>"), action (button label in Vivi).
 DEPRECATED_KEYS = {"since", "message", "replacement", "action"}
