@@ -1,5 +1,5 @@
 -- @name YouTube & yt-dlp
--- @version 1.3.0
+-- @version 1.4.0
 -- @author Vivi
 -- @description List, size and download YouTube (and other yt-dlp) videos and playlists.
 --
@@ -7,7 +7,9 @@
 --
 -- Needs Vivi 0.13+ (host API): the YouTube source opens Vivi's music dialog to search YouTube
 -- or list a pasted video / playlist / channel link (rows with thumbnails; Play, Queue,
--- Download, Download audio), queued videos get their title, channel and thumbnail on the
+-- Download, Download audio; the detail pane shows the selected video's estimated size per
+-- quality, the Quality dropdown sets the download quality), queued videos get their title,
+-- channel and thumbnail on the
 -- now-playing card (vivi-media-meta), and downloads are rows in Vivi's Downloads panel
 -- (vivi-download: progress, Cancel, Retry, Play / Show in folder). In a plain mpv progress
 -- is shown on the OSD.
@@ -25,8 +27,9 @@
 --
 -- ffmpeg (merging separate video + audio, audio conversion): a system ffmpeg is used when
 -- there is one (not inside the Flatpak, whose runtime has no ffmpeg program). A managed
--- static build is downloaded only when needed: video at 1080p or more / "Best", or
--- audio converted to mp3/m4a/opus. It is Vivi's own minimal build (release
+-- static build is downloaded only when needed: video at 1080p or more / "Best", a video
+-- with no single file of video and audio at the chosen quality (YouTube often has none),
+-- or audio converted to mp3/m4a/opus. It is Vivi's own minimal build (release
 -- helper-ffmpeg-v<build>, Linux x86_64/aarch64, Windows x64, macOS arm64; about 6-12 MB),
 -- checked against the sha256 pinned in this file (FF_BUILD). Kept in
 -- plugin-data/youtube/ffmpeg (ffmpeg + ffprobe), passed to yt-dlp with
@@ -208,13 +211,22 @@ local function sha256(file, cb)
   end)
 end
 
+-- Bytes of a URL (HEAD, following redirects), or nil.
+local function remote_size(url, cb)
+  run({ "curl", "-sIL", url }, function(r)
+    local n
+    for v in (r.stdout or ""):gmatch("[Cc]ontent%-[Ll]ength:%s*(%d+)") do n = tonumber(v) end
+    cb(n)
+  end)
+end
+
 -- Download the managed copy (verified against the release's SHA2-256SUMS).
 local function install_managed(cb)
   asset_name(function(asset, err)
     if not asset then return cb(nil, err) end
-    mkdir(BIN_DIR, function()
+    mkdir(BIN_DIR, function() remote_size(RELEASES .. asset, function(n)
       local tmp = MANAGED .. ".part"
-      toast("Downloading yt-dlp (" .. asset .. ")…", 5)
+      toast("Downloading yt-dlp" .. (n and (" (" .. human(n) .. ")") or "") .. " from its GitHub releases…", 6)
       run({ "curl", "-fsSL", "--retry", "2", "-o", tmp, RELEASES .. asset }, function(r)
         if r.status ~= 0 then
           os.remove(tmp)
@@ -246,7 +258,7 @@ local function install_managed(cb)
           end)
         end)
       end)
-    end)
+    end) end)
   end)
 end
 
@@ -366,24 +378,64 @@ end
 local function has_v(f) return f.vcodec and f.vcodec ~= "none" end
 local function has_a(f) return f.acodec and f.acodec ~= "none" end
 
-local function better(a, b, key)
-  if not a then return true end
-  local ha, hb = b.height or 0, a.height or 0
-  if key == "h" and ha ~= hb then return ha > hb end
-  return (b.tbr or b.abr or 0) > (a.tbr or a.abr or 0)
+local function vcodec_rank(c)
+  c = tostring(c or ""):lower()
+  if c:match("^av01") then return 4 end
+  if c:match("^vp0?9") then return 3 end
+  if c:match("^hev") or c:match("^hvc") or c:match("^h265") then return 2 end
+  if c:match("^avc") or c:match("^h264") then return 1 end
+  return 0
 end
 
--- Estimated bytes (and picked height) of what the format selector below would download.
+local function acodec_rank(c)
+  c = tostring(c or ""):lower()
+  if c:match("^opus") then return 4 end
+  if c:match("^vorbis") then return 3 end
+  if c:match("^mp4a") or c:match("^aac") then return 2 end
+  if c:match("^mp3") then return 1 end
+  return 0
+end
+
+-- Sort key of a format, after yt-dlp's default order (lang, quality, res, fps, vcodec,
+-- acodec, size, bitrate, protocol): `bv*` / `ba` / `b` pick the highest one. Estimating with
+-- the highest bitrate instead picked YouTube's HLS copies (no size, high tbr) and showed
+-- about 3× the real size.
+local function fkey(f, audio)
+  local p = tostring(f.protocol or "https")
+  return { tonumber(f.language_preference) or -1, tonumber(f.quality) or -1,
+    audio and 0 or (f.height or 0), audio and 0 or (tonumber(f.fps) or 0),
+    audio and acodec_rank(f.acodec) or vcodec_rank(f.vcodec), has_a(f) and acodec_rank(f.acodec) or 0,
+    (f.filesize or f.filesize_approx) and 1 or 0, f.tbr or f.abr or 0,
+    (p == "https" or p == "http") and 1 or 0 }
+end
+
+-- Whether format b sorts above a (a may be nil).
+local function better(a, b, audio)
+  if not a then return true end
+  local ka, kb = fkey(a, audio), fkey(b, audio)
+  for i = 1, #ka do
+    if kb[i] ~= ka[i] then return kb[i] > ka[i] end
+  end
+  return false
+end
+
+-- "1080p" for a 1920×804 format (yt-dlp's format_note), else its height.
+local function label(f)
+  return tostring(f.format_note or ""):match("^(%d+p)") or (f.height and (f.height .. "p")) or "?"
+end
+
+-- Estimated bytes, picked height and its label of what the format selector below would
+-- download.
 local function estimate(info, q, audio_only, ff)
   local dur = info.duration
   local fm = info.formats or {}
   local ba, bv, bp
   local h = height_limit(q)
   for _, f in ipairs(fm) do
-    if has_a(f) and not has_v(f) and better(ba, f) then ba = f end
+    if has_a(f) and not has_v(f) and better(ba, f, true) then ba = f end
     if has_v(f) and (f.height or 0) <= h then
-      if better(bv, f, "h") then bv = f end
-      if has_a(f) and better(bp, f, "h") then bp = f end
+      if better(bv, f) then bv = f end
+      if has_a(f) and better(bp, f) then bp = f end
     end
   end
   if audio_only then
@@ -396,10 +448,12 @@ local function estimate(info, q, audio_only, ff)
       local sa = fsize(ba, dur)
       s = s and sa and s + sa or nil
     end
-    return s, bv.height
+    return s, bv.height, label(bv)
   end
-  if bp then return fsize(bp, dur), bp.height end
-  if info.filesize or info.filesize_approx then return info.filesize or info.filesize_approx, info.height end
+  if bp then return fsize(bp, dur), bp.height, label(bp) end
+  if info.filesize or info.filesize_approx then
+    return info.filesize or info.filesize_approx, info.height, info.height and label(info)
+  end
   return nil, nil
 end
 
@@ -480,15 +534,6 @@ local function find_system_ffmpeg(cb)
     end)
   end
   nxt()
-end
-
--- Bytes of a URL (HEAD, following redirects), or nil.
-local function remote_size(url, cb)
-  run({ "curl", "-sIL", url }, function(r)
-    local n
-    for v in (r.stdout or ""):gmatch("[Cc]ontent%-[Ll]ength:%s*(%d+)") do n = tonumber(v) end
-    cb(n)
-  end)
 end
 
 -- Vivi's own minimal static ffmpeg + ffprobe (helpers/ffmpeg/build.sh, release
@@ -674,20 +719,42 @@ local function needs_ffmpeg(mode)
   return height_limit(o.quality) >= 1080
 end
 
+-- Whether `info` has one file with video and audio up to quality q (what `b[height<=H]`
+-- downloads without ffmpeg). Sites without a format list count as single files.
+local function has_single(info, q)
+  if type(info.formats) ~= "table" or #info.formats == 0 then return true end
+  local h = height_limit(q)
+  for _, f in ipairs(info.formats) do
+    if has_v(f) and has_a(f) and (f.height or 0) <= h then return true end
+  end
+  return false
+end
+
 local QUALITIES = { "Best available", "2160p", "1440p", "1080p", "720p", "480p", "360p" }
 
-local function size_list(info, ff)
+-- Estimated size per quality, highest first (qualities that pick the same file once):
+-- { { text = "1080p ≈ 86 MB", mine = <what the Download quality setting picks> }, …, audio }.
+local function size_parts(info, ff)
+  local function ffq(q) return ff or height_limit(q) >= 1080 or not has_single(info, q) end
+  local ms, mh = estimate(info, o.quality, false, ffq(o.quality))
   local parts, seen = {}, {}
   for _, q in ipairs(QUALITIES) do
-    local s, h = estimate(info, q, false, ff or height_limit(q) >= 1080)
+    local s, h, lbl = estimate(info, q, false, ffq(q))
     local key = tostring(h) .. tostring(s)
     if h and not seen[key] then
       seen[key] = true
-      parts[#parts + 1] = (q == "Best available" and "best " .. h .. "p" or q) .. " ≈ " .. human(s)
+      parts[#parts + 1] = { text = (q == "Best available" and "best " or "") .. lbl .. " ≈ " .. human(s),
+        mine = mh == h and ms == s }
     end
   end
-  parts[#parts + 1] = "audio ≈ " .. human((estimate(info, nil, true, ff)))
-  return table.concat(parts, " · ")
+  parts[#parts + 1] = { text = "audio ≈ " .. human((estimate(info, nil, true, ff))), mine = false }
+  return parts
+end
+
+local function size_list(info, ff)
+  local t = {}
+  for _, x in ipairs(size_parts(info, ff)) do t[#t + 1] = x.text end
+  return table.concat(t, " · ")
 end
 
 -- The playing http(s) URL, or nil.
@@ -709,10 +776,13 @@ end
 
 -- One video's info (first entry for a playlist URL), cached per URL. Only the first entry
 -- of a playlist is extracted (--playlist-items 1), not the whole list.
+local cached = 0
 local function video_info(y, url, cb)
   if info_cache[url] then return cb(info_cache[url]) end
   ytdlp_json(y, { "--playlist-items", "1" }, url, function(j, e)
     if not j then return cb(nil, e) end
+    cached = cached + 1
+    if cached > 60 then info_cache, cached = {}, 1 end -- about 150 KB of JSON per video
     if j._type == "playlist" then
       local first = j.entries and j.entries[1]
       if type(first) ~= "table" then return cb(nil, "empty playlist") end
@@ -781,18 +851,28 @@ local function entry_url(e)
   return nil
 end
 
--- A small thumbnail URL of an entry (YouTube: i.ytimg.com by id), or "".
+-- Vivi decodes JPEG and PNG covers only. YouTube serves its sized thumbnails
+-- (`…/hqdefault.jpg?sqp=…`, `vi_webp/…`) as WebP, which showed no cover at all; without the
+-- query (and from `vi/` instead of `vi_webp/`) the same image comes as JPEG.
+local function jpeg_thumb(u)
+  local host, path = tostring(u or ""):match("^https?://([%w.-]*ytimg%.com)(/[^?#]*)")
+  if not host then return u end
+  path = path:gsub("^/vi_webp/", "/vi/"):gsub("%.webp$", ".jpg")
+  return "https://" .. host .. path
+end
+
+-- A small thumbnail URL of an entry (YouTube videos: i.ytimg.com by id), or "".
 local function thumb(e)
+  if is_youtube(e) and not is_container(e) and tostring(e.id or ""):match("^[%w_-]+$") then
+    return "https://i.ytimg.com/vi/" .. e.id .. "/mqdefault.jpg" -- 320×180 JPEG, always there
+  end
   local best, bw
   for _, t in ipairs(e.thumbnails or {}) do
     local w = tonumber(t.width) or 0
     if valid_url(t.url) and (not best or (w <= 480 and w > bw) or (bw > 480 and w < bw)) then best, bw = t.url, w end
   end
-  if best then return best end
-  if valid_url(e.thumbnail) then return e.thumbnail end
-  if is_youtube(e) and not is_container(e) and tostring(e.id or ""):match("^[%w_-]+$") then
-    return "https://i.ytimg.com/vi/" .. e.id .. "/mqdefault.jpg"
-  end
+  if best then return jpeg_thumb(best) end
+  if valid_url(e.thumbnail) then return jpeg_thumb(e.thumbnail) end
   return ""
 end
 
@@ -877,7 +957,8 @@ local function show_sizes()
       video_info(y, url, function(info, e)
         if not info then return toast("YouTube: " .. e, 6) end
         local head = info._playlist and ("First video of " .. info._playlist .. ": ") or ""
-        toast(head .. size_list(info, ff ~= nil) .. (ff and "" or " (below 1080p without ffmpeg: single-file formats)"), 10)
+        local note = (not ff and has_single(info, "720p")) and " (below 1080p without ffmpeg: single-file formats)" or ""
+        toast(head .. size_list(info, ff ~= nil) .. note, 10)
       end)
     end)
   end)
@@ -896,8 +977,14 @@ local jobs, order = {}, {} -- job id -> job; ids in the order they were added
 local active = nil         -- the running job
 local seq = 0
 
+-- Vivi reads done / total / speed as whole bytes: one fractional value (yt-dlp's speed is
+-- one) made it drop the whole report, so the row stayed at "Starting…" with no progress.
 local function report(j, t)
-  if panel() then mp.commandv("script-message", "vivi-download", ID, j.id, utils.format_json(t)) end
+  if not panel() then return end
+  for _, k in ipairs({ "done", "total", "speed" }) do
+    if type(t[k]) == "number" then t[k] = math.max(0, math.floor(t[k])) end
+  end
+  mp.commandv("script-message", "vivi-download", ID, j.id, utils.format_json(t))
 end
 
 -- The last "[vivi] …" progress line of a log: { done, total, eta, speed, idx, n, title } or nil.
@@ -960,68 +1047,75 @@ local function start(j)
   report(j, { state = "active", detail = "Starting…" })
   with_ytdlp(function(y)
     local mode = j.audio and "Audio only" or "Video"
-    get_ffmpeg(needs_ffmpeg(mode), function(ffi)
-      if j.cancelled then return finish(j, "failed", { state = "cancelled", error = "Cancelled" }) end
-      local ff = ffi ~= nil
-      if not ff and needs_ffmpeg(mode) then
-        return finish(j, "failed", { state = "failed", error = "needs ffmpeg, which could not be installed" },
-          "Download needs ffmpeg, which could not be installed; pick a lower quality or Original audio", 8)
-      end
-      local folder = (o.folder or ""):gsub("^%s+", ""):gsub("%s+$", "")
-      if folder == "" then folder = default_folder() end
-      folder = folder:gsub("^~", HOME)
-      local function go()
-        mkdir(folder, function() mkdir(LOG_DIR, function()
-          if j.cancelled then return finish(j, "failed", { state = "cancelled", error = "Cancelled" }) end
-          local log = LOG_DIR .. SEP .. j.id .. ".log"
-          os.remove(log)
-          local args = concat(y.cmd, download_args(j, folder, ff, ffi))
-          local timer, last
-          if not windows then
-            args = concat({ "sh", "-c", 'log=$1; shift; exec "$@" >"$log" 2>&1', "sh", log }, args)
-            timer = mp.add_periodic_timer(2, function()
-              local f = io.open(log, "r")
-              if not f then return end
-              local p = parse_progress(f:read("*a"))
-              f:close()
-              if not p or p.line == last then return end
-              last = p.line
-              local share = p.done and p.total and p.total > 0 and p.done / p.total or nil
-              report(j, { state = "active", done = p.done or 0, total = p.total or 0, speed = p.speed,
-                progress = share, detail = p.idx and p.n and string.format("%d / %d · %s", p.idx, p.n, p.title or "") or nil })
-              if not panel() then toast(progress_text(p), 3) end
-            end)
-          end
-          j.cmd = run(args, function(r)
-            j.cmd = nil
-            if timer then timer:kill() end
-            local out = (r.stdout or "") .. (r.stderr or "")
-            local f = io.open(log, "r")
-            if f then out = out .. f:read("*a") f:close() end
+    -- The video's formats first: YouTube often has no single file with video and audio
+    -- below 1080p either, and then even 720p needs ffmpeg to merge.
+    video_info(y, j.url, function(info)
+      if j.cancelled then return finish(j, "failed", { state = "cancelled", error = "Cancelled", detail = "" }) end
+      local need = needs_ffmpeg(mode) or (not j.audio and info ~= nil and not has_single(info, o.quality))
+      get_ffmpeg(need, function(ffi)
+        if j.cancelled then return finish(j, "failed", { state = "cancelled", error = "Cancelled", detail = "" }) end
+        local ff = ffi ~= nil
+        if not ff and need then
+          return finish(j, "failed", { state = "failed", error = "needs ffmpeg, which could not be installed", detail = "" },
+            needs_ffmpeg(mode) and "Download needs ffmpeg, which could not be installed; pick a lower quality or Original audio"
+              or "This video needs ffmpeg to merge video and audio, and it could not be installed", 8)
+        end
+        local folder = (o.folder or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if folder == "" then folder = default_folder() end
+        folder = folder:gsub("^~", HOME)
+        local function go()
+          mkdir(folder, function() mkdir(LOG_DIR, function()
+            if j.cancelled then return finish(j, "failed", { state = "cancelled", error = "Cancelled", detail = "" }) end
+            local log = LOG_DIR .. SEP .. j.id .. ".log"
             os.remove(log)
-            local files = printed_files(out)
-            if r.killed_by_us or j.cancelled then
-              return finish(j, "failed", { state = "cancelled", error = "Cancelled" }, "Download cancelled")
-            elseif r.status == 0 then
-              local path = files[#files]
-              local fi = path and utils.file_info(path)
-              local what = #files > 1 and string.format("%d files", #files) or (path and path:match("([^/\\]+)$")) or "done"
-              return finish(j, "done", { state = "done", path = path, done = fi and fi.size, total = fi and fi.size,
-                progress = 1, detail = #files > 1 and string.format("%d files in %s", #files, folder) or nil },
-                "Downloaded " .. what .. " to " .. folder, 6)
+            local args = concat(y.cmd, download_args(j, folder, ff, ffi))
+            local timer, last
+            if not windows then
+              args = concat({ "sh", "-c", 'log=$1; shift; exec "$@" >"$log" 2>&1', "sh", log }, args)
+              timer = mp.add_periodic_timer(2, function()
+                local f = io.open(log, "r")
+                if not f then return end
+                local size = f:seek("end") or 0
+                f:seek("set", math.max(0, size - 4096)) -- the last lines: yt-dlp writes one per update
+                local p = parse_progress(f:read("*a"))
+                f:close()
+                if not p or p.line == last then return end
+                last = p.line
+                local share = p.done and p.total and p.total > 0 and p.done / p.total or nil
+                report(j, { state = "active", done = p.done or 0, total = p.total or 0, speed = p.speed,
+                  progress = share, detail = p.idx and p.n and string.format("%d / %d · %s", p.idx, p.n, p.title or "") or "" })
+                if not panel() then toast(progress_text(p), 3) end
+              end)
             end
-            local e = out:match("ERROR: ([^\n]+)") or r.error_string or "yt-dlp error"
-            finish(j, "failed", { state = "failed", error = e }, "Download failed: " .. e, 8)
-          end, windows) -- Windows has no sh: capture stdout for the printed file names
-        end) end)
-      end
-      -- Estimated size first (single videos; playlists say how many entries).
-      video_info(y, j.url, function(info)
-        local what = j.audio and "audio" or o.quality
+            j.cmd = run(args, function(r)
+              j.cmd = nil
+              if timer then timer:kill() end
+              local out = (r.stdout or "") .. (r.stderr or "")
+              local f = io.open(log, "r")
+              if f then out = out .. f:read("*a") f:close() end
+              os.remove(log)
+              local files = printed_files(out)
+              if r.killed_by_us or j.cancelled then
+                return finish(j, "failed", { state = "cancelled", error = "Cancelled", detail = "" }, "Download cancelled")
+              elseif r.status == 0 then
+                local path = files[#files]
+                local fi = path and utils.file_info(path)
+                local what = #files > 1 and string.format("%d files", #files) or (path and path:match("([^/\\]+)$")) or "done"
+                return finish(j, "done", { state = "done", path = path, done = fi and fi.size, total = fi and fi.size,
+                  progress = 1, detail = #files > 1 and string.format("%d files in %s", #files, folder) or "" },
+                  "Downloaded " .. what .. " to " .. folder, 6)
+              end
+              local e = out:match("ERROR: ([^\n]+)") or r.error_string or "yt-dlp error"
+              finish(j, "failed", { state = "failed", error = e, detail = "" }, "Download failed: " .. e, 8)
+            end, windows) -- Windows has no sh: capture stdout for the printed file names
+          end) end)
+        end
+        -- Estimated size first (single videos; playlists say how many entries).
         if info then
-          local s = estimate(info, o.quality, j.audio, ff)
+          local s, _, lbl = estimate(info, o.quality, j.audio, ff)
+          local what = j.audio and "audio" or (lbl or o.quality)
           j.title = j.title or info._playlist or info.title
-          j.art = j.art or thumb(info)
+          j.art = (j.art and j.art ~= "") and j.art or thumb(info)
           report(j, { title = j.title, artwork = j.art ~= "" and j.art or nil, subtitle = channel(info), state = "active",
             total = (not info._playlist and s) and math.floor(s) or 0 })
           local pl = info._playlist and (" each, playlist " .. info._playlist) or ""
@@ -1085,7 +1179,7 @@ local function cancel_job(id)
   if j.cmd then return mp.abort_async_command(j.cmd) end
   if j.state == "queued" then
     j.state = "failed"
-    report(j, { state = "cancelled", error = "Cancelled" })
+    report(j, { state = "cancelled", error = "Cancelled", detail = "" })
   end
 end
 
@@ -1111,7 +1205,8 @@ end
 
 -- ---------- search / browse dialog ----------
 
-local S = { open = false, items = {}, sel = nil, q = "", n = 30, back = {}, title = nil, req = 0, more = false }
+local S = { open = false, items = {}, sel = nil, q = "", n = 30, back = {}, title = nil, req = 0, more = false,
+  fetching = nil }
 local SEARCH_STEP, SEARCH_MAX = 30, 150
 
 local function send_dialog(t)
@@ -1141,10 +1236,90 @@ local function actions()
   return a
 end
 
+-- The download quality, chosen in the dialog too (the same setting).
+local function filters()
+  return { { name = "Quality", options = QUALITIES, value = "Download quality: " .. o.quality } }
+end
+
+local function secondary_label()
+  return "Download " .. (o.quality == "Best available" and "best" or o.quality)
+end
+
+-- Detail pane of the selected row: what it is, and for a video the estimated size of
+-- each quality (read in the background with yt-dlp -J, then cached).
+local function detail(it)
+  if not it then return { detail = "", detail_cover = "" } end
+  local d = { it.title or "?", "" }
+  local function add(k, v) if v and v ~= "" then d[#d + 1] = k .. ": " .. v end end
+  local u = entry_url(it)
+  local info = u and info_cache[u]
+  add(is_container(it) and "By" or "Channel", channel(it))
+  if is_container(it) then
+    add("Videos", it.playlist_count and tostring(it.playlist_count))
+  else
+    add("Length", it.live_status == "is_live" and "live now" or fmt_dur(it.duration))
+    add("Views", short_count(it.view_count))
+    if info then
+      local y, m, dd = tostring(info.upload_date or ""):match("^(%d%d%d%d)(%d%d)(%d%d)$")
+      if y then add("Uploaded", y .. "-" .. m .. "-" .. dd) end
+      add("License", info.license)
+    end
+  end
+  if not is_container(it) and u then
+    d[#d + 1] = ""
+    if info and info.formats then
+      d[#d + 1] = "Estimated download size:"
+      for _, x in ipairs(size_parts(info, ffm ~= nil)) do
+        d[#d + 1] = "  " .. x.text .. (x.mine and "   ← Download" or "")
+      end
+    elseif S.fetching == u then
+      d[#d + 1] = "Checking the sizes…"
+    elseif S.size_err and S.size_err[u] then
+      d[#d + 1] = "Sizes: " .. S.size_err[u]
+    end
+  end
+  if u then d[#d + 1] = "" d[#d + 1] = u end
+  local cover = thumb(it)
+  if is_youtube(it) and not is_container(it) and tostring(it.id or ""):match("^[%w_-]+$") then
+    cover = "https://i.ytimg.com/vi/" .. it.id .. "/mqdefault.jpg"
+  end
+  return { detail = table.concat(d, "\n"), detail_cover = cover }
+end
+
+local function selected() return S.sel and S.items[S.sel] end
+
+local function show_detail()
+  if not S.open then return end
+  local t = detail(selected())
+  t.copy = selected() and entry_url(selected()) or ""
+  send_dialog(t)
+end
+
+-- Read the selected video's formats (one at a time; the newest selection wins).
+local function fetch_sizes()
+  local it = selected()
+  local u = it and not is_container(it) and it.live_status ~= "is_live" and entry_url(it)
+  if not u or S.fetching or (info_cache[u] and info_cache[u].formats) then return end
+  S.fetching = u
+  show_detail()
+  with_ytdlp(function(y)
+    get_ffmpeg(false, function()
+      video_info(y, u, function(_, e)
+        S.fetching = nil
+        if e then S.size_err = S.size_err or {} S.size_err[u] = e end
+        show_detail()
+        fetch_sizes() -- the selection may have moved on meanwhile
+      end)
+    end)
+  end)
+end
+
 local function show(status)
   local n = #S.items
-  send_dialog({ rows = rows(), busy = false, actions = actions(), has_more = S.more,
-    status = status or (S.title and (S.title .. " · ") or "") .. (n == 1 and "1 result" or (n .. " results")) })
+  local t = detail(selected())
+  t.rows, t.busy, t.actions, t.has_more, t.filters = rows(), false, actions(), S.more, filters()
+  t.status = status or (S.title and (S.title .. " · ") or "") .. (n == 1 and "1 result" or (n .. " results"))
+  send_dialog(t)
 end
 
 -- q: a link (listed as it is: video, playlist, channel) or a search.
@@ -1155,7 +1330,7 @@ local function load(q, keep)
   if not keep then S.n = SEARCH_STEP end
   S.req = S.req + 1
   local req = S.req
-  send_dialog({ busy = true, status = valid_url(q) and "Reading the link…" or "Searching YouTube…" })
+  send_dialog({ busy = true, query = q, status = valid_url(q) and "Reading the link…" or "Searching YouTube…" })
   with_ytdlp(function(y)
     local target = valid_url(q) or string.format("ytsearch%d:%s", S.n, q)
     ytdlp_json(y, { "--flat-playlist" }, target, function(j, e)
@@ -1164,6 +1339,7 @@ local function load(q, keep)
         S.items = {}
         return show("YouTube: " .. tostring(e))
       end
+      local keep_sel = keep and S.sel
       if j._type == "playlist" then
         S.items = {}
         for _, it in ipairs(j.entries or {}) do if type(it) == "table" then S.items[#S.items + 1] = it end end
@@ -1171,19 +1347,27 @@ local function load(q, keep)
         S.more = not valid_url(q) and #S.items >= S.n and S.n < SEARCH_MAX
       else
         j.webpage_url = j.webpage_url or valid_url(q)
+        if j.formats and j.webpage_url then info_cache[j.webpage_url] = j end
         S.items, S.title, S.more = { j }, nil, false
       end
-      S.sel = nil
+      S.sel = keep_sel or (#S.items == 1 and 1 or nil)
       show()
+      fetch_sizes()
     end)
   end)
 end
 
-local function open()
+-- Open the dialog; with `q` (a pasted link), list it right away.
+local function open(q)
   S.open = true
   send_dialog({ open = true, title = NAME, placeholder = "Search YouTube, or paste a video, playlist or channel link",
-    search_label = "Search", query = S.q, primary = "Play", secondary = "Download", grid_toggle = true,
-    grid = o.view == "Grid", rows = rows(), actions = actions(), status = #S.items == 0 and "Search YouTube, or paste a link" or nil })
+    search_label = "Search", query = q or S.q, primary = "Play", secondary = secondary_label(), grid_toggle = true,
+    grid = o.view == "Grid", rows = rows(), actions = actions(), filters = filters(),
+    status = #S.items == 0 and "Search YouTube, or paste a link" or nil })
+  if q then
+    S.back = {}
+    load(q)
+  end
 end
 
 local function index(args)
@@ -1200,15 +1384,18 @@ local function on_ui(json)
     S.back = {}
     load(e.query)
   elseif ev == "select" then
-    local it = item()
-    if it then send_dialog({ copy = entry_url(it) or "" }) end
+    local i = index(args)
+    S.sel = i and S.items[i] and i or nil
+    show_detail()
+    fetch_sizes()
   elseif ev == "primary" then
     local it = item()
     if not it then return end
     if is_container(it) then
       local u = entry_url(it)
       if not u then return end
-      S.back[#S.back + 1] = { q = S.q, items = S.items, title = S.title, more = S.more, n = S.n }
+      S.back[#S.back + 1] = { q = S.q, items = S.items, title = S.title, more = S.more, n = S.n, sel = S.sel }
+      S.sel = nil
       load(u)
     else
       queue({ it }, "replace")
@@ -1216,12 +1403,25 @@ local function on_ui(json)
   elseif ev == "secondary" then
     local it = item()
     if it and entry_url(it) then enqueue(entry_url(it), { title = it.title, art = thumb(it), no_playlist = not is_container(it) }) end
+  elseif ev == "filter" then
+    if args[1] == "Quality" and args[2] then
+      for _, q in ipairs(QUALITIES) do
+        if q == args[2] then
+          o.quality = q
+          mp.commandv("script-message", "vivi-setting", ID, "quality", q)
+          local t = detail(selected())
+          t.secondary, t.filters = secondary_label(), filters()
+          send_dialog(t)
+        end
+      end
+    end
   elseif ev:sub(1, 4) == "act:" then
     local a = ev:sub(5)
     if a == "‹ Back" then
       local b = table.remove(S.back)
       if b then
-        S.q, S.items, S.title, S.more, S.n, S.sel = b.q, b.items, b.title, b.more, b.n, nil
+        S.q, S.items, S.title, S.more, S.n, S.sel = b.q, b.items, b.title, b.more, b.n, b.sel
+        S.req = S.req + 1 -- a listing still running would replace the restored rows
         send_dialog({ query = S.q })
         show()
       end
@@ -1255,14 +1455,23 @@ local function on_ui(json)
   end
 end
 
+-- "managed copy", or a system program's path with ~ for the home folder.
+local function where(x)
+  if x.kind == "managed" then return "managed copy" end
+  local p = tostring(x.path or "")
+  if HOME ~= "" and p:sub(1, #HOME + 1) == HOME .. SEP then p = "~" .. p:sub(#HOME + 1) end
+  return p
+end
+
 local function show_info()
   ensure(function(y, err)
     if not y then return toast(err or "No yt-dlp available", 6) end
     get_ffmpeg(false, function(f)
-      local fs = f and string.format("%s ffmpeg %s (%s)", f.kind, f.version, f.path)
-        or "no ffmpeg yet (downloaded for 1080p+ or audio conversion)"
-      toast(string.format("Using %s yt-dlp %s (%s)%s; %s", y.kind, y.version, y.path,
-        recent(y.version) and "" or " — old, YouTube may fail", fs), 10)
+      local fs = f and string.format("ffmpeg %s (%s)", f.version, where(f))
+        or "no ffmpeg yet (downloaded for merging or audio conversion)"
+      mp.msg.info(string.format("yt-dlp %s; ffmpeg %s", y.path, f and f.path or "none"))
+      toast(string.format("yt-dlp %s (%s)%s · %s", y.version, where(y),
+        recent(y.version) and "" or ", old: YouTube may fail", fs), 10)
     end)
   end)
 end
@@ -1347,5 +1556,6 @@ if VIVI_TEST then
     download_args = download_args, format_args = format_args, needs_ffmpeg = needs_ffmpeg, enqueue = enqueue,
     jobs = jobs, on_ui = on_ui, S = S, o = o, queue = queue, mpv_at_least = mpv_at_least, open = open,
     estimate = estimate, height_limit = height_limit, download = download, cancel_job = cancel_job,
-    progress_text = progress_text }
+    progress_text = progress_text, size_list = size_list, has_single = has_single, jpeg_thumb = jpeg_thumb,
+    info_cache = info_cache, report = report, paste = paste }
 end

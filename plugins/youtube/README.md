@@ -1,14 +1,16 @@
 # YouTube & yt-dlp
 
-Search YouTube, list, size and download videos and playlists from YouTube and the other sites yt-dlp supports. Needs Vivi 0.13 or newer (1.2.2 stays the version for Vivi 0.9.1–0.12).
+Search YouTube and play, queue, size and download videos and playlists from YouTube and the other sites yt-dlp supports. Needs Vivi 0.13 or newer (1.2.2 stays the version for Vivi 0.9.1–0.12).
 
-- **Search**: *YouTube* in the sidebar, *Search YouTube* in the command palette or *Search…* in the settings opens Vivi's own dialog. Type words to search YouTube (`ytsearch30:`, *More* loads up to 150 results) or paste a video, playlist or channel link to list it. Rows show thumbnail, channel, views and duration; list or grid view (remembered). *Play* plays a video or opens a playlist row (*‹ Back* returns), *Queue* / *Queue all* append to the Vivi playlist, *Download* / *Download audio* add the row to the downloads. Queued videos get their title, channel, duration and thumbnail in Vivi right away (`vivi-media-meta`), before mpv has opened them.
-- **URL**: paste it into the settings, or copy it and press `Alt+U` in the player (mpv `clipboard/text`).
-- **Add to playlist**: playlist entries (`yt-dlp --flat-playlist -J`) are appended to the Vivi playlist with their titles; a single video is appended too.
-- **Show sizes**: estimated size per quality and for audio only, from the formats' `filesize` / `filesize_approx` (bitrate × duration when both are missing); the same estimate is shown when a download starts. For a playlist URL the first video is measured.
-- **Download**: video at the chosen quality (`bv*[height<=H]+ba/b[height<=H]`) or audio only (original, or mp3/m4a/opus via `-x`), into the folder from *Choose…* (default `~/Downloads/Vivi`), named `[NN - ]Title [id].ext`. Audio files get a ` (audio)` suffix. The URL setting downloads what it points to (a playlist URL: the whole playlist); with it empty, the playing video.
-- **Download this video** (player right-click menu, palette, settings): only the playing video, even when its URL carries a `list=` (`--no-playlist`).
-- **Downloads**: one download runs at a time, the others wait in a queue. Each one is a row in Vivi's Downloads panel (thumbnail, progress, speed, Cancel / Retry, open the file when done); in a plain mpv progress is shown on the OSD every 2 s (percentage, size, ETA, entry n/N) on Linux and macOS, on Windows only start and end. *Cancel* stops the running download and the queued ones. yt-dlp's output goes to `plugin-data/youtube/logs/`.
+- **Search**: *YouTube* in the sidebar, *Search YouTube* in the command palette or *Search…* in the settings opens Vivi's own dialog. Type words to search YouTube (`ytsearch30:`, *More* loads up to 150 results) or paste a video, playlist or channel link to list it. List or grid view (remembered), with thumbnail, channel, views and duration. *Play* plays a video or opens a playlist row (*‹ Back* returns), *Queue* / *Queue all* append to the Vivi playlist, *Download* / *Download audio* add the row to the downloads. Queued videos get their title, channel, duration and thumbnail in Vivi right away (`vivi-media-meta`).
+- **Details and sizes**: selecting a video shows its channel, length, views, upload date and the **estimated size of each quality** (and of audio only); the size of what *Download* will fetch is marked. The *Download quality* dropdown above the results sets the same quality as the settings.
+- **URL**: paste it into the settings, or copy it and press `Alt+U` in the player (mpv `clipboard/text`): its entries are added to the Vivi playlist (*Add to playlist*, `yt-dlp --flat-playlist -J`).
+- **Show sizes** (settings): the same estimate for the URL setting or the playing video, as a message. For a playlist URL the first video is measured.
+- **Download**: video at the chosen quality (`bv*[height<=H]+ba/b[height<=H]`) or audio only (original, or mp3/m4a/opus via `-x`), into the folder from *Choose…* (default `~/Downloads/Vivi`), named `[NN - ]Title [id].ext`; audio files get a ` (audio)` suffix. The URL setting downloads what it points to (a playlist URL: the whole playlist); with it empty, the playing video.
+- **Download this video** (player right-click menu → Plugins, palette, settings): only the playing video, even when its URL carries a `list=` (`--no-playlist`).
+- **Downloads panel**: one download runs at a time, the others wait. Each one is a row in Vivi's Downloads panel (thumbnail, progress, speed, time left, Cancel / Retry, Play / Show in folder when done). *Cancel* in the settings stops the running download and the queued ones. In a plain mpv progress goes to the OSD every 2 s (Linux and macOS; on Windows only start and end). yt-dlp's output goes to `plugin-data/youtube/logs/`.
+
+Sizes come from the formats' `filesize` / `filesize_approx` (bitrate × duration when both are missing) of the formats yt-dlp's default order picks, so they match the download (YouTube's HLS copies, which have no size, are not counted). Wide films are labelled by their format class: a 1920×804 video is 1080p.
 
 ## Which yt-dlp
 
@@ -23,7 +25,7 @@ The chosen yt-dlp is also given to mpv's ytdl_hook (`ytdl_hook-ytdl_path`), so s
 
 ## ffmpeg
 
-Merging separate best video + audio streams and converting audio need ffmpeg. A system `ffmpeg` (PATH, `/usr/bin`, `/usr/local/bin`, Homebrew, MacPorts, Snap) is used when there is one; the Flatpak has none. Otherwise a static build is downloaded **only when a download needs it**: video at 1080p or above (or *Best available*), or audio converted to mp3/m4a/opus. Below 1080p without ffmpeg, single-file formats are used.
+Merging separate best video + audio streams and converting audio need ffmpeg. A system `ffmpeg` (PATH, `/usr/bin`, `/usr/local/bin`, Homebrew, MacPorts, Snap) is used when there is one; the Flatpak has none. Otherwise a static build is downloaded **only when a download needs it**: video at 1080p or above (or *Best available*), a video that has no single file with both video and audio at the chosen quality (YouTube often has none, even at 360p), or audio converted to mp3/m4a/opus. Otherwise single-file formats are used.
 
 | Platform | Source | Verified with |
 | --- | --- | --- |
@@ -35,6 +37,13 @@ Needs `curl` and `tar` (and `sh` on Linux/macOS).
 
 ## Version history
 
+- **1.4.0** (2026-10-20): needs Vivi 0.13.0.
+  - New: the search dialog's detail pane shows the selected video's estimated size per quality (the one *Download* takes is marked), length, views and upload date; a *Download quality* dropdown in the dialog; *Download* says which quality it takes.
+  - Fix: no thumbnails in the dialog, the Downloads panel and the now-playing card (YouTube serves its sized thumbnails as WebP, which Vivi does not decode; JPEG ones are used now).
+  - Fix: Downloads panel rows stayed at "Starting…" without progress, speed or time left (a fractional speed made Vivi drop every progress report); finished rows no longer say "Starting…".
+  - Fix: estimated sizes were up to 3× too high (YouTube's HLS copies were counted); sizes now follow the formats yt-dlp picks, and wide videos are labelled 1080p instead of 858p.
+  - Fix: without ffmpeg, 720p and lower failed when YouTube offers no single file with video and audio; ffmpeg is fetched for such videos too.
+  - The size of the managed yt-dlp is announced before it downloads; *Which yt-dlp is used* is one short line; the progress log is read from its end.
 - **1.3.0** (2026-10-20): needs Vivi 0.13.0 (Vivi 0.12 and older keep 1.2.2 and see this version as needing a newer Vivi).
   - New: search YouTube and browse links, playlists and channels in Vivi's own dialog, from the sidebar, the palette or the settings; play, queue or download from it.
   - New: Downloads panel rows with progress, Cancel and Retry, and a download queue; *Download this video* in the player menu; queued videos show their title, channel and thumbnail at once.

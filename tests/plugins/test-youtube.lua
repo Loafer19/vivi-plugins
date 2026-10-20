@@ -64,7 +64,8 @@ T.calls, T.osd = {}, {}
 P.open()
 T.eq(#T.osd, 0, "no OSD inside Vivi")
 local d = T.json_decode(T.calls[1][4])
-T.eq(T.calls[1][2], "vivi-dialog", "dialog") T.ok(d.open and d.primary == "Play" and d.secondary == "Download", "dialog buttons")
+T.eq(T.calls[1][2], "vivi-dialog", "dialog") T.ok(d.open and d.primary == "Play" and d.secondary == "Download 1080p", "dialog buttons")
+T.eq(d.filters[1].name, "Quality", "quality filter") T.eq(d.filters[1].value, "Download quality: 1080p", "quality value")
 
 -- Search: a query becomes ytsearch, a link is listed; the target always follows "--".
 local seen = {}
@@ -76,4 +77,59 @@ P.on_ui(T.json_encode({ event = "search", query = "lofi beats", args = {} }))
 -- yt-dlp detection runs first (no system tools in tests): answer the managed download path.
 T.set_async(nil)
 T.ok(#seen >= 1, "search started a subprocess")
+
+-- Sizes: the formats yt-dlp's default order picks (av01 over the HLS copies of the same
+-- height), wide videos labelled by format_note (1920×804 is "1080p").
+local f = io.open("tests/plugins/fixtures/youtube-spring-formats.json")
+local spring = T.json_decode(f:read("*a")) f:close()
+local sz, h, lbl = P.estimate(spring, "1080p", false, true)
+T.eq(sz, 90648360, "1080p = 400 + 251, as yt-dlp picks") T.eq(h, 858, "height") T.eq(lbl, "1080p", "label of a wide video")
+T.eq((P.estimate(spring, "720p", false, true)), 30607552, "720p = 398 + 251")
+T.eq((P.estimate(spring, nil, true, true)), 7973641, "audio = 251 (not -drc)")
+T.eq(P.has_single(spring, "720p"), false, "no single file with video and audio")
+T.eq(P.has_single({ formats = { { vcodec = "avc1", acodec = "mp4a", height = 360 } } }, "720p"), true, "format 18")
+T.eq(P.size_list(spring, true), "best 1080p ≈ 86 MB · 720p ≈ 29 MB · 480p ≈ 19 MB · audio ≈ 8 MB", "size list")
+
+-- Thumbnails: Vivi decodes JPEG / PNG, YouTube's sized thumbnails are WebP.
+T.eq(P.jpeg_thumb("https://i.ytimg.com/vi/x/hqdefault.jpg?sqp=abc&rs=def"), "https://i.ytimg.com/vi/x/hqdefault.jpg", "no sqp")
+T.eq(P.jpeg_thumb("https://i.ytimg.com/vi_webp/x/maxresdefault.webp"), "https://i.ytimg.com/vi/x/maxresdefault.jpg", "vi_webp")
+T.eq(P.thumb({ ie_key = "YoutubeTab", _type = "url", id = "PL1", thumbnails = { { url = "https://i.ytimg.com/vi/v/hqdefault.jpg?sqp=1", width = 336 } } }),
+  "https://i.ytimg.com/vi/v/hqdefault.jpg", "playlist thumbnail as JPEG")
+
+-- Detail pane and quality filter.
+P.S.items = { { ie_key = "Youtube", id = "WhWc3b3KhnY", title = "Spring", channel = "Blender Studio", duration = 464, view_count = 10900000 } }
+P.info_cache["https://www.youtube.com/watch?v=WhWc3b3KhnY"] = spring
+T.calls = {}
+P.on_ui(T.json_encode({ event = "select", args = { "0" } }))
+local dd = T.json_decode(T.calls[#T.calls][4])
+T.ok(dd.detail:find("1080p ≈ 86 MB   ← Download", 1, true), "sizes in the detail pane, chosen quality marked")
+T.eq(dd.detail_cover, "https://i.ytimg.com/vi/WhWc3b3KhnY/mqdefault.jpg", "detail cover")
+T.eq(dd.copy, "https://www.youtube.com/watch?v=WhWc3b3KhnY", "copy link")
+T.calls = {}
+P.on_ui(T.json_encode({ event = "filter", args = { "Quality", "720p" } }))
+dd = T.json_decode(T.calls[#T.calls][4])
+T.eq(P.o.quality, "720p", "quality from the dialog") T.eq(dd.secondary, "Download 720p", "button follows")
+T.ok(dd.detail:find("720p ≈ 29 MB   ← Download", 1, true), "mark follows")
+P.on_ui(T.json_encode({ event = "filter", args = { "Quality", "999p" } }))
+T.eq(P.o.quality, "720p", "unknown quality ignored")
+P.o.quality = "1080p"
+
+-- Downloads panel reports: whole bytes (a fractional speed made Vivi drop the report).
+T.calls = {}
+P.report({ id = "j1" }, { state = "active", done = 10.5, total = 99.9, speed = 2810928.27, progress = 0.1 })
+local rep = T.json_decode(T.calls[#T.calls][5])
+T.eq(rep.speed, 2810928, "speed in whole bytes") T.eq(rep.done, 10, "done in whole bytes") T.eq(rep.total, 99, "total")
+
+-- Alt+U: a URL in the clipboard becomes the URL setting; anything else is refused.
+T.calls = {}
+T.props["clipboard/text"] = "--exec=rm"
+P.paste()
+T.eq(P.o.url, "", "non-URL clipboard ignored")
+T.props["clipboard/text"] = " https://www.youtube.com/watch?v=WhWc3b3KhnY "
+P.paste()
+T.eq(P.o.url, "https://www.youtube.com/watch?v=WhWc3b3KhnY", "clipboard URL taken")
+local saved = false
+for _, c in ipairs(T.calls) do if c[2] == "vivi-setting" and c[4] == "url" then saved = true end end
+T.ok(saved, "URL saved in the settings")
+P.o.url = ""
 T.done("youtube")
