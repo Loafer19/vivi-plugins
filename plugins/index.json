@@ -503,8 +503,8 @@
     {
       "id": "network-streams",
       "name": "Network Streams",
-      "description": "Internet radio (radio-browser.info, SomaFM), iptv-org TV by country and category, your own M3U/IPTV playlists that refresh themselves, favorites, group and category chips, channel logos, an XMLTV program guide (now / next) and stream info. No key needed; nothing bundled, everything fetched and cached on demand.",
-      "version": "0.9.0",
+      "description": "Internet radio (radio-browser.info, SomaFM), iptv-org TV by country and category, your own M3U/IPTV playlists that refresh themselves, favorites, Search all (TV + radio), group and category chips, channel logos as a list or a grid, an XMLTV program guide (now / next) and stream info. No key needed; nothing bundled, everything fetched and cached on demand.",
+      "version": "0.13.0",
       "author": "Vivi",
       "icon": "streams",
       "lucide": "radio",
@@ -565,15 +565,23 @@
         "xmltv"
       ],
       "screenshots": [
-        "network"
+        "network-streams-grid",
+        "network-streams-list",
+        "network-streams-drawer"
       ],
       "changelog": [
+        {
+          "version": "0.13.0",
+          "date": "2026-10-20",
+          "notes": "Grid view: stations as logo tiles with the name under each logo (List / Grid buttons in the header, remembered as Browser view). Keyboard navigation in both views (arrow keys, Home / End, Enter plays; screen-reader labels). Station logos load again (they were cached without a file extension and every one failed); logos are shrunk to 128 px and decoded off the UI thread. Long station names no longer cut to a few letters, short genre chips that scroll instead of running off the dialog, and a browser that grows with the window. Fixes: plays are counted on radio-browser.info by station id (the old call was ignored); radio-browser mirrors are discovered from all.api.radio-browser.info, shuffled and the next one tried when one is down (two of the three fixed mirrors are gone). Search all also searches SomaFM; MCP search_streams returns a radio / tv kind per item, filters by it correctly and refuses while the plugin is off. Free Music songs no longer show as a radio station card. Cache files (logos, guides, covers, last good playlist copies) get stable names, old ones are kept. A playlist path that does not exist shows an error instead of a TV channel search. The side drawer panel shows the stream playing and your favorites / recent counts instead of the description."
+        },
         {
           "version": "0.9.0",
           "date": "2026-10-15",
           "notes": "XMLTV program guide (now / next from the playlist url-tvg or a guide URL setting; only 12 hours kept), favorites pinned on top, group-title chips and iptv-org category chips, My playlists (custom M3U URLs that refresh themselves, last updated, broken links keep the last good copy), Search all (TV + radio), Add to queue and Mini player actions, broken logos remembered and a 64 MB logo cache cap."
         }
-      ]
+      ],
+      "min_vivi": "0.13.0"
     },
     {
       "id": "ab-loop",
