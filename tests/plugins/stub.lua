@@ -103,7 +103,8 @@ local function dec(s)
 end
 
 function M.load(script, opts, props)
-  M.calls, M.osd, M.messages, M.bindings, M.props = {}, {}, {}, {}, props or {}
+  M.calls, M.osd, M.messages, M.bindings, M.props = {}, {}, {}, {}, props or M.next_props or {}
+  M.next_props = nil -- properties the script sees while it loads (host flags)
   local mp = {
     msg = { info = function() end, warn = function() end, verbose = function() end,
             error = function() end, debug = function() end },

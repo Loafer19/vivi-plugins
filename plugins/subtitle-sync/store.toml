@@ -1,8 +1,13 @@
 # Marketplace listing (plugins.viviplayer.app). Not part of the package zip,
 # so editing it needs no new plugin version.
 categories = ["Subtitles", "Tools"]
-tags = ["alass", "ffsubsync", "timing", "offset"]
-screenshots = ["subtitle-sync-settings"]
+tags = ["alass", "ffsubsync", "timing", "offset", "sync"]
+screenshots = ["subtitle-sync-player", "subtitle-sync-settings"]
+
+[[changelog]]
+version = "1.3.0"
+date = "2026-10-19"
+notes = "Sync to another subtitle track (Alt+Shift+Y): the secondary subtitle or another text track of the file, in seconds instead of minutes. The synced copy is picked again when the file opens with the original selected. The toast says how far the subtitle moved; a manual offset left over from the original is reset. Re-syncing starts from the original file, a re-sync replaces the loaded copy instead of adding another track, and the copy keeps the original's name and language. ffsubsync works with Vivi's ffmpeg build too. Messages show once, as Vivi toasts. On Vivi 0.13+, which keeps the per-file offset itself, the plugin binds no offset keys and keeps no offsets.json; offsets saved here earlier are imported by Vivi once."
 
 [[changelog]]
 version = "1.2.0"
@@ -22,7 +27,7 @@ notes = "Downloads a verified alass (and, if needed, ffmpeg) when no sync tool i
 [[changelog]]
 version = "1.0.1"
 date = "2026-10-15"
-notes = "Requires Vivi 0.9.0 (managed ffmpeg support)."
+notes = "Requires Vivi 0.9.0 (the first version with plugin packages)."
 
 [[changelog]]
 version = "1.0.0"

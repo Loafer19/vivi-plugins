@@ -210,7 +210,7 @@ def head(title: str, desc: str, url: str, image: str, extra: str = "", depth: in
 FOOT = f"""</main>
 <footer>Vivi plugin marketplace · <a href="{SITE}/">viviplayer.app</a> · catalog as <a href="/index.json">index.json</a> ·
 <a href="/dev/">Developer docs</a> ·
-icons from <a href="https://lucide.dev">Lucide</a> (ISC) · screenshots show <a href="https://durian.blender.org">Sintel</a> and <a href="https://peach.blender.org">Big Buck Bunny</a> (© Blender Foundation, CC BY 3.0)</footer>
+icons from <a href="https://lucide.dev">Lucide</a> (ISC) · screenshots show <a href="https://durian.blender.org">Sintel</a>, <a href="https://peach.blender.org">Big Buck Bunny</a> and <a href="https://mango.blender.org">Tears of Steel</a> (© Blender Foundation, CC BY 3.0)</footer>
 </body>
 </html>
 """

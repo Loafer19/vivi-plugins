@@ -2156,8 +2156,8 @@
     {
       "id": "subtitle-sync",
       "name": "Subtitle Auto-Sync",
-      "description": "Aligns the current external subtitle to the audio with alass or ffsubsync in the background, then loads the synced copy saved next to the original. Manual offset keys (Alt+Z / Alt+X) are remembered per file (by Vivi itself from 0.11, together with z / x and the side panel). Uses an installed alass or ffsubsync; otherwise downloads alass on first use (3 MB on Linux x86_64, 26 MB on Windows) and, without a system ffmpeg, Vivi's media ffmpeg build (about 15 MB, shared with Chapter Thumbnails).",
-      "version": "1.2.0",
+      "description": "Aligns the current external subtitle to the audio, or in seconds to another subtitle track (Alt+Shift+Y), with alass or ffsubsync in the background, then loads the synced copy saved next to the original and picks it again the next time the file opens. From Vivi 0.13 the manual offset (Z / X, Alt+Z / Alt+X, side panel) belongs to the player; on older Vivi this plugin's Alt+Z / Alt+X keys keep it per file. Uses an installed alass or ffsubsync; otherwise downloads alass on first use (3 MB on Linux x86_64, 26 MB on Windows) and, to read the audio without a system ffmpeg, Vivi's media ffmpeg build (about 15 MB, shared with Chapter Thumbnails).",
+      "version": "1.3.0",
       "author": "Vivi",
       "icon": "subtitles",
       "lucide": "captions",
@@ -2171,9 +2171,9 @@
         "subprocess"
       ],
       "source": "plugins/subtitle-sync",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-subtitle-sync-v1.2.0/subtitle-sync-1.2.0.zip",
-      "sha256": "e52fb328dbcf237dae196cb75d87d784dc68af6cad03bff1704708a397effa0d",
-      "size": 24163,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-subtitle-sync-v1.3.0/subtitle-sync-1.3.0.zip",
+      "sha256": "d4a5a95fd54ddc9143a6e50f4a92d8005b345ed2ddb61f6cadc4ac65ded5d4ea",
+      "size": 41624,
       "settings": [
         {
           "key": "tool",
@@ -2194,7 +2194,7 @@
         },
         {
           "key": "step",
-          "title": "Offset step for Alt+Z / Alt+X in seconds (Alt+Shift: 10 steps)",
+          "title": "Offset step for Alt+Z / Alt+X in seconds (Alt+Shift: 10 steps; Vivi before 0.13)",
           "type": "choice",
           "options": [
             "0.1",
@@ -2205,9 +2205,21 @@
           "default": "0.1"
         },
         {
+          "key": "prefer",
+          "title": "Use the synced copy when a file opens with the original subtitle",
+          "type": "toggle",
+          "default": "true"
+        },
+        {
           "key": "sync",
-          "title": "Sync current subtitle (Alt+Y)",
+          "title": "Sync current subtitle to the audio (Alt+Y)",
           "type": "action"
+        },
+        {
+          "key": "sync-ref",
+          "title": "Sync current subtitle to another subtitle track (Alt+Shift+Y)",
+          "type": "action",
+          "label": "Sync"
         },
         {
           "key": "reset",
@@ -2231,17 +2243,24 @@
         "alass",
         "ffsubsync",
         "timing",
-        "offset"
+        "offset",
+        "sync"
       ],
       "screenshots": [
+        "subtitle-sync-player",
         "subtitle-sync-settings"
       ],
       "changelog": [
         {
+          "version": "1.3.0",
+          "date": "2026-10-19",
+          "notes": "Sync to another subtitle track (Alt+Shift+Y): the secondary subtitle or another text track of the file, in seconds instead of minutes. The synced copy is picked again when the file opens with the original selected. The toast says how far the subtitle moved; a manual offset left over from the original is reset. Re-syncing starts from the original file, a re-sync replaces the loaded copy instead of adding another track, and the copy keeps the original's name and language. ffsubsync works with Vivi's ffmpeg build too. Messages show once, as Vivi toasts. On Vivi 0.13+, which keeps the per-file offset itself, the plugin binds no offset keys and keeps no offsets.json; offsets saved here earlier are imported by Vivi once.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-subtitle-sync-v1.3.0/subtitle-sync-1.3.0.zip"
+        },
+        {
           "version": "1.2.0",
           "date": "2026-10-16",
-          "notes": "Works with Vivi's per-file subtitle offset (Vivi 0.11+): Alt+Z / Alt+X go to Vivi, offsets saved by older versions are handed over once, and the side panel's Auto-sync button runs this plugin.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-subtitle-sync-v1.2.0/subtitle-sync-1.2.0.zip"
+          "notes": "Works with Vivi's per-file subtitle offset (Vivi 0.11+): Alt+Z / Alt+X go to Vivi, offsets saved by older versions are handed over once, and the side panel's Auto-sync button runs this plugin."
         },
         {
           "version": "1.1.1",
@@ -2256,7 +2275,7 @@
         {
           "version": "1.0.1",
           "date": "2026-10-15",
-          "notes": "Requires Vivi 0.9.0 (managed ffmpeg support)."
+          "notes": "Requires Vivi 0.9.0 (the first version with plugin packages)."
         },
         {
           "version": "1.0.0",
