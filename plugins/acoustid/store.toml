@@ -5,6 +5,11 @@ tags = ["acoustid", "musicbrainz", "chromaprint", "tagging", "rename"]
 screenshots = ["acoustid-settings"]
 
 [[changelog]]
+version = "1.1.0"
+date = "2026-10-20"
+notes = "The API key is kept in a private file on Vivi 0.13+ (no longer in mpv's log; existing keys move over by themselves). New: identify untagged songs as they start and show the match as now playing; answers are cached per file, so each file is looked up once. Messages are Vivi toasts instead of mpv's OSD; palette entry; fixes for relative file paths and the missing pkgdir option warning."
+
+[[changelog]]
 version = "1.0.0"
 date = "2026-10-15"
 notes = "First release: fpcalc fingerprint (system or downloaded), AcoustID + MusicBrainz lookup into the Auto-tagger review, file name proposal from a pattern."

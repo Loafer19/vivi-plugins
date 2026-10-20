@@ -1,10 +1,10 @@
 -- @name AcoustID Tagger
--- @version 1.0.0
+-- @version 1.1.0
 -- @author Vivi
 -- @description Identify songs by their sound (Chromaprint fpcalc + AcoustID) and review tags and a new file name in the Auto-tagger (Vivi plugin package).
 --
 -- Keys: Alt+i  identify the playing file
--- Script messages: identify, detect.
+-- Script messages: identify, detect, forget (clear the result cache).
 --
 -- 1. fpcalc (Chromaprint) fingerprints the first two minutes: a system fpcalc first
 --    (package chromaprint / libchromaprint-tools, brew chromaprint), otherwise the
@@ -12,20 +12,49 @@
 --    https://github.com/acoustid/chromaprint/releases (1.3-2.6 MB, sha256 pinned below)
 --    into plugin-data/acoustid/.
 -- 2. POST https://api.acoustid.org/v2/lookup (client = your application API key,
---    meta = recordings) with curl.
+--    meta = recordings + release groups) with curl. The request body goes to curl as a
+--    private file (mpv logs subprocess arguments and stdin), never on its command line.
 -- 3. The answer goes to Vivi's Auto-tagger (`script-message vivi-tagger-acoustid <path>
 --    <json>`), which looks the recordings up on MusicBrainz and opens its candidates list
 --    and before/after review, including the file name built from `pattern`.
 --
+-- Answers are cached per file (path, size, mtime) in plugin-data/acoustid/cache.json, so
+-- identifying a file again (or playing it again with "auto" on) asks AcoustID only once.
+--
+-- "auto" (Vivi 0.13+, shared now playing): when a local song without title / artist tags
+-- starts, it is identified in the background and the best match (score >= 70%) is handed to
+-- Vivi as the track's metadata (`vivi-media-meta`): the now-playing card, MPRIS and
+-- extensions that read now playing (Scrobbler) then show the real artist and title. The file is not changed; Alt+I opens
+-- the review that writes the tags.
+--
+-- The API key (a `secret` setting): Vivi 0.13+ hands it in a private file
+-- (manifest `secrets_file = true`, plugin-data/acoustid/vivi-secrets.json, 0600) named by the
+-- script-opt `acoustid-secrets=<revision>:<path>`, because mpv writes every script-opt with
+-- its value to its log. Older Vivi passes it as the script-opt `acoustid-api-key`, which is
+-- also used when the file has no key (a value from mpv's own script-opts/acoustid.conf).
+--
 -- AcoustID requires an application key and Vivi does not ship one: register a free
--- application at https://acoustid.org/new-application and paste its key in the settings
--- (same as the OpenSubtitles key of Subtitle Search).
+-- application at https://acoustid.org/new-application and paste its key in the settings.
 local mp = require "mp"
 local options = require "mp.options"
 local utils = require "mp.utils"
 
-local o = { ["api-key"] = "", pattern = "{artist} - {title}", download = true }
-options.read_options(o, "acoustid")
+local VERSION = "1.1.0"
+local ID = "acoustid"
+local o = {
+  ["api-key"] = "", pattern = "{artist} - {title}", download = true, auto = false,
+  secrets = "", -- Vivi 0.13+: "<revision>:<path>" of the private file with the API key
+  pkgdir = "", -- set by Vivi
+}
+options.read_options(o, ID)
+
+-- Inside Vivi (it always sets pkgdir) messages are Vivi toasts; mpv's OSD is only drawn
+-- into the video, so it is used only when the script runs in a plain mpv.
+local function toast(msg, secs)
+  mp.msg.info(msg)
+  if (o.pkgdir or "") == "" then return mp.osd_message(msg, secs or 4) end
+  mp.commandv("script-message", "vivi-toast", msg, tostring(secs or 4))
+end
 
 -- ---------- managed helpers (same block in subtitle-sync, chapter-thumbnails, acoustid) ----------
 -- A system program is always preferred. Otherwise a pinned build is downloaded once
@@ -140,8 +169,7 @@ local function fetch_verified(what, url, sha, dir, name, unpack, cb)
   mkdir(dir, function()
     local tmp = dir .. SEP .. name .. ".part"
     remote_size(url, function(sz)
-      mp.osd_message("Downloading " .. what .. " (" .. human(sz) .. ")…", 5)
-      mp.commandv("script-message", "vivi-toast", "Downloading " .. what .. " (" .. human(sz) .. ")…")
+      toast("Downloading " .. what .. " (" .. human(sz) .. ")…", 5)
       run({ "curl", "-fsSL", "--retry", "2", "-o", tmp, url }, function(r)
         if r.status ~= 0 then os.remove(tmp) return cb(nil, what .. " download failed: " .. (r.stderr or "")) end
         sha256(tmp, function(got)
@@ -169,6 +197,8 @@ end
 -- ---------- end of managed helpers ----------
 
 local DIR = PLUGIN_DATA .. SEP .. "acoustid"
+local CACHE = DIR .. SEP .. "cache.json"
+local CACHE_MAX = 300
 local V = "1.6.2"
 local FPCALC = {
   ["linux-x86_64"] = { "linux-x86_64", "tar.gz", "c968ad4a0821592a79b158fb2e1f46cbe0a22a0a1dbc0743c67d68e75d15d2bb" },
@@ -178,11 +208,43 @@ local FPCALC = {
   ["windows-x86_64"] = { "windows-x86_64", "zip", "b74369726676670af3ab0eadff45f960cf969fdf4a87a971ba37eaf8d530e874" },
 }
 
-local function toast(msg, secs)
-  mp.osd_message(msg, secs or 4)
-  mp.commandv("script-message", "vivi-toast", msg)
+local function trim(s) return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")) end
+
+-- ---------- API key (secrets file on Vivi 0.13+, script-opts before) ----------
+local secret_key = nil -- key from vivi-secrets.json ("" = the file has none)
+
+-- Reads the private file named by the `secrets` option ("<revision>:<path>"). Returns
+-- whether there was one. Only Vivi's file for this package is read
+-- (<data>/plugin-data/acoustid/vivi-secrets.json).
+local function read_secrets()
+  local f = trim(o.secrets):match("^%d+:(.+)$")
+  if not f then secret_key = nil return false end
+  if not f:match("[/\\]plugin%-data[/\\]acoustid[/\\]vivi%-secrets%.json$") then
+    mp.msg.warn("unexpected secrets file ignored: " .. f)
+    secret_key = nil
+    return false
+  end
+  local h = io.open(f, "r")
+  if not h then
+    mp.msg.warn("secret settings file missing")
+    secret_key = nil
+    return false
+  end
+  local j = utils.parse_json(h:read("*a") or "")
+  h:close()
+  secret_key = type(j) == "table" and type(j["api-key"]) == "string" and j["api-key"] or ""
+  return true
 end
 
+-- The key in use, without white space: the secrets file first, else (older Vivi, or a
+-- value from mpv's script-opts/acoustid.conf) the script-opt.
+local function api_key()
+  local k = (secret_key or ""):gsub("%s", "")
+  if k ~= "" then return k end
+  return (o["api-key"] or ""):gsub("%s", "")
+end
+
+-- ---------- fpcalc ----------
 local function managed_path(plat)
   local f = FPCALC[plat]
   if not f then return nil end
@@ -216,8 +278,19 @@ end
 -- { duration, fingerprint } from `fpcalc -json` output, or nil.
 local function parse_fpcalc(out)
   local v = utils.parse_json(out or "")
-  if type(v) ~= "table" or not v.fingerprint or not v.duration then return nil end
+  if type(v) ~= "table" or type(v.fingerprint) ~= "string" or v.fingerprint == "" or not tonumber(v.duration) then
+    return nil
+  end
   return { duration = math.floor(tonumber(v.duration) + 0.5), fingerprint = v.fingerprint }
+end
+
+-- A path fpcalc cannot take for an option: absolute (mpv's working directory for a
+-- relative one), or "./-name".
+local function safe_path(path, cwd)
+  local abs = path:match("^/") or path:match("^%a:[/\\]") or path:match("^\\\\")
+  if abs then return path end
+  if cwd and cwd ~= "" then return cwd .. SEP .. path end
+  return "." .. SEP .. path
 end
 
 local function urlencode(s)
@@ -225,73 +298,278 @@ local function urlencode(s)
 end
 
 local function lookup_body(key, fp)
-  return "client=" .. urlencode(key) .. "&meta=recordings&duration=" .. fp.duration ..
+  return "client=" .. urlencode(key) .. "&meta=recordings+releasegroups&duration=" .. fp.duration ..
     "&fingerprint=" .. urlencode(fp.fingerprint)
 end
 
--- "Artist - Title" of the best recording in an AcoustID answer, and the result count.
+-- "A feat. B" from the recording's artist credits (AcoustID gives the join phrases on all
+-- but the last; without them: commas).
+local function artists(rec)
+  local out, list = {}, rec.artists or {}
+  for i, x in ipairs(list) do
+    if type(x.name) == "string" then
+      out[#out + 1] = x.name
+      if i < #list then out[#out + 1] = type(x.joinphrase) == "string" and x.joinphrase or ", " end
+    end
+  end
+  return trim(table.concat(out))
+end
+
+-- Best match of an AcoustID answer: { title, artist, album, mbid, score (0..1), duration },
+-- plus the number of recordings and the "Artist - Title (97%)" label.
 local function best(v)
   local top, n = nil, 0
   for _, r in ipairs(v.results or {}) do
     for _, rec in ipairs(r.recordings or {}) do
       n = n + 1
-      if not top and rec.title then
-        local a = {}
-        for _, x in ipairs(rec.artists or {}) do a[#a + 1] = x.name end
-        top = string.format("%s - %s (%d%%)", table.concat(a, ", "), rec.title, math.floor((r.score or 0) * 100 + 0.5))
+      if rec.title and (not top or (r.score or 0) > top.score) then
+        local album
+        for _, g in ipairs(rec.releasegroups or {}) do
+          if type(g.title) == "string" and (g.type == "Album" or not album) then album = g.title end
+          if album and g.type == "Album" then break end
+        end
+        top = { title = rec.title, artist = artists(rec), album = album or "", mbid = rec.id or "",
+          score = r.score or 0, duration = tonumber(rec.duration) or 0 }
       end
     end
   end
-  return top, n
+  local label = top and string.format("%s - %s (%d%%)", top.artist, top.title, math.floor(top.score * 100 + 0.5))
+  return label, n, top
+end
+
+-- The AcoustID answer without what neither the Auto-tagger nor `best` reads (cache size).
+local function slim(v)
+  local out = { status = v.status, results = {} }
+  for _, r in ipairs(v.results or {}) do
+    local recs = {}
+    for _, rec in ipairs(r.recordings or {}) do
+      local a, g = {}, {}
+      for _, x in ipairs(rec.artists or {}) do a[#a + 1] = { id = x.id, name = x.name, joinphrase = x.joinphrase } end
+      for _, x in ipairs(rec.releasegroups or {}) do
+        if #g < 5 then g[#g + 1] = { id = x.id, title = x.title, type = x.type } end
+      end
+      recs[#recs + 1] = { id = rec.id, title = rec.title, duration = rec.duration, artists = a, releasegroups = g }
+    end
+    if #out.results < 10 then out.results[#out.results + 1] = { id = r.id, score = r.score, recordings = recs } end
+  end
+  return out
+end
+
+-- ---------- result cache ----------
+local cache = nil
+
+local function load_cache()
+  if cache then return cache end
+  cache = {}
+  local f = io.open(CACHE, "r")
+  if f then
+    local j = utils.parse_json(f:read("*a") or "")
+    f:close()
+    if type(j) == "table" and type(j.files) == "table" then cache = j.files end
+  end
+  return cache
+end
+
+local function save_cache()
+  local list = {}
+  for k, v in pairs(cache or {}) do list[#list + 1] = { k, v } end
+  table.sort(list, function(a, b) return (a[2].t or 0) > (b[2].t or 0) end)
+  local keep = {}
+  for i = 1, math.min(#list, CACHE_MAX) do keep[list[i][1]] = list[i][2] end
+  cache = keep
+  mkdir(DIR, function()
+    local tmp = CACHE .. ".tmp"
+    local f = io.open(tmp, "w")
+    if not f then return end
+    f:write(utils.format_json({ version = 1, files = keep }))
+    f:close()
+    os.remove(CACHE)
+    os.rename(tmp, CACHE)
+  end)
+end
+
+-- "path|size|mtime": a changed (retagged, re-encoded) file is looked up again.
+local function file_key(path)
+  local fi = utils.file_info(path)
+  if not fi then return nil end
+  return path .. "|" .. tostring(fi.size or 0) .. "|" .. tostring(math.floor(fi.mtime or 0))
+end
+
+-- ---------- lookup ----------
+-- The request body holds the API key. mpv logs every subprocess command with its
+-- arguments and stdin_data (debug level, always in a --log-file), so the body goes to curl
+-- as a file: plugin-data/acoustid/req-*.form, in a 0700 folder, removed right after.
+-- cb(path | nil, done)
+local req_n = 0
+local function with_request_file(body, cb)
+  local function write()
+    req_n = req_n + 1
+    local p = DIR .. SEP .. string.format("req-%d-%d.form", os.time(), req_n)
+    local f = io.open(p, "w")
+    if not f then return cb(nil) end
+    f:write(body)
+    f:close()
+    local function done() os.remove(p) end
+    if windows then return cb(p, done) end
+    run({ "chmod", "600", p }, function() cb(p, done) end)
+  end
+  if windows then return mkdir(DIR, write) end
+  run({ "mkdir", "-p", DIR }, function() run({ "chmod", "700", DIR }, write) end)
+end
+
+-- Request files left by a crash.
+local function clean_requests()
+  for _, f in ipairs(utils.readdir(DIR, "files") or {}) do
+    if f:match("^req%-.*%.form$") then os.remove(DIR .. SEP .. f) end
+  end
 end
 
 local busy = false
 
+-- AcoustID answer for a local file: cb(answer | nil, err). Uses the cache.
+local function lookup(path, key, cb, quiet)
+  local ck = file_key(path)
+  local hit = ck and load_cache()[ck]
+  if hit and type(hit.answer) == "table" then return cb(hit.answer) end
+  get_fpcalc(function(fpcalc, err)
+    if not fpcalc then return cb(nil, err) end
+    if not quiet then toast("Fingerprinting…", 3) end
+    run({ fpcalc, "-json", safe_path(path, mp.get_property("working-directory", "")) }, function(r)
+      local fp = r.status == 0 and parse_fpcalc(r.stdout) or nil
+      if not fp then return cb(nil, "fpcalc could not read this file: " .. ((r.stderr or ""):match("[^\n]+") or "")) end
+      with_request_file(lookup_body(key, fp), function(req, done)
+        if not req then return cb(nil, "could not write the request in " .. DIR) end
+        run({ "curl", "-sS", "-m", "20", "-A", "Vivi-acoustid/" .. VERSION, "--data-binary", "@" .. req,
+              "-H", "Content-Type: application/x-www-form-urlencoded", "https://api.acoustid.org/v2/lookup" },
+          function(res)
+            done()
+            local v = res.status == 0 and utils.parse_json(res.stdout or "") or nil
+            if type(v) ~= "table" then return cb(nil, "no answer (" .. ((res.stderr or ""):match("[^\n]+") or "offline?") .. ")") end
+            if v.status ~= "ok" then
+              local m = tostring(v.error and v.error.message or "lookup failed")
+              if m:lower():find("invalid api key", 1, true) or m:lower():find("application", 1, true) then
+                m = m .. " — check the key in Extensions → AcoustID (acoustid.org/new-application)"
+              end
+              return cb(nil, m)
+            end
+            v = slim(v)
+            if ck then
+              load_cache()[ck] = { t = os.time(), answer = v }
+              save_cache()
+            end
+            cb(v)
+          end)
+      end)
+    end)
+  end)
+end
+
+local function local_file(path)
+  return path and path ~= "" and not path:find("://", 1, true) and utils.file_info(path) ~= nil
+end
+
 local function identify()
   if busy then return toast("AcoustID: already identifying") end
   local path = mp.get_property("path")
-  if not path or path:find("://") or not utils.file_info(path) then return toast("AcoustID: play a local audio file first") end
-  local key = (o["api-key"] or ""):gsub("%s", "")
+  if not local_file(path) then return toast("AcoustID: play a local audio file first") end
+  local key = api_key()
   if key == "" then
-    return toast("AcoustID needs your free application key: acoustid.org/new-application → Settings → Extensions → AcoustID", 8)
+    return toast("AcoustID needs your free application key: acoustid.org/new-application → Extensions → AcoustID", 8)
   end
   busy = true
-  get_fpcalc(function(fpcalc, err)
-    if not fpcalc then busy = false return toast("AcoustID: " .. err, 8) end
-    mp.osd_message("Fingerprinting…", 3)
-    run({ fpcalc, "-json", path }, function(r)
-      local fp = r.status == 0 and parse_fpcalc(r.stdout) or nil
-      if not fp then busy = false return toast("fpcalc could not read this file: " .. ((r.stderr or ""):match("[^\n]+") or "")) end
-      run({ "curl", "-sS", "-m", "20", "-A", "Vivi-acoustid/1.0.0", "--data-binary", "@-",
-            "-H", "Content-Type: application/x-www-form-urlencoded", "https://api.acoustid.org/v2/lookup" },
-        function(res)
-          busy = false
-          local v = res.status == 0 and utils.parse_json(res.stdout or "") or nil
-          if type(v) ~= "table" then return toast("AcoustID: no answer (" .. ((res.stderr or ""):match("[^\n]+") or "offline?") .. ")") end
-          if v.status ~= "ok" then
-            return toast("AcoustID: " .. tostring(v.error and v.error.message or "lookup failed"), 6)
-          end
-          local top, n = best(v)
-          if n == 0 then return toast("AcoustID: this recording is not in the database yet") end
-          mp.osd_message("AcoustID: " .. (top or (n .. " matches")) .. " — opening the review", 4)
-          mp.commandv("script-message", "vivi-tagger-acoustid", path,
-            utils.format_json({ acoustid = v, pattern = o.pattern or "" }))
-        end, { stdin_data = lookup_body(key, fp) })
-    end)
+  lookup(path, key, function(v, err)
+    busy = false
+    if not v then return toast("AcoustID: " .. tostring(err), 8) end
+    local label, n = best(v)
+    if n == 0 then return toast("AcoustID: this recording is not in the database yet") end
+    toast("AcoustID: " .. (label or (n .. " matches")) .. " — opening the review", 4)
+    mp.commandv("script-message", "vivi-tagger-acoustid", path,
+      utils.format_json({ acoustid = v, pattern = o.pattern or "" }))
   end)
+end
+
+-- ---------- automatic identification of untagged songs (Vivi 0.13+) ----------
+local AUTO_MIN_SCORE = 0.7
+local tried = {}      -- path -> true: identified (or tried) this run
+local warned_key = false
+
+local function np_api()
+  return tostring(mp.get_property_native("user-data/vivi/now-playing-api", "")) == "1"
+end
+
+-- Whether the shared now-playing track `np` (for mpv path `path`) is a local song Vivi
+-- knows nothing about: no tags, not in the library, no package metadata.
+local function untagged_song(np, path)
+  if type(np) ~= "table" or np.path ~= path or not local_file(path) then return false end
+  if np.kind ~= "music" then return false end
+  return np.source == "file"
+end
+
+-- `vivi-media-meta` for the file, from the best match.
+local function meta_for(path, top)
+  local m = { url = path, title = top.title, artist = top.artist, album = top.album, mbid = top.mbid, kind = "music" }
+  if top.duration and top.duration > 0 then m.duration = top.duration end
+  return m
+end
+
+local function auto_identify(path)
+  if tried[path] or busy then return end
+  local key = api_key()
+  if key == "" then
+    if not warned_key then
+      warned_key = true
+      toast("AcoustID: automatic identification needs your application key (Extensions → AcoustID)", 6)
+    end
+    return
+  end
+  tried[path] = true
+  lookup(path, key, function(v, err)
+    if not v then return mp.msg.warn("auto-identify " .. path .. ": " .. tostring(err)) end
+    if mp.get_property("path") ~= path then return end
+    local label, _, top = best(v)
+    if not top or top.score < AUTO_MIN_SCORE then
+      return mp.msg.info("auto-identify: no confident match for " .. path)
+    end
+    mp.commandv("script-message", "vivi-media-meta", ID, utils.format_json(meta_for(path, top)))
+    toast("Identified: " .. label .. " · Alt+I to review and write the tags", 6)
+  end, true)
+end
+
+local function on_now_playing(_, np)
+  if not o.auto then return end
+  local path = mp.get_property("path", "")
+  if untagged_song(np, path) then auto_identify(path) end
 end
 
 local function detect()
   fp_cache = nil
   get_fpcalc(function(p, err, kind)
-    toast(p and ("fpcalc (" .. kind .. "): " .. p) or ("fpcalc: " .. err), 6)
+    local k = api_key() ~= "" and "key set" or "no API key"
+    toast((p and ("fpcalc (" .. kind .. "): " .. p) or ("fpcalc: " .. err)) .. " · " .. k, 6)
   end)
 end
+
+options.read_options(o, ID, function(changed)
+  if changed.secrets then read_secrets() end
+  if changed["api-key"] or changed.secrets then warned_key = false end
+end)
+read_secrets()
+clean_requests()
 
 mp.add_forced_key_binding("Alt+i", "identify", identify)
 mp.register_script_message("identify", identify)
 mp.register_script_message("detect", detect)
+mp.register_script_message("forget", function()
+  cache = {}
+  tried = {}
+  os.remove(CACHE)
+  toast("AcoustID: cached results cleared")
+end)
+if np_api() then mp.observe_property("user-data/vivi/now-playing", "native", on_now_playing) end
 
 if VIVI_TEST then
-  return { parse_fpcalc = parse_fpcalc, lookup_body = lookup_body, best = best, managed_path = managed_path }
+  return { parse_fpcalc = parse_fpcalc, lookup_body = lookup_body, best = best, managed_path = managed_path,
+    read_secrets = read_secrets, api_key = api_key, o = o, slim = slim, safe_path = safe_path,
+    untagged_song = untagged_song, meta_for = meta_for, file_key = file_key, on_now_playing = on_now_playing,
+    lookup = lookup, DIR = DIR, CACHE = CACHE, load_cache = load_cache, identify = identify }
 end
