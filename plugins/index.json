@@ -4,24 +4,58 @@
     {
       "id": "visualizer",
       "name": "Music Visualizer",
-      "description": "Spectrum, scope, waveform, radial, particles and pitch visuals for audio-only files. Pick a mode with the dropdown or V.",
-      "version": "0.8.0",
+      "description": "Spectrum, spectrometer, scope, waveform, radial, particles and pitch visuals for music and radio (anything without video), measured from what mpv actually plays, so the equalizer and audio filters show. Pick a mode with the top-left dropdown, the side panel, the command palette or V / Shift+V. Colors follow the theme accent or the main color of the song's album art.",
+      "version": "0.13.0",
       "author": "Vivi",
       "icon": "visualizer",
       "lucide": "audio-waveform",
       "kind": "builtin",
       "default_enabled": true,
-      "settings": [],
+      "settings": [
+        {
+          "key": "colors",
+          "title": "Colors",
+          "type": "choice",
+          "options": [
+            "Theme accent",
+            "Album art"
+          ],
+          "default": "Theme accent"
+        }
+      ],
       "categories": [
         "Music"
       ],
       "tags": [
         "visualizer",
         "spectrum",
-        "audio"
+        "audio",
+        "album art",
+        "pitch"
       ],
       "screenshots": [
-        "visualizer"
+        "visualizer-spectrum",
+        "visualizer-album-art",
+        "visualizer-light",
+        "visualizer-pitch",
+        "visualizer-settings"
+      ],
+      "changelog": [
+        {
+          "version": "0.13.0",
+          "date": "2026-10-20",
+          "notes": "Colors → Album art: the visuals take the main color of the playing song's cover (local files and music-service covers), made readable on light and dark themes and eased in on song changes. Shift+V goes back a mode; Next / Previous visualizer mode in the command palette; the control socket and vivi-mcp (set_visualizer) can pick a mode. Fixes: Pitch mode named the wrong note (often a semitone or two off), now located between the measured bands; spectrum bars no longer move in blocks at the low end and the top bars are no longer empty; switching mode or theme while paused redraws; peak caps land with the bars after a pause; the side panel's Audio Visualizer row hides while the plugin is off."
+        },
+        {
+          "version": "0.10.0",
+          "date": "2026-10-15",
+          "notes": "Fed by mpv's real output (an audio filter kept last in the chain): works for network streams and shows the equalizer, compressor and other audio filters."
+        },
+        {
+          "version": "0.8.0",
+          "date": "2026-10-14",
+          "notes": "Music visualizer for audio-only files with seven modes (Spectrometer, Scope, Spectrum, Waveform, Radial, Particles, Pitch) in the theme accent; dropdown and V to cycle; can be turned off in Settings → Extensions."
+        }
       ]
     },
     {
