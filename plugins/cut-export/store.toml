@@ -4,6 +4,11 @@ categories = ["Video", "Tools"]
 tags = ["ffmpeg", "cut", "trim", "clip", "export"]
 
 [[changelog]]
+version = "1.1.0"
+date = "2026-10-20"
+notes = "Export audio: the playing audio track of the clip, without re-encoding. Exports show in Vivi's Downloads panel (Vivi 0.13+) with progress, Cancel and Retry. An existing file is never overwritten. Fixes: data streams no longer break stream copy, other video encoders when libx264 is missing, Vivi toasts instead of mpv's OSD."
+
+[[changelog]]
 version = "1.0.2"
 date = "2026-10-17"
 notes = "Shows the In/Out range on Vivi's seekbar (Vivi 0.11.0+; older versions ignore it)."

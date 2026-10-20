@@ -1,19 +1,28 @@
 -- @name Cut & Export Clip
--- @version 1.0.0
+-- @version 1.1.0
 -- @author Vivi
 -- @description Cut a fragment of the current file into a new file with ffmpeg (Vivi plugin package).
 --
--- Keys: Alt+[   set In at the current position
---       Alt+]   set Out at the current position
---       Alt+w   export the clip (In..Out, else the A-B loop points)
--- Script messages: set-in, set-out, use-ab, clear, export, cancel, detect, pick-folder.
+-- Keys: Alt+[        set In at the current position
+--       Alt+]        set Out at the current position
+--       Alt+w        export the clip (In..Out, else the A-B loop points)
+--       Alt+Shift+w  export only the playing audio track of the clip, losslessly
+-- Script messages: set-in, set-out, use-ab, clear, export, export-audio, cancel, detect,
+-- pick-folder; from Vivi's Downloads panel download-cancel / download-retry <job>.
 --
--- Range: In/Out set here win; without them the A-B loop points (ab-loop-a / ab-loop-b)
--- are used, else the whole file. "Stream copy" is fast and lossless but starts at the
--- keyframe before In; "Re-encode" is frame-accurate (H.264 + AAC through libx264 when the
--- ffmpeg has it). Vivi's media ffmpeg build has no video encoders, so re-encoding video
--- needs a system ffmpeg (otherwise stream copy is used, with a notice); audio-only files
--- re-encode to AAC with either.
+-- Range: In/Out set here win; without them the A-B loop points (ab-loop-a / ab-loop-b,
+-- Vivi's built-in A-B loop) are used, else the whole file. "Stream copy" is fast and
+-- lossless but starts at the keyframe before In; "Re-encode" is frame-accurate (H.264 +
+-- AAC through libx264, else libopenh264 / VideoToolbox / MPEG-4 Part 2, whichever the
+-- ffmpeg has). Vivi's media ffmpeg build has no video encoders, so re-encoding video needs a
+-- system ffmpeg (otherwise stream copy is used, with a notice); audio-only files re-encode
+-- to AAC with either. "Export audio" copies the playing audio track as it is (no
+-- re-encode) into a file of its own type (.m4a, .mp3, .opus, .flac, …, else .mka).
+--
+-- An existing file is never replaced: the clip gets " (2)", " (3)", … instead.
+-- Progress: ffmpeg writes -progress to plugin-data/cut-export/progress-<n>.txt, read every
+-- second; with Vivi's Downloads panel (user-data/vivi/downloads = 1, Vivi 0.13+) the
+-- export is a row there (progress, Cancel, Retry, Play / Show in folder when done).
 --
 -- ffmpeg: a system ffmpeg is used first; else Vivi's shared media ffmpeg build
 -- (release helper-ffmpeg-v8.0-2, about 15 MB, sha256 pinned below), downloaded once into
@@ -22,8 +31,18 @@ local mp = require "mp"
 local options = require "mp.options"
 local utils = require "mp.utils"
 
-local o = { mode = "Stream copy (fast, keyframe)", folder = "", ["in"] = "", out = "", download = true }
-options.read_options(o, "cut-export")
+local ID = "cut-export"
+local o = { mode = "Stream copy (fast, keyframe)", folder = "", ["in"] = "", out = "", download = true,
+  pkgdir = "" } -- pkgdir: set by Vivi
+options.read_options(o, ID)
+
+-- Inside Vivi (it always sets pkgdir) messages are Vivi toasts; mpv's OSD is only drawn
+-- into the video, so it is used only when the script runs in a plain mpv.
+local function toast(msg, secs)
+  mp.msg.info(msg)
+  if (o.pkgdir or "") == "" then return mp.osd_message(msg, secs or 4) end
+  mp.commandv("script-message", "vivi-toast", msg, tostring(secs or 4))
+end
 
 -- ---------- managed helpers (same block in subtitle-sync, chapter-thumbnails, acoustid, cut-export) ----------
 -- A system program is always preferred. Otherwise a pinned build is downloaded once
@@ -138,8 +157,7 @@ local function fetch_verified(what, url, sha, dir, name, unpack, cb)
   mkdir(dir, function()
     local tmp = dir .. SEP .. name .. ".part"
     remote_size(url, function(sz)
-      mp.osd_message("Downloading " .. what .. " (" .. human(sz) .. ")…", 5)
-      mp.commandv("script-message", "vivi-toast", "Downloading " .. what .. " (" .. human(sz) .. ")…")
+      toast("Downloading " .. what .. " (" .. human(sz) .. ")…", 5)
       run({ "curl", "-fsSL", "--retry", "2", "-o", tmp, url }, function(r)
         if r.status ~= 0 then os.remove(tmp) return cb(nil, what .. " download failed: " .. (r.stderr or "")) end
         sha256(tmp, function(got)
@@ -228,10 +246,7 @@ local function get_ffmpeg(need, cb)
 end
 -- ---------- end of managed helpers ----------
 
-local function toast(msg, secs)
-  mp.osd_message(msg, secs or 4)
-  mp.commandv("script-message", "vivi-toast", msg)
-end
+local DIR = PLUGIN_DATA .. SEP .. ID
 
 -- "1:02:03.5", "62:03", "3723.5" -> seconds (nil when empty / invalid).
 local function parse_time(s)
@@ -240,7 +255,7 @@ local function parse_time(s)
   local n, total = 0, 0
   for part in s:gmatch("[^:]+") do
     local v = tonumber(part)
-    if not v then return nil end
+    if not v or v ~= v or v == math.huge then return nil end
     total = total * 60 + v
     n = n + 1
   end
@@ -271,44 +286,216 @@ local function range()
   return a, b, src
 end
 
--- /v/movie.mkv, 62.5, 70 -> <dir or /v>/movie [1m02.5s-1m10.0s].mkv
-local function out_path(src, a, b, dir, reencode, audio_only)
-  local srcdir, name = src:match("^(.*)[/\\]([^/\\]+)$")
-  if not name then srcdir, name = ".", src end
-  local stem, ext = name:match("^(.*)%.([^.]+)$")
-  if not stem then stem, ext = name, "mkv" end
-  if reencode then ext = audio_only and "m4a" or "mp4" end
-  local function tag(t) return string.format("%dm%04.1fs", math.floor(t / 60), t % 60) end
-  return (dir ~= "" and dir or srcdir) .. SEP .. stem .. " [" .. tag(a) .. "-" .. tag(b) .. "]." .. ext
+-- File extension for a copied audio track, by mpv / ffmpeg codec name.
+local AUDIO_EXT = { aac = "m4a", alac = "m4a", mp3 = "mp3", opus = "opus", vorbis = "ogg", flac = "flac",
+  ac3 = "ac3", eac3 = "eac3", dts = "dts", truehd = "thd" }
+local function audio_ext(codec)
+  codec = tostring(codec or ""):lower()
+  if AUDIO_EXT[codec] then return AUDIO_EXT[codec] end
+  if codec:match("^pcm_") then return "wav" end
+  return "mka"
 end
 
-local function ffmpeg_args(ff, src, a, b, out, reencode, audio_only)
-  local args = { ff, "-hide_banner", "-loglevel", "error", "-y",
-    "-ss", string.format("%.3f", a), "-i", src, "-t", string.format("%.3f", b - a) }
+-- /v/movie.mkv, 62.5, 70 -> <dir or /v>/movie [1m02.5s-1m10.0s].mkv
+-- `ext` forces the extension (re-encode, audio track copy).
+local function out_path(src, a, b, dir, reencode, audio_only, ext)
+  local srcdir, name = src:match("^(.*)[/\\]([^/\\]+)$")
+  if not name then srcdir, name = ".", src end
+  local stem, e = name:match("^(.*)%.([^.]+)$")
+  if not stem then stem, e = name, "mkv" end
+  if ext then e = ext elseif reencode then e = audio_only and "m4a" or "mp4" end
+  local function tag(t) return string.format("%dm%04.1fs", math.floor(t / 60), t % 60) end
+  return (dir ~= "" and dir or srcdir) .. SEP .. stem .. " [" .. tag(a) .. "-" .. tag(b) .. "]." .. e
+end
+
+-- `path`, or "name (2).ext", "name (3).ext", … when it exists (never replaces a file).
+local function unique(path, exists)
+  exists = exists or function(p) return utils.file_info(p) ~= nil end
+  if not exists(path) then return path end
+  local stem, ext = path:match("^(.*)(%.[^./\\]+)$")
+  if not stem then stem, ext = path, "" end
+  for i = 2, 999 do
+    local p = string.format("%s (%d)%s", stem, i, ext)
+    if not exists(p) then return p end
+  end
+  return nil
+end
+
+-- Video encoders tried for "Re-encode", best first, with their quality options.
+local VIDEO_ENCODERS = {
+  { "libx264", { "-crf", "18", "-preset", "veryfast" } },
+  { "libopenh264", { "-b:v", "8M" } },
+  { "h264_videotoolbox", { "-b:v", "8M" } },
+  { "mpeg4", { "-q:v", "2" } },
+}
+
+-- First encoder of VIDEO_ENCODERS that `ffmpeg -encoders` lists, or nil. Lines look like
+-- " V....D libx264   libx264 H.264 / AVC …": flags, name, description.
+local function pick_encoder(list)
+  local have = {}
+  for line in (list or ""):gmatch("[^\r\n]+") do
+    local name = line:match("^%s*V[%.%u]+%s+(%S+)")
+    if name then have[name] = true end
+  end
+  for _, e in ipairs(VIDEO_ENCODERS) do
+    if have[e[1]] then return e end
+  end
+  return nil
+end
+
+-- kind: "copy" | "reencode" | "audio" (copy one audio track, `track` = its ff-index).
+local function ffmpeg_args(ff, src, a, b, out, kind, audio_only, enc, track, progress)
+  if kind == true then kind = "reencode" elseif kind == false or kind == nil then kind = "copy" end
+  local args = { ff, "-hide_banner", "-loglevel", "error", "-nostdin", "-n" }
+  if kind == "audio" then
+    -- Input seeking lands on a video keyframe and stream copy keeps everything from there,
+    -- which is right for video but not for an audio track: seek coarsely before the input,
+    -- then drop the packets before In exactly with an output -ss.
+    local coarse = math.max(0, a - 15)
+    for _, x in ipairs({ "-ss", string.format("%.3f", coarse), "-i", src,
+      "-ss", string.format("%.3f", a - coarse), "-t", string.format("%.3f", b - a) }) do args[#args + 1] = x end
+  else
+    for _, x in ipairs({ "-ss", string.format("%.3f", a), "-i", src, "-t", string.format("%.3f", b - a) }) do
+      args[#args + 1] = x
+    end
+  end
+  if progress then
+    for _, x in ipairs({ "-progress", progress, "-nostats" }) do args[#args + 1] = x end
+  end
   local rest
-  if not reencode then
-    rest = { "-map", "0", "-c", "copy", "-avoid_negative_ts", "make_zero" }
+  if kind == "copy" then
+    -- Data streams (timecodes, GoPro telemetry) make most muxers fail.
+    rest = { "-map", "0", "-dn", "-ignore_unknown", "-c", "copy", "-avoid_negative_ts", "make_zero" }
+  elseif kind == "audio" then
+    rest = { "-map", track and ("0:" .. track) or "0:a:0", "-vn", "-sn", "-dn", "-c", "copy",
+      "-avoid_negative_ts", "make_zero" }
   elseif audio_only then
-    rest = { "-map", "0:a", "-vn", "-c:a", "aac", "-b:a", "192k" }
+    rest = { "-map", "0:a:0", "-vn", "-c:a", "aac", "-b:a", "192k" }
   else
     -- Input seek + decoding is frame-accurate.
-    rest = { "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", "-crf", "18", "-preset", "veryfast",
-      "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart" }
+    enc = enc or VIDEO_ENCODERS[1]
+    rest = { "-map", "0:v:0", "-map", "0:a?", "-c:v", enc[1] }
+    for _, x in ipairs(enc[2]) do rest[#rest + 1] = x end
+    for _, x in ipairs({ "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart" }) do
+      rest[#rest + 1] = x
+    end
   end
   for _, x in ipairs(rest) do args[#args + 1] = x end
   args[#args + 1] = out
   return args
 end
 
-local job, busy = nil, false
-
-local function is_audio_only()
-  local v = mp.get_property_native("current-tracks/video")
-  return type(v) ~= "table" or v.image == true or v.albumart == true
+-- Seconds written so far, from ffmpeg's -progress output (out_time_us; out_time_ms is
+-- microseconds too, despite its name). nil when unknown.
+local function progress_seconds(text)
+  local us
+  for v in (text or ""):gmatch("out_time_us=(%d+)") do us = tonumber(v) end
+  if not us then for v in (text or ""):gmatch("out_time_ms=(%d+)") do us = tonumber(v) end end
+  return us and us / 1e6 or nil
 end
 
-local function export()
-  if busy then return toast("An export is already running (Cancel stops it)") end
+-- Whether the file has no real video (audio, or audio with a cover picture): from the
+-- track list, so a video played with its video track turned off still counts as video.
+local function is_audio_only()
+  local tracks = mp.get_property_native("track-list")
+  if type(tracks) ~= "table" then
+    local v = mp.get_property_native("current-tracks/video")
+    return type(v) ~= "table" or v.image == true or v.albumart == true
+  end
+  for _, t in ipairs(tracks) do
+    if t.type == "video" and not t.albumart and not t.image then return false end
+  end
+  return true
+end
+
+local function panel()
+  return tostring(mp.get_property_native("user-data/vivi/downloads", "")) == "1"
+end
+
+local function report(jobid, t)
+  if panel() then mp.commandv("script-message", "vivi-download", ID, jobid, utils.format_json(t)) end
+end
+
+local jobs = {}     -- job id -> { params, cmd (async id), state }
+local running = nil -- job id of the running export
+local seq = 0
+
+local function name_of(p) return p:match("([^/\\]+)$") or p end
+
+local start_job
+
+-- Run job `j` (its params were fixed when it was created; Retry runs it again).
+start_job = function(j)
+  local p = j.p
+  running = j.id
+  j.state = "active"
+  local out = unique(p.want)
+  if not out then
+    running = nil
+    j.state = "failed"
+    report(j.id, { state = "failed", error = "too many clips with this name" })
+    return toast("Export failed: too many clips named " .. name_of(p.want), 6)
+  end
+  j.out = out
+  local prog = DIR .. SEP .. "progress-" .. j.id .. ".txt"
+  os.remove(prog)
+  local len = p.b - p.a
+  report(j.id, { title = name_of(out), subtitle = p.subtitle, state = "active", progress = 0, done = 0, total = 0 })
+  toast(string.format("Exporting %s → %s (%s, %s)…", p.from, name_of(out), fmt_time(len), p.how), 4)
+  local t0, last_toast = mp.get_time(), mp.get_time()
+  local timer = mp.add_periodic_timer(1, function()
+    local f = io.open(prog, "r")
+    if not f then return end
+    local sec = progress_seconds(f:read("*a"))
+    f:close()
+    if not sec or len <= 0 then return end
+    local share = math.max(0, math.min(1, sec / len))
+    report(j.id, { state = "active", progress = share,
+      detail = string.format("%s of %s · %.0f%%", fmt_time(sec), fmt_time(len), share * 100) })
+    if not panel() and mp.get_time() - last_toast >= 5 then
+      last_toast = mp.get_time()
+      toast(string.format("Exporting %s: %.0f%%", name_of(out), share * 100), 2)
+    end
+  end)
+  local function go()
+    j.cmd = mp.command_native_async({ name = "subprocess", playback_only = false, capture_stderr = true,
+      args = ffmpeg_args(p.ff, p.src, p.a, p.b, out, p.kind, p.audio_only, p.enc, p.track, prog) }, function(_, r)
+      r = r or {}
+      timer:kill()
+      os.remove(prog)
+      j.cmd = nil
+      if running == j.id then running = nil end
+      if r.killed_by_us then
+        os.remove(out)
+        j.state = "failed"
+        report(j.id, { state = "cancelled", error = "Cancelled" })
+        return toast("Export cancelled")
+      end
+      local fi = utils.file_info(out)
+      if r.status ~= 0 or not fi then
+        local e = (r.stderr or ""):gsub("%s+$", ""):match("([^\n]*)$") or ""
+        -- -n: ffmpeg never replaces a file, so what is at `out` is our partial clip, unless
+        -- another program created the name meanwhile ("already exists").
+        if fi and not (r.stderr or ""):find("already exists", 1, true) then os.remove(out) end
+        j.state = "failed"
+        report(j.id, { state = "failed", error = e ~= "" and e:sub(1, 200) or "ffmpeg failed" })
+        return toast("Export failed" .. (e ~= "" and (": " .. e:sub(1, 140)) or ""), 8)
+      end
+      j.state = "done"
+      report(j.id, { state = "done", path = out, done = fi.size, total = fi.size, progress = 1,
+        detail = string.format("%s · %.0f s", human(fi.size), mp.get_time() - t0) })
+      toast(string.format("Saved %s (%s, %.0f s)", out, human(fi.size), mp.get_time() - t0), 7)
+    end)
+  end
+  mkdir(DIR, function()
+    local d = out:match("^(.*)[/\\][^/\\]+$")
+    if d and d ~= "." and d ~= "" then mkdir(d, go) else go() end
+  end)
+end
+
+-- audio_track: copy only the playing audio track ("Export audio").
+local function export(audio_track)
+  if running then return toast("An export is already running (Cancel stops it)") end
   local src = mp.get_property("path")
   if not src or src:find("://") then return toast("Cut & Export works on local files only") end
   local a, b, from = range()
@@ -316,38 +503,33 @@ local function export()
   if b - a < 0.05 then return toast("The clip is empty: set In before Out") end
   local reencode = (o.mode or ""):match("^Re%-encode") ~= nil
   local audio_only = is_audio_only()
+  local atrack = mp.get_property_native("current-tracks/audio")
+  if audio_track and type(atrack) ~= "table" then return toast("This file has no audio track to export") end
   local dir = (o.folder or ""):gsub("^%s+", ""):gsub("%s+$", ""):gsub("^~", HOME)
-  busy = true
+  running = "starting"
   get_ffmpeg(o.download, function(ff, err)
-    if not ff then busy = false return toast("Cut & Export needs ffmpeg: " .. tostring(err or "install ffmpeg"), 8) end
-    local function go(x264)
-      if reencode and not audio_only and not x264 then
-        toast("This ffmpeg has no H.264 encoder (Vivi's media build has no video encoders), so the clip is stream-copied. Install ffmpeg for re-encoding.", 7)
-        reencode = false
+    if not ff then running = nil return toast("Cut & Export needs ffmpeg: " .. tostring(err or "install ffmpeg"), 8) end
+    local function go(enc)
+      local kind = audio_track and "audio" or (reencode and "reencode" or "copy")
+      if kind == "reencode" and not audio_only and not enc then
+        toast("This ffmpeg has no video encoder (Vivi's media build has none), so the clip is stream-copied. Install ffmpeg for re-encoding.", 7)
+        kind = "copy"
       end
-      local out = out_path(src, a, b, dir, reencode, audio_only)
-      local function start()
-        toast(string.format("Exporting %s → %s (%s, %s)…", from, out:match("([^/\\]+)$"), fmt_time(b - a),
-          reencode and "re-encode" or "stream copy"), 4)
-        local t0 = mp.get_time()
-        job = mp.command_native_async({ name = "subprocess", playback_only = false, capture_stderr = true,
-          args = ffmpeg_args(ff.ffmpeg, src, a, b, out, reencode, audio_only) }, function(_, r)
-          r = r or {}
-          job, busy = nil, false
-          if r.killed_by_us then os.remove(out) return toast("Export cancelled") end
-          local fi = utils.file_info(out)
-          if r.status ~= 0 or not fi then
-            os.remove(out)
-            local e = (r.stderr or ""):gsub("%s+$", ""):match("([^\n]*)$") or ""
-            return toast("Export failed" .. (e ~= "" and (": " .. e:sub(1, 140)) or ""), 8)
-          end
-          toast(string.format("Saved %s (%s, %.0f s)", out, human(fi.size), mp.get_time() - t0), 7)
-        end)
-      end
-      if dir ~= "" then mkdir(dir, start) else start() end
+      local ext = kind == "audio" and audio_ext(atrack.codec) or nil
+      local want = out_path(src, a, b, dir, kind == "reencode", audio_only, ext)
+      local how = kind == "audio" and ("audio track, " .. tostring(atrack.codec or "copy"))
+        or kind == "reencode" and ("re-encode" .. (enc and not audio_only and (", " .. enc[1]) or "")) or "stream copy"
+      seq = seq + 1
+      local j = { id = string.format("clip-%d-%d", os.time(), seq), p = {
+        ff = ff.ffmpeg, src = src, a = a, b = b, want = want, kind = kind, audio_only = audio_only, enc = enc,
+        track = kind == "audio" and atrack["ff-index"] or nil, from = from, how = how,
+        subtitle = string.format("%s – %s · %s", fmt_time(a), fmt_time(b), how) } }
+      jobs[j.id] = j
+      running = nil
+      start_job(j)
     end
-    if not reencode or audio_only then return go(false) end
-    run({ ff.ffmpeg, "-hide_banner", "-encoders" }, function(r) go((r.stdout or ""):find("libx264", 1, true) ~= nil) end)
+    if not reencode or audio_only or audio_track then return go(nil) end
+    run({ ff.ffmpeg, "-hide_banner", "-encoders" }, function(r) go(pick_encoder(r.stdout)) end)
   end)
 end
 
@@ -361,7 +543,7 @@ end
 
 local function remember(key, v)
   o[key] = v
-  mp.commandv("script-message", "vivi-setting", "cut-export", key, v)
+  mp.commandv("script-message", "vivi-setting", ID, key, v)
   show_range()
 end
 
@@ -377,7 +559,7 @@ end
 
 local function use_ab()
   local la, lb = mp.get_property_native("ab-loop-a"), mp.get_property_native("ab-loop-b")
-  if type(la) ~= "number" or type(lb) ~= "number" then return toast("No A-B loop set (Alt+A / Alt+B with A-B Loop)") end
+  if type(la) ~= "number" or type(lb) ~= "number" then return toast("No A-B loop set (Alt+A / Alt+B)") end
   remember("in", fmt_time(la))
   remember("out", fmt_time(lb))
   toast("Clip set from the A-B loop: " .. o["in"] .. " – " .. o.out, 3)
@@ -401,27 +583,49 @@ local function detect()
   end)
 end
 
-options.read_options(o, "cut-export", function() end)
+local function cancel(jobid)
+  local j = jobs[jobid or running or ""]
+  if j and j.cmd then return mp.abort_async_command(j.cmd) end
+  if jobid and j then return end
+  toast("No export is running")
+end
+
+local function retry(jobid)
+  local j = jobs[jobid or ""]
+  if not j then return toast("This export is from an earlier session: export it again") end
+  if running then return toast("An export is already running (Cancel stops it)") end
+  if j.state == "active" then return end
+  start_job(j)
+end
+
+options.read_options(o, ID, function() show_range() end)
 mp.add_forced_key_binding("Alt+[", "cut-in", set_point("in", "In"))
 mp.add_forced_key_binding("Alt+]", "cut-out", set_point("out", "Out"))
-mp.add_forced_key_binding("Alt+w", "cut-export", export)
+mp.add_forced_key_binding("Alt+w", "cut-export", function() export(false) end)
+mp.add_forced_key_binding("Alt+W", "cut-export-audio", function() export(true) end)
 mp.register_script_message("set-in", set_point("in", "In"))
 mp.register_script_message("set-out", set_point("out", "Out"))
 mp.register_script_message("use-ab", use_ab)
 mp.register_script_message("clear", function() clear(false) end)
-mp.register_script_message("export", export)
-mp.register_script_message("cancel", function()
-  if job then mp.abort_async_command(job) else toast("No export is running") end
-end)
+mp.register_script_message("export", function() export(false) end)
+mp.register_script_message("export-audio", function() export(true) end)
+mp.register_script_message("cancel", function() cancel(nil) end)
+mp.register_script_message("download-cancel", function(jobid) cancel(jobid) end)
+mp.register_script_message("download-retry", retry)
 mp.register_script_message("detect", detect)
 mp.register_script_message("pick-folder", function()
-  mp.commandv("script-message", "vivi-pick-folder", "cut-export", "folder")
+  mp.commandv("script-message", "vivi-pick-folder", ID, "folder")
 end)
 mp.register_script_message("folder-picked", function(p) o.folder = p toast("Clips go to " .. p) end)
 -- In/Out belong to one file: forget them when it ends.
 mp.register_event("end-file", function() clear(true) end)
+mp.register_event("shutdown", function()
+  for _, j in pairs(jobs) do if j.cmd then mp.abort_async_command(j.cmd) end end
+end)
 
 if VIVI_TEST then
   return { parse_time = parse_time, fmt_time = fmt_time, range = range, out_path = out_path,
-    ffmpeg_args = ffmpeg_args, FF_MEDIA = FF_MEDIA, o = o }
+    ffmpeg_args = ffmpeg_args, FF_MEDIA = FF_MEDIA, o = o, unique = unique, audio_ext = audio_ext,
+    pick_encoder = pick_encoder, progress_seconds = progress_seconds, is_audio_only = is_audio_only,
+    export = export, jobs = jobs, cancel = cancel, retry = retry }
 end

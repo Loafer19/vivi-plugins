@@ -1,16 +1,46 @@
 id = "cut-export"
 name = "Cut & Export Clip"
-version = "1.0.2"
-description = "Cut a fragment of the current file into a new file: set In / Out (Alt+[ / Alt+]) or reuse the A-B loop points, then export (Alt+W) by fast lossless stream copy or a frame-accurate re-encode. Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Chapter Thumbnails and Subtitle Auto-Sync; it re-encodes audio only, video re-encoding needs a system ffmpeg)."
+version = "1.1.0"
+description = "Cut a fragment of the current file into a new file: set In / Out (Alt+[ / Alt+]) or reuse the A-B loop points, then export (Alt+W) by fast lossless stream copy or a frame-accurate re-encode, or save just its audio track losslessly (Alt+Shift+W). Never replaces an existing file; progress, Cancel and Retry in Vivi's Downloads panel (Vivi 0.13+). Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Chapter Thumbnails and Subtitle Auto-Sync; it re-encodes audio only, video re-encoding needs a system ffmpeg)."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "cut-export.lua"
-min_vivi = "0.9.2"
+min_vivi = "0.9.1"
 icon = "chapters"
 lucide = "scissors"
 permissions = ["network", "filesystem", "subprocess"]
 size_note = "+ ffmpeg if needed"
 default_enabled = true
+
+[[contributes]]
+point = "context.player"
+label = "Set clip start here"
+command = "set-in"
+
+[[contributes]]
+point = "context.player"
+label = "Set clip end here"
+command = "set-out"
+
+[[contributes]]
+point = "palette.command"
+label = "Export clip"
+command = "export"
+
+[[contributes]]
+point = "palette.command"
+label = "Export clip audio (lossless)"
+command = "export-audio"
+
+[[contributes]]
+point = "palette.command"
+label = "Clear clip In / Out"
+command = "clear"
+
+[[contributes]]
+point = "downloads"
+label = "Clip exports"
+command = ""
 
 [[settings]]
 key = "in"
@@ -78,6 +108,12 @@ key = "export"
 title = "Export the clip (Alt+W)"
 type = "action"
 label = "Export"
+
+[[settings]]
+key = "export-audio"
+title = "Export only the playing audio track of the clip, without re-encoding (Alt+Shift+W)"
+type = "action"
+label = "Export audio"
 
 [[settings]]
 key = "cancel"
