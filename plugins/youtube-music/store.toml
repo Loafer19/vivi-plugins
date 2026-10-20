@@ -7,7 +7,7 @@ screenshots = ["youtube-music-search", "youtube-music-album", "youtube-music-pla
 [[changelog]]
 version = "1.0.1"
 date = "2026-10-20"
-notes = "Fix: Cancel (and closing Vivi) did not stop a running download; yt-dlp kept going until the song was saved."
+notes = "Fix: Cancel did not stop a running download (yt-dlp kept going until the song was saved), and closing Vivi during a download had to wait until Vivi force-stopped yt-dlp."
 
 [[changelog]]
 version = "1.0.0"

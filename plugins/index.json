@@ -2672,8 +2672,8 @@
       ],
       "source": "plugins/youtube-music",
       "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-music-v1.0.1/youtube-music-1.0.1.zip",
-      "sha256": "71c1a3647dbb9b2e9a55af85a80c12e7500172c590e3c3e95f30d7abd2638b6f",
-      "size": 124703,
+      "sha256": "89716806e843c8ef6e599c509c8456faf64c3408bcd82faeea01dd69616b8c55",
+      "size": 124725,
       "settings": [
         {
           "key": "open",
@@ -2804,7 +2804,7 @@
         {
           "version": "1.0.1",
           "date": "2026-10-20",
-          "notes": "Fix: Cancel (and closing Vivi) did not stop a running download; yt-dlp kept going until the song was saved.",
+          "notes": "Fix: Cancel did not stop a running download (yt-dlp kept going until the song was saved), and closing Vivi during a download had to wait until Vivi force-stopped yt-dlp.",
           "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-music-v1.0.1/youtube-music-1.0.1.zip"
         },
         {

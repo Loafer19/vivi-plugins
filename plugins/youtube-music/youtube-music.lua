@@ -854,8 +854,8 @@ function M.cover_args(ff, path, cover, out, metafile)
 end
 
 -- Run args with stdout (progress) in a log file. stderr stays a pipe to mpv: mpv stops
--- watching for an abort once every pipe is closed, so with both redirected Cancel (and
--- quitting Vivi) left yt-dlp running until the song was done.
+-- watching for an abort once every pipe is closed, so with both redirected Cancel left
+-- yt-dlp running until the song was done (and quitting waited for Vivi to stop it).
 function M.log_wrap(log, args)
   return { "sh", "-c", 'log=$1; shift; exec "$@" >"$log"', "sh", log, unpack(args) }
 end
