@@ -301,4 +301,10 @@ T.ok(mvs:find("%(vivi_none|)sAction\\: Cuts 100%%:(?P<vivi_album>.+)", 1, true),
 T.ok(mvs:find("%(vivi_none|)sBlack Vortex:(?P<vivi_title>.+)", 1, true), "video title fallback")
 T.ok(mvs:find("%(album,vivi_album)s:%(meta_album)s", 1, true), "album tag")
 T.ok(not table.concat(P.meta_args({ kind = "song", title = "S" }), "\n"):find("vivi_title", 1, true), "songs keep yt-dlp's track")
+
+-- Cancel: stderr must stay a pipe to mpv, or mpv cannot abort yt-dlp.
+local w = P.log_wrap("/d/download.log", { "yt-dlp", "-x", "u" })
+T.eq(w[1], "sh", "log wrapper runs sh")
+T.ok(not w[3]:find("2>", 1, true), "stderr not redirected")
+T.eq(w[5] .. " " .. w[6] .. " " .. w[8], "/d/download.log yt-dlp u", "log wrapper args")
 T.done("youtube-music")

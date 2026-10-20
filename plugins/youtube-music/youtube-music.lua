@@ -853,6 +853,13 @@ function M.cover_args(ff, path, cover, out, metafile)
   return a
 end
 
+-- Run args with stdout (progress) in a log file. stderr stays a pipe to mpv: mpv stops
+-- watching for an abort once every pipe is closed, so with both redirected Cancel (and
+-- quitting Vivi) left yt-dlp running until the song was done.
+function M.log_wrap(log, args)
+  return { "sh", "-c", 'log=$1; shift; exec "$@" >"$log"', "sh", log, unpack(args) }
+end
+
 function M.parse_progress(log)
   local line
   for l in log:gmatch("%[vivi%][^\r\n]*") do line = l end
@@ -2056,7 +2063,7 @@ next_download = function()
     if not windows then
       S.dl_log = DATA .. SEP .. "download.log"
       os.remove(S.dl_log)
-      args = { "sh", "-c", 'log=$1; shift; exec "$@" >"$log" 2>&1', "sh", S.dl_log, unpack(args) }
+      args = M.log_wrap(S.dl_log, args)
       S.dl_timer = mp.add_periodic_timer(1, function()
         local pc = M.parse_progress(read_file(S.dl_log) or "")
         if pc and pc ~= S.dl_pct then
