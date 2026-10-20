@@ -441,8 +441,8 @@
     {
       "id": "free-music",
       "name": "Free Music",
-      "description": "Search and browse Creative Commons and public-domain music from Jamendo, the Internet Archive and the Free Music Archive in one list with source badges: genres, moods, licence filters (commercial use, CC BY, BY-SA, CC0), sort, infinite scroll, album and artist pages, play similar, and downloads with tags, cover and licence attribution. Jamendo needs a free client ID.",
-      "version": "0.8.0",
+      "description": "Search and browse Creative Commons and public-domain music from Jamendo, the Internet Archive and the Free Music Archive in one list with source badges: genres, moods, licence filters (commercial use, CC BY, BY-SA, CC0), sort, infinite scroll, album and artist pages, play similar, the licence on every track and on the now-playing card, and downloads with tags, cover and licence attribution that play from disk once saved. Jamendo needs a free client ID (built into release builds).",
+      "version": "0.13.0",
       "author": "Vivi",
       "icon": "free-music",
       "lucide": "library-big",
@@ -497,8 +497,24 @@
         "downloads"
       ],
       "screenshots": [
-        "free-music"
-      ]
+        "free-music-browse",
+        "free-music-search",
+        "free-music-now-playing",
+        "free-music-downloaded"
+      ],
+      "changelog": [
+        {
+          "version": "0.13.0",
+          "date": "2026-10-20",
+          "notes": "Downloaded tracks get a check mark in the results and play (or queue) from the file instead of streaming again. Selecting a track shows its large cover above the licence, what it allows, the attribution and the source page; a playing song shows its source and Creative Commons licence on the now-playing card (e.g. Jamendo · CC BY-SA 3.0), and Free Music songs get the music card with cover and MPRIS instead of a radio station card. Web page is now Open on Jamendo / Open on Internet Archive. Fixes: the highlighted row and Play / Download / Queue no longer point at another track after results re-sort or a new search, changing the source searches right away, the list is updated in place instead of rebuilt for every cover, Internet Archive downloads no longer embed the Archive's waveform picture as the cover, Jamendo stream URLs are stored without a plain client-ID parameter, a shorter no-client-ID note."
+        },
+        {
+          "version": "0.8.0",
+          "date": "2026-10-16",
+          "notes": "Rework: Jamendo, the Internet Archive and the Free Music Archive (via its Internet Archive mirror) searched in parallel and merged with source badges, covers and licence chips; search as you type, Popular / New / Featured and genre chips, mood, licence, length and sort filters, infinite scroll, album and artist pages, Similar, Copy credit, a download queue with tags, cover and a .licence.txt, a folder picker and the Offline Downloads hand-off."
+        }
+      ],
+      "min_vivi": "0.13.0"
     },
     {
       "id": "network-streams",
