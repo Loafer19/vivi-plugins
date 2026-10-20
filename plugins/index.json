@@ -2428,8 +2428,8 @@
       ],
       "source": "plugins/youtube",
       "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-v1.4.0/youtube-1.4.0.zip",
-      "sha256": "200cdeb128dca98a041ac89b8b3410b63ad308ebb3143764989e457ec585cf64",
-      "size": 73807,
+      "sha256": "22d8ce83865459e9bb093e546cc396cdb39bfac2437e0094448292122d9482a1",
+      "size": 74190,
       "settings": [
         {
           "key": "open",
@@ -2591,7 +2591,7 @@
         {
           "version": "1.4.0",
           "date": "2026-10-20",
-          "notes": "Estimated size of each quality for the selected video in the search dialog, and a download quality dropdown there. Fixes: thumbnails were missing (YouTube sends WebP), Downloads panel rows showed no progress, sizes were up to 3× too high, 720p and lower failed without ffmpeg when YouTube has no single-file format.",
+          "notes": "Estimated size of each quality for the selected video in the search dialog, and a download quality dropdown there. Fixes: Cancel did not stop a running download, thumbnails were missing (YouTube sends WebP), Downloads panel rows showed no progress, sizes were up to 3× too high, 720p and lower failed without ffmpeg when YouTube has no single-file format.",
           "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-v1.4.0/youtube-1.4.0.zip"
         },
         {

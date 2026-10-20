@@ -7,7 +7,7 @@ screenshots = ["youtube-search", "youtube-sizes", "youtube-playlist", "youtube-d
 [[changelog]]
 version = "1.4.0"
 date = "2026-10-20"
-notes = "Estimated size of each quality for the selected video in the search dialog, and a download quality dropdown there. Fixes: thumbnails were missing (YouTube sends WebP), Downloads panel rows showed no progress, sizes were up to 3× too high, 720p and lower failed without ffmpeg when YouTube has no single-file format."
+notes = "Estimated size of each quality for the selected video in the search dialog, and a download quality dropdown there. Fixes: Cancel did not stop a running download, thumbnails were missing (YouTube sends WebP), Downloads panel rows showed no progress, sizes were up to 3× too high, 720p and lower failed without ffmpeg when YouTube has no single-file format."
 
 [[changelog]]
 version = "1.3.0"

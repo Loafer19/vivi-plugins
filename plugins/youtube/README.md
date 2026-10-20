@@ -42,6 +42,7 @@ Needs `curl` and `tar` (and `sh` on Linux/macOS).
   - Fix: no thumbnails in the dialog, the Downloads panel and the now-playing card (YouTube serves its sized thumbnails as WebP, which Vivi does not decode; JPEG ones are used now).
   - Fix: Downloads panel rows stayed at "Starting…" without progress, speed or time left (a fractional speed made Vivi drop every progress report); finished rows no longer say "Starting…".
   - Fix: estimated sizes were up to 3× too high (YouTube's HLS copies were counted); sizes now follow the formats yt-dlp picks, and wide videos are labelled 1080p instead of 858p.
+  - Fix: *Cancel* (and quitting Vivi) did not stop a running download: yt-dlp kept going and finished the file.
   - Fix: without ffmpeg, 720p and lower failed when YouTube offers no single file with video and audio; ffmpeg is fetched for such videos too.
   - The size of the managed yt-dlp is announced before it downloads; *Which yt-dlp is used* is one short line; the progress log is read from its end.
 - **1.3.0** (2026-10-20): needs Vivi 0.13.0 (Vivi 0.12 and older keep 1.2.2 and see this version as needing a newer Vivi).

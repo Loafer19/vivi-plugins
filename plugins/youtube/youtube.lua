@@ -1071,7 +1071,10 @@ local function start(j)
             local args = concat(y.cmd, download_args(j, folder, ff, ffi))
             local timer, last
             if not windows then
-              args = concat({ "sh", "-c", 'log=$1; shift; exec "$@" >"$log" 2>&1', "sh", log }, args)
+              -- Only stdout (progress, printed file names) goes to the log: stderr must stay
+              -- a pipe to mpv, which stops watching for an abort once every pipe is closed,
+              -- so with both redirected Cancel (and quitting Vivi) left yt-dlp running.
+              args = concat({ "sh", "-c", 'log=$1; shift; exec "$@" >"$log"', "sh", log }, args)
               timer = mp.add_periodic_timer(2, function()
                 local f = io.open(log, "r")
                 if not f then return end
