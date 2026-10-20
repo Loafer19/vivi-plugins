@@ -115,36 +115,17 @@ footer { border-top:1px solid var(--line); color:var(--fg3); font-size:13px; tex
 .cats button.depf:hover, .cats button.depf.on { color:var(--dep); border-color:var(--dep); border-style:solid; background:var(--dep-bg); }
 .cats button.depf.on .n { background:var(--dep); color:#111; }
 #deptip { margin:-12px 0 16px; }
-/* Marker over the main image (card thumbnail, first screenshot on the plugin page); <html data-dep-style>. */
+/* Marker over the main image of a deprecated plugin (card thumbnail, first screenshot on its page):
+   greyed-out image, "Deprecated" badge on top, "Replaced by ..." along the bottom. */
 .dep-shot { position:relative; overflow:hidden; container-type:inline-size; flex:none; }
 .dep-shot > img.thumb { height:auto; }
 .gallery figure.dep-shot { border-radius:var(--r); }
-.dep-mark { position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
-.dep-mark b { text-transform:uppercase; font-weight:800; }
-.dep-mark small { display:none; }
-/* A: diagonal semi-transparent banner across the image */
-[data-dep-style="a"] .dep-mark b { display:block; width:160%; padding:.35em 0; transform:rotate(-17deg); background:rgba(14,14,14,.6);
-  border-block:2px solid rgba(240,150,46,.75); color:var(--dep); font-size:clamp(15px, 7.5cqi, 48px); letter-spacing:.32em; text-indent:.32em;
-  text-shadow:0 1px 8px rgba(0,0,0,.6); backdrop-filter:blur(1.5px); }
-[data-dep-style="a"] .dep-shot img { filter:saturate(.75); }
-/* B: corner ribbon, top right */
-[data-dep-style="b"] .dep-mark b { position:absolute; top:clamp(16px, 6.5cqi, 34px); right:clamp(-74px, -13cqi, -40px); width:clamp(150px, 42cqi, 260px);
-  padding:.4em 0; transform:rotate(45deg); background:var(--dep); color:#111; font-size:clamp(11px, 2.6cqi, 15px); letter-spacing:.14em;
-  box-shadow:0 3px 12px rgba(0,0,0,.45); }
-/* C: greyed-out image, badge on top, "Replaced by ..." along the bottom */
-[data-dep-style="c"] .dep-shot img { filter:grayscale(1) brightness(.55); transition:filter .2s; }
-[data-dep-style="c"] .card:hover .dep-shot img { filter:grayscale(.6) brightness(.7); }
-[data-dep-style="c"] .dep-mark { justify-content:space-between; align-items:stretch; }
-[data-dep-style="c"] .dep-mark b { align-self:flex-start; margin:clamp(8px, 3cqi, 16px); padding:.25em .8em; border-radius:999px; background:var(--dep); color:#111;
-  font-size:clamp(11px, 2.4cqi, 14px); letter-spacing:.1em; box-shadow:0 2px 8px rgba(0,0,0,.4); }
-[data-dep-style="c"] .dep-mark small { display:block; padding:.55em 1em; background:linear-gradient(transparent, rgba(14,14,14,.92) 35%); color:var(--fg);
-  font-size:clamp(12px, 3cqi, 16px); font-weight:600; text-align:left; }
-[data-dep-style="c"] .dep-mark small::before { content:"→ "; color:var(--dep); }
-/* D: hazard-striped overlay with a rubber-stamp label */
-[data-dep-style="d"] .dep-shot img { filter:brightness(.7) saturate(.6); }
-[data-dep-style="d"] .dep-mark { background:repeating-linear-gradient(-45deg, rgba(240,150,46,.16) 0 12px, rgba(14,14,14,.25) 12px 24px); gap:.5em; }
-[data-dep-style="d"] .dep-mark b { padding:.15em .6em; border:3px solid var(--dep); border-radius:6px; transform:rotate(-7deg); color:var(--dep);
-  background:rgba(14,14,14,.78); font-size:clamp(16px, 6.5cqi, 40px); letter-spacing:.14em; }
-[data-dep-style="d"] .dep-mark small { display:block; transform:rotate(-7deg); padding:.15em .6em; border-radius:4px; background:rgba(14,14,14,.78); color:var(--fg);
-  font-size:clamp(11px, 2.8cqi, 15px); font-weight:600; }
+.dep-shot img { filter:grayscale(1) brightness(.55); transition:filter .2s; }
+.card:hover .dep-shot img { filter:grayscale(.6) brightness(.7); }
+.dep-mark { position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; }
+.dep-mark b { align-self:flex-start; margin:clamp(8px, 3cqi, 16px); padding:.25em .8em; border-radius:999px; background:var(--dep); color:#111;
+  font-size:clamp(11px, 2.4cqi, 14px); font-weight:800; letter-spacing:.1em; text-transform:uppercase; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+.dep-mark small { display:block; padding:.55em 1em; background:linear-gradient(transparent, rgba(14,14,14,.92) 35%); color:var(--fg);
+  font-size:clamp(12px, 3cqi, 16px); font-weight:600; }
+.dep-mark small::before { content:"→ "; color:var(--dep); }
 .gallery .thumb.ph { border-radius:var(--r); border:1px solid var(--line); } .gallery .thumb.ph svg { width:96px; height:96px; }

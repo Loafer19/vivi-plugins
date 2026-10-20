@@ -2,7 +2,6 @@
 # so editing it needs no new plugin version.
 categories = ["Music", "Tools"]
 tags = ["acoustid", "musicbrainz", "chromaprint", "tagging", "rename"]
-screenshots = ["acoustid-settings"]
 
 [[changelog]]
 version = "1.1.1"

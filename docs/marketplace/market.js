@@ -38,7 +38,6 @@
     }
     const p = new URLSearchParams();
     if (cat) p.set("cat", cat); if (q.value) p.set("q", q.value); if (key !== "name") p.set("sort", key);
-    const ds = new URLSearchParams(location.search).get("depstyle"); if (ds) p.set("depstyle", ds); // design preview only
     history.replaceState(null, "", p.toString() ? "?" + p : location.pathname);
   }
   buttons.forEach(b => b.addEventListener("click", () => { cat = b.dataset.cat; apply(); }));

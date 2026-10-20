@@ -768,9 +768,6 @@
         "tagging",
         "rename"
       ],
-      "screenshots": [
-        "acoustid-settings"
-      ],
       "changelog": [
         {
           "version": "1.1.1",

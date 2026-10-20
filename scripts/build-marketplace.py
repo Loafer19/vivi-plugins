@@ -33,9 +33,6 @@ PERM = {"network": ("globe", "Internet access"), "filesystem": ("folder-open", "
 PLAT = {"linux-x86_64": "Linux x86_64", "linux-aarch64": "Linux ARM64", "windows-x86_64": "Windows",
         "macos-x86_64": "macOS Intel", "macos-aarch64": "macOS Apple silicon"}
 e = lambda s: html.escape(str(s), quote=True)
-# Marker over a deprecated plugin's main image: "a" diagonal banner, "b" corner ribbon,
-# "c" greyed image + badge + "Replaced by", "d" striped stamp. ?depstyle=a|b|c|d previews another one.
-DEP_STYLE = "a"
 NAMES: dict[str, str] = {}  # plugin id -> name, filled in main() (for "Replaced by ...")
 
 
@@ -179,10 +176,9 @@ def zip_link(c: dict) -> str:
 def head(title: str, desc: str, url: str, image: str, extra: str = "", depth: int = 0) -> str:
     up = "../" * depth
     return f"""<!doctype html>
-<html lang="en" data-dep-style="{DEP_STYLE}">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<script>(function(){{var s=new URLSearchParams(location.search).get("depstyle");if(/^[abcd]$/.test(s||""))document.documentElement.dataset.depStyle=s}})()</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(title)}</title>
 <meta name="description" content="{e(desc)}">
@@ -241,7 +237,7 @@ def replaced_by(p: dict) -> str:
 
 
 def dep_mark(p: dict) -> str:
-    """Overlay on the main image of a deprecated plugin; every variant uses the same markup."""
+    """Overlay on the main image of a deprecated plugin: badge plus "Replaced by ..." (market.css greys the image)."""
     if not p.get("deprecated"):
         return ""
     rb = replaced_by(p)
