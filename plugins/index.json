@@ -192,8 +192,8 @@
     {
       "id": "subtitle-search",
       "name": "Subtitle Search",
-      "description": "Find subtitles on OpenSubtitles (by file hash, name or IMDb id) in the Add Subtitles dialog, and keep a subtitle offset per file (z / x).",
-      "version": "0.11.0",
+      "description": "Find subtitles on OpenSubtitles in the Add Subtitles dialog: by the file's hash first (exact matches), then by name, episode (S01E05), year or IMDb id, with a text preview before you load. The pick is remembered per file, and exact matches can load by themselves when a video opens without subtitles.",
+      "version": "0.13.0",
       "author": "Vivi",
       "icon": "subtitles",
       "lucide": "captions",
@@ -229,6 +229,12 @@
           "title": "Save next to the video",
           "type": "toggle",
           "default": "false"
+        },
+        {
+          "key": "auto-exact",
+          "title": "Load exact matches automatically",
+          "type": "toggle",
+          "default": "false"
         }
       ],
       "categories": [
@@ -238,14 +244,21 @@
         "opensubtitles",
         "download",
         "imdb",
-        "offset",
+        "episodes",
         "hash"
       ],
       "screenshots": [
-        "add-subtitles",
-        "subtitles-panel"
+        "subtitle-search-results",
+        "subtitle-search-episode",
+        "subtitle-search-auto",
+        "subtitle-search-settings"
       ],
       "changelog": [
+        {
+          "version": "0.13.0",
+          "date": "2026-10-20",
+          "notes": "New: episode and year aware search (Show S01E05, Show 1x05 and Movie (2020) are searched by season / episode or year, then as plain text if that finds nothing; also over MCP), and Load exact matches automatically (off by default; dialog checkbox or setting): a local video that opens without subtitles in your languages gets the most downloaded exact (hash) match, one download per new file. Fixes: a login is reused for 12 hours instead of logging in for every download (and renewed once when refused; VIP accounts use their own host); the Add Subtitles dialog searches again when the next file starts instead of offering the old file's results; a cut-off download is no longer reused from the cache; Save next to the video never writes an empty file. Security: a language code from the API or an MCP client can no longer steer the saved file outside the video's folder; download links must be https (http only to this machine); errors never show the one-time download link. The per-file subtitle offset (Z / X) is the player's own since Vivi 0.13 and is no longer part of this feature."
+        },
         {
           "version": "0.11.0",
           "date": "2026-10-16",
