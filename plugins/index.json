@@ -1113,7 +1113,43 @@
       "needs": [
         "vivi-discord"
       ],
-      "binaries": []
+      "binaries": [
+        {
+          "name": "vivi-discord",
+          "platform": "linux-x86_64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-linux-x86_64",
+          "sha256": "2a704b6ba21d72d84ad3c3776ef8bfdb2ed7b3897bfc081b23a891b8285df769",
+          "size": 496336
+        },
+        {
+          "name": "vivi-discord",
+          "platform": "linux-aarch64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-linux-aarch64",
+          "sha256": "0ad8ee86b2a7db805ecc9b1d468ce35425c3240f8f6079276db524a181813915",
+          "size": 463024
+        },
+        {
+          "name": "vivi-discord",
+          "platform": "windows-x86_64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-windows-x86_64.exe",
+          "sha256": "293881c9424a5d0c6ae2a72c0ffd0079c072add828dd5b9265724fe2996e033d",
+          "size": 223744
+        },
+        {
+          "name": "vivi-discord",
+          "platform": "macos-x86_64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-macos-x86_64",
+          "sha256": "3b760b71deaf378f1fec44fc8cd81586d031b9fce800a192e14e100534c153eb",
+          "size": 374912
+        },
+        {
+          "name": "vivi-discord",
+          "platform": "macos-aarch64",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-macos-aarch64",
+          "sha256": "971225c65986be57de81f8896951d22a4bfc81eb31de64043db42bab12dcd2ad",
+          "size": 369712
+        }
+      ]
     },
     {
       "id": "equalizer",
