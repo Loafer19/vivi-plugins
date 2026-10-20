@@ -33,6 +33,10 @@ PERM = {"network": ("globe", "Internet access"), "filesystem": ("folder-open", "
 PLAT = {"linux-x86_64": "Linux x86_64", "linux-aarch64": "Linux ARM64", "windows-x86_64": "Windows",
         "macos-x86_64": "macOS Intel", "macos-aarch64": "macOS Apple silicon"}
 e = lambda s: html.escape(str(s), quote=True)
+# Marker over a deprecated plugin's main image: "a" diagonal banner, "b" corner ribbon,
+# "c" greyed image + badge + "Replaced by", "d" striped stamp. ?depstyle=a|b|c|d previews another one.
+DEP_STYLE = "a"
+NAMES: dict[str, str] = {}  # plugin id -> name, filled in main() (for "Replaced by ...")
 
 
 def icon(name: str) -> str:
@@ -175,9 +179,10 @@ def zip_link(c: dict) -> str:
 def head(title: str, desc: str, url: str, image: str, extra: str = "", depth: int = 0) -> str:
     up = "../" * depth
     return f"""<!doctype html>
-<html lang="en">
+<html lang="en" data-dep-style="{DEP_STYLE}">
 <head>
 <meta charset="utf-8">
+<script>(function(){{var s=new URLSearchParams(location.search).get("depstyle");if(/^[abcd]$/.test(s||""))document.documentElement.dataset.depStyle=s}})()</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(title)}</title>
 <meta name="description" content="{e(desc)}">
@@ -225,15 +230,37 @@ def deprecated_badge(p: dict) -> str:
     return f'<span class="chip dep">Deprecated{e(since)}</span>'
 
 
+def replaced_by(p: dict) -> str:
+    """'Auto-tagger (built into Vivi)' / 'Chapters & Previews' from deprecated.replacement, or ''."""
+    r = (p.get("deprecated") or {}).get("replacement", "")
+    kind, _, rid = r.partition(":")
+    if not rid:
+        return ""
+    name = NAMES.get(rid, rid.replace("-", " ").capitalize())
+    return f"{name} (built into Vivi)" if kind == "builtin" else name
+
+
+def dep_mark(p: dict) -> str:
+    """Overlay on the main image of a deprecated plugin; every variant uses the same markup."""
+    if not p.get("deprecated"):
+        return ""
+    rb = replaced_by(p)
+    return (f'<span class="dep-mark" aria-hidden="true"><b>Deprecated</b>'
+            f'{f"<small>Replaced by {e(rb)}</small>" if rb else ""}</span>')
+
+
 def card(p: dict) -> str:
     cats = p.get("categories", [])
     shots = [s for s in p.get("screenshots", []) if shot_path(s)]
     thumb = (f'<img class="thumb" src="{shot(shots[0], 'webp')}" alt="{e(p["name"])} screenshot" loading="lazy" width="640" height="360">'
              if shots else f'<div class="thumb ph">{icon(p.get("lucide", "puzzle"))}</div>')
+    if p.get("deprecated"):
+        thumb = f'<div class="dep-shot">{thumb}{dep_mark(p)}</div>'
     size = size_label(p)
     kind = "Built-in" if p.get("kind") == "builtin" else ("Example script" if p.get("kind") == "script" else "Download")
     date = updated(p)
-    return f"""<a class="card" href="p/{e(p['id'])}/" data-cats="{e('|'.join(cats))}" data-tags="{e(' '.join(p.get('tags', [])))}"
+    dep = ' dep" data-dep="1' if p.get("deprecated") else ""
+    return f"""<a class="card{dep}" href="p/{e(p['id'])}/" data-cats="{e('|'.join(cats))}" data-tags="{e(' '.join(p.get('tags', [])))}"
  data-name="{e(p['name'].lower())}" data-text="{e((p['name'] + ' ' + p['description'] + ' ' + ' '.join(p.get('tags', []))).lower())}"
  data-size="{(download_sizes(p) or [0])[-1]}" data-date="{e(date)}">
   {thumb}
@@ -241,7 +268,7 @@ def card(p: dict) -> str:
     <div class="title"><span class="ic">{icon(p.get('lucide', 'puzzle'))}</span><h2>{e(p['name'])}</h2></div>
     <p>{e(p['description'])}</p>
     <div class="meta"><span>v{e(p.get('version', ''))}</span>{f'<span>{e(size)}</span>' if p.get('kind') != 'builtin' else ''}{f'<span>{e(short_platforms(p))}</span>' if short_platforms(p) else ''}</div>
-    <div class="chips"><span class="chip k">{e(kind)}</span>{''.join(f'<span class="chip">{e(c)}</span>' for c in cats)}</div>
+    <div class="chips">{'<span class="chip dep">Deprecated</span>' if p.get('deprecated') else ''}<span class="chip k">{e(kind)}</span>{''.join(f'<span class="chip">{e(c)}</span>' for c in cats)}</div>
   </div>
 </a>"""
 
@@ -263,8 +290,11 @@ def page(p: dict) -> str:
     out = head(f"{p['name']} – Vivi plugin", desc, url, image,
                f'<script type="application/ld+json">{json.dumps(ld)}</script>', depth=2)
     gallery = "".join(
-        f'<figure><a href="{shot(s, 'png', '../../')}"><img src="{shot(s, 'webp', '../../')}" alt="{e(p["name"])} in Vivi ({i + 1})" '
-        f'loading="{"eager" if i == 0 else "lazy"}" width="1280" height="720"></a></figure>' for i, s in enumerate(shots))
+        f'<figure{" class=dep-shot" if i == 0 and p.get("deprecated") else ""}><a href="{shot(s, 'png', '../../')}"><img src="{shot(s, 'webp', '../../')}" alt="{e(p["name"])} in Vivi ({i + 1})" '
+        f'loading="{"eager" if i == 0 else "lazy"}" width="1280" height="720"></a>{dep_mark(p) if i == 0 else ""}</figure>' for i, s in enumerate(shots))
+    # A deprecated plugin without screenshots still gets a marked main image (its icon, as on its card).
+    dep_hero = (f'<div class="gallery"><figure class="dep-shot"><div class="thumb ph">{icon(p.get("lucide", "puzzle"))}</div>'
+                f'{dep_mark(p)}</figure></div>') if p.get("deprecated") else ""
     perms = p.get("permissions", [])
     perm_html = "".join(f"<li>{icon(PERM.get(x, ('shield', x))[0])}{e(PERM.get(x, ('', x))[1])}</li>" for x in perms) \
         or f"<li>{icon('shield-check')}No special permissions: runs inside Vivi's mpv only</li>"
@@ -305,7 +335,7 @@ Needs Vivi {e(p.get('min_vivi', ''))} or newer. No Vivi yet? <code>curl -fsSL {S
   {''.join(f'<span class="chip t">#{e(t)}</span>' for t in p.get('tags', []))}</div>
   <div class="actions">{install}</div></div>
 </section>
-{f'<h2>Screenshots</h2><div class="gallery">{gallery}</div>' if gallery else ''}
+{f'<h2>Screenshots</h2><div class="gallery">{gallery}</div>' if gallery else dep_hero}
 <div class="cols">
 <section><h2>Changelog</h2><ol class="changelog">{cl_html}</ol></section>
 <section><h2>Permissions</h2><ul class="perms">{perm_html}</ul>
@@ -355,8 +385,11 @@ def build_dev() -> list[str]:
 def main() -> None:
     idx = json.loads((ROOT / "plugins/index.json").read_text())
     plugins = [p for p in idx["plugins"]]
-    # Deprecated plugins keep their page (and sitemap entry) but leave the grid and search.
+    NAMES.update({p["id"]: p["name"] for p in plugins})
+    # Deprecated plugins are in the grid but only under the "Deprecated" filter (?cat=deprecated);
+    # the default listing, search, counts and ItemList leave them out.
     listed = [p for p in plugins if not p.get("deprecated")]
+    deprecated = sorted((p for p in plugins if p.get("deprecated")), key=lambda p: p["name"].lower())
     if OUT.exists():
         shutil.rmtree(OUT)
     (OUT / "img/shots").mkdir(parents=True)
@@ -370,6 +403,9 @@ def main() -> None:
                 write_shot(s, f)
     order = sorted(listed, key=lambda p: (p.get("kind") == "script", p["name"].lower()))
     cats = "".join(f'<button type="button" data-cat="{c}">{icon(CAT_ICON[c])}{c}</button>' for c in CATEGORIES)
+    dep_btn = (f'<span class="sep" aria-hidden="true"></span><button type="button" data-cat="deprecated" class="depf" '
+               f'title="Plugins replaced by Vivi features or other plugins; kept for older Vivi">{icon("archive")}Deprecated'
+               f'<span class="n">{len(deprecated)}</span></button>') if deprecated else ""
     desc = (f"{len(listed)} plugins for the Vivi media player: music, video, subtitles, streaming, integrations and tools. "
             "Install them in one click from Vivi.")
     ld = {"@context": "https://schema.org", "@type": "ItemList", "name": "Vivi plugins",
@@ -382,12 +418,14 @@ def main() -> None:
 with checksums verified and permissions shown before install.</p></section>
 <div class="toolbar">
   <label class="search">{icon('search')}<input id="q" type="search" placeholder="Search plugins" aria-label="Search plugins"></label>
-  <div class="cats" role="group" aria-label="Category"><button type="button" data-cat="" class="on">All</button>{cats}</div>
+  <div class="cats" role="group" aria-label="Category"><button type="button" data-cat="" class="on">All</button>{cats}{dep_btn}</div>
   <label class="sort">Sort <select id="sort" aria-label="Sort"><option value="name">Name</option><option value="date">Recently updated</option></select></label>
 </div>
 <p id="empty" class="muted" hidden>No plugins match.</p>
+<p id="deptip" class="muted small" hidden></p>
 <div class="grid" id="grid">
 {''.join(card(p) for p in order)}
+{''.join(card(p) for p in deprecated)}
 </div>
 <script src="market.js" defer></script>
 """ + FOOT
