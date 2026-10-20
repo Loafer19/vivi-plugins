@@ -1,7 +1,7 @@
 id = "equalizer"
 name = "Equalizer"
-version = "1.0.1"
-description = "Deprecated: built into Vivi since 0.13.0 (Audio panel → Equalizer). Equalizer presets (Bass, Vocal, Rock, Night, Flat) and a custom 10-band EQ from 31 Hz to 16 kHz, through mpv's audio filters (ffmpeg equalizer or superequalizer). Alt+E cycles presets, Alt+Shift+E turns it off; the choice is remembered. Independent of the Audio panel's own EQ."
+version = "1.1.0"
+description = "Deprecated: built into Vivi since 0.13.0 (Audio panel → Equalizer); on Vivi 0.13+ it moves your preset there once and applies nothing itself. On older Vivi: equalizer presets (Bass, Vocal, Rock, Night, Flat) and a custom 10-band EQ from 31 Hz to 16 kHz through mpv's audio filters (equalizer or superequalizer). Alt+E cycles presets, Alt+Shift+E turns it off; the choice is remembered."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "equalizer.lua"
@@ -16,7 +16,7 @@ default_enabled = true
 # plugins/index.json; Vivi hides it from Browse unless installed and offers the replacement.
 [deprecated]
 since = "0.13.0"
-message = "The built-in Equalizer (player side panel → Audio) replaces this plugin since Vivi 0.13.0, with the same presets, Alt+E / Alt+Shift+E and the anti-clipping pre-amp. You can uninstall the plugin."
+message = "The built-in Equalizer (player side panel → Audio) replaces this plugin since Vivi 0.13.0, with the same presets, Alt+E / Alt+Shift+E and the anti-clipping pre-amp. Since 1.1.0 the plugin applies no filter of its own there and moves your preset (a Custom curve as a new preset) to the built-in Equalizer once. You can uninstall the plugin."
 replacement = "builtin:equalizer"
 action = "Open Equalizer"
 
@@ -57,3 +57,15 @@ key = "show"
 title = "Show the active preset"
 type = "action"
 label = "Show"
+
+[[settings]]
+key = "move-to-builtin"
+title = "Vivi 0.13+: move the preset to Vivi's built-in Equalizer at the next file (turns itself off)"
+type = "toggle"
+default = "true"
+
+[[settings]]
+key = "handover"
+title = "Move the preset to Vivi's built-in Equalizer now (Vivi 0.13+)"
+type = "action"
+label = "Move"

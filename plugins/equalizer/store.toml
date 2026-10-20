@@ -2,7 +2,12 @@
 # so editing it needs no new plugin version.
 categories = ["Music", "Tools"]
 tags = ["equalizer", "eq", "presets", "audio"]
-screenshots = ["equalizer-settings"]
+screenshots = ["equalizer-settings", "equalizer-builtin"]
+
+[[changelog]]
+version = "1.1.0"
+date = "2026-10-20"
+notes = "On Vivi 0.13+ the plugin no longer adds its filter on top of the built-in Equalizer (both applied, doubling the boost, and Alt+Shift+E could not turn the plugin's off); it moves your preset there once instead: Bass, Vocal, Rock and Night select the built-in preset, a Custom curve becomes the preset \"Custom (Equalizer plugin)\", never over an equalizer you already turned on. New: Move button and a setting for that. Custom gains written with \"−\" (as in the setting's title) were read as boosts; an unknown preset name now shows as Flat; Vivi toasts instead of mpv OSD text."
 
 [[changelog]]
 version = "1.0.1"
