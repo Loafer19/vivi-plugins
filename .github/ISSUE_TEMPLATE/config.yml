@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Player bug or feature request (vivi core)
+    url: https://github.com/Loafer19/vivi/issues/new/choose
+    about: Playback, UI, library, settings and built-in extensions (Lyrics, Subtitle Search, Auto-tagger, …) are tracked in the vivi repo.
+  - name: Plugin marketplace
+    url: https://plugins.viviplayer.app
+    about: Browse the available plugins, their docs and changelogs.

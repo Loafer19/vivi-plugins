@@ -1,0 +1,48 @@
+name: Plugin feature request
+description: Suggest an improvement to an existing plugin
+labels: ["type: feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Want a plugin that doesn't exist yet? Use [Idea of a plugin](https://github.com/Loafer19/vivi-plugins/issues/new?template=plugin-idea.yml).
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: Plugin
+      description: Built-in extensions (Lyrics, Subtitle Search, Auto-tagger, …) are part of vivi; report those in [vivi](https://github.com/Loafer19/vivi/issues/new/choose).
+      options:
+        - "A-B Loop & Frame Step (ab-loop) (deprecated)"
+        - "AcoustID Tagger (acoustid) (deprecated)"
+        - "Chapters & Previews (chapter-thumbnails)"
+        - "Cut & Export Clip (cut-export)"
+        - "Discord Rich Presence (discord)"
+        - "Equalizer (equalizer) (deprecated)"
+        - "Night Mode (night-mode)"
+        - "Offline Downloads (offline-downloads)"
+        - "Playback Statistics (playback-stats)"
+        - "Remote Control (remote-control)"
+        - "Scene Chapters (scene-chapters) (deprecated)"
+        - "Scrobbler (Last.fm & ListenBrainz) (scrobbler)"
+        - "SponsorBlock (sponsorblock)"
+        - "Subtitle Auto-Sync (subtitle-sync)"
+        - "YouTube & yt-dlp (youtube)"
+        - "YouTube Music (youtube-music)"
+    validations: { required: true }
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What should the plugin do, and what problem does it solve for you?
+    validations: { required: true }
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Workarounds you use today, other plugins or mpv scripts that do this.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] …

@@ -1,0 +1,54 @@
+name: Idea of a plugin
+description: Propose a new plugin for the vivi marketplace
+title: "[Plugin idea] "
+labels: ["type: plugin-idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Plugins are mpv Lua scripts with a manifest, published on [plugins.viviplayer.app](https://plugins.viviplayer.app). Please check the marketplace and the [open ideas](https://github.com/Loafer19/vivi-plugins/issues?q=is%3Aissue+label%3A%22type%3A+plugin-idea%22) first.
+  - type: input
+    id: name
+    attributes:
+      label: Plugin name
+      placeholder: "e.g. Trakt Scrobbler"
+    validations: { required: true }
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem it solves
+      description: What's missing or annoying today, and for whom?
+    validations: { required: true }
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: Proposed behaviour
+      description: What the plugin does, when it runs, which settings, keys or panels it adds.
+    validations: { required: true }
+  - type: dropdown
+    id: core
+    attributes:
+      label: Does it fit core instead?
+      description: Some things are better built into vivi itself (several plugins became built-in features in 0.13.0).
+      options:
+        - No, it should be an optional plugin
+        - Maybe, not sure
+        - Yes, it might be better as a built-in feature
+    validations: { required: true }
+  - type: textarea
+    id: external
+    attributes:
+      label: External tools, services or API keys needed
+      description: CLI tools (yt-dlp, ffmpeg, …), web services/APIs, accounts or API keys the user would need, network/filesystem/subprocess access.
+      placeholder: "e.g. Trakt API (OAuth, free account), network permission"
+  - type: textarea
+    id: prior-art
+    attributes:
+      label: Similar mpv scripts / prior art
+      description: Existing mpv user scripts, features in other players, links.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd like to help build or test this plugin

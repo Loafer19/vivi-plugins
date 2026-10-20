@@ -1,0 +1,77 @@
+name: Plugin bug
+description: A downloadable plugin from the marketplace doesn't work
+labels: ["type: bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For problems with the player itself (playback, UI, library, built-in extensions) open an issue in [vivi](https://github.com/Loafer19/vivi/issues/new/choose) instead.
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: Plugin
+      description: Built-in extensions (Lyrics, Subtitle Search, Auto-tagger, …) are part of vivi; report those in [vivi](https://github.com/Loafer19/vivi/issues/new/choose).
+      options:
+        - "A-B Loop & Frame Step (ab-loop) (deprecated)"
+        - "AcoustID Tagger (acoustid) (deprecated)"
+        - "Chapters & Previews (chapter-thumbnails)"
+        - "Cut & Export Clip (cut-export)"
+        - "Discord Rich Presence (discord)"
+        - "Equalizer (equalizer) (deprecated)"
+        - "Night Mode (night-mode)"
+        - "Offline Downloads (offline-downloads)"
+        - "Playback Statistics (playback-stats)"
+        - "Remote Control (remote-control)"
+        - "Scene Chapters (scene-chapters) (deprecated)"
+        - "Scrobbler (Last.fm & ListenBrainz) (scrobbler)"
+        - "SponsorBlock (sponsorblock)"
+        - "Subtitle Auto-Sync (subtitle-sync)"
+        - "YouTube & yt-dlp (youtube)"
+        - "YouTube Music (youtube-music)"
+        - "Marketplace site / catalog (plugins.viviplayer.app)"
+        - Other / not sure
+    validations: { required: true }
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: Shown in vivi under Settings → Extensions → Installed.
+      placeholder: "1.3.0"
+    validations: { required: true }
+  - type: input
+    id: vivi-version
+    attributes:
+      label: vivi version
+      description: "Output of `vivi --version`, or the version shown in Settings → About."
+      placeholder: "vivi 0.13.0 (commit abc1234, built 2026-10-18)"
+    validations: { required: true }
+  - type: input
+    id: system
+    attributes:
+      label: System
+      description: OS / distro, compositor or desktop, how vivi was installed, versions of external tools the plugin uses (yt-dlp, ffmpeg, …).
+      placeholder: "Arch/Omarchy, Hyprland (Wayland), AppImage, yt-dlp 2026.10.01"
+    validations: { required: true }
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Steps to reproduce, including the plugin settings you changed.
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations: { required: true }
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or recording
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        Run vivi from a terminal with `VIVI_MPV_DEBUG=1 vivi` (verbose mpv log, includes plugin script output) and paste the relevant part.
+        Please redact personal data first: home-directory paths and file names, usernames, account names, session tokens, API keys (Last.fm, ListenBrainz, Discord, …).
+      render: text
