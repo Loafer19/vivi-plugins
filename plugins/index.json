@@ -1426,7 +1426,7 @@
       "id": "offline-downloads",
       "name": "Offline Downloads",
       "description": "A download queue for offline listening and watching: YouTube and other yt-dlp sites, direct music files (Jamendo, Internet Archive and any audio/video link) and radio streams recorded for a set time. Pending / active / paused / done / failed list with pause, cancel and retry, progress and a download folder. Paste a URL or press Alt+D with one in the clipboard. Downloads no tools of its own: it uses curl and your yt-dlp, or the copy the YouTube & yt-dlp plugin manages.",
-      "version": "1.1.2",
+      "version": "1.1.3",
       "author": "Vivi",
       "icon": "download",
       "lucide": "download",
@@ -1440,9 +1440,9 @@
         "subprocess"
       ],
       "source": "plugins/offline-downloads",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.2/offline-downloads-1.1.2.zip",
-      "sha256": "31c1ff470ae5062446130fd0a9f38b2247e1548c2ef252efeb9f966c9c54d6c1",
-      "size": 37000,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.3/offline-downloads-1.1.3.zip",
+      "sha256": "fbf1c5c92b2864ea1d6010cfc2bbdfbe7b79b42986fbd6c77489c062112160d9",
+      "size": 38080,
       "settings": [
         {
           "key": "url",
@@ -1569,10 +1569,15 @@
       ],
       "changelog": [
         {
+          "version": "1.1.3",
+          "date": "2026-10-20",
+          "notes": "Downloads stop when Vivi quits (tray menu Quit, closing the window, Ctrl+Q): each curl / yt-dlp / ffmpeg runs under a small watchdog that stops it, and what it started, once Vivi is gone, so no download keeps running in the background with no Vivi to show or cancel it. A stopped download resumes from the queue next time.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.3/offline-downloads-1.1.3.zip"
+        },
+        {
           "version": "1.1.2",
           "date": "2026-10-19",
-          "notes": "Download for offline works for YouTube and YouTube Music items that have no single file with video and audio any more (\"Requested format is not available\"): every quality falls back to merging or audio only, YouTube Music links download the best audio. Downloads show in Vivi's Downloads panel again (the panel check read Vivi's flag wrongly). Own download icon in Vivi 0.13+. README: copyright / Terms of Service note, keys and settings, a Downloads panel screenshot.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.2/offline-downloads-1.1.2.zip"
+          "notes": "Download for offline works for YouTube and YouTube Music items that have no single file with video and audio any more (\"Requested format is not available\"): every quality falls back to merging or audio only, YouTube Music links download the best audio. Downloads show in Vivi's Downloads panel again (the panel check read Vivi's flag wrongly). Own download icon in Vivi 0.13+. README: copyright / Terms of Service note, keys and settings, a Downloads panel screenshot."
         },
         {
           "version": "1.1.1",

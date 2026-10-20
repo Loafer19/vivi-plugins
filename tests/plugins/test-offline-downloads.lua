@@ -115,4 +115,16 @@ T.props["user-data/vivi/downloads"] = 1
 T.calls = {}
 P.show()
 T.eq(T.calls[1] and T.calls[1][2], "vivi-downloads-show", "integer panel flag")
+-- Download tools run under the sh watchdog (stops them when Vivi or the wrapper goes away).
+T.props["pid"] = 4242
+local g = P.guarded({ "curl", "-o", "x", "http://a.example/x.mp3" })
+T.eq(g[1], "sh", "guard runs sh")
+T.eq(g[5], "4242", "guard watches Vivi's pid")
+T.eq(g[6], "", "no log: mpv keeps the capture pipes")
+T.eq(g[7], "curl", "tool follows")
+T.eq(g[#g], "http://a.example/x.mp3", "args kept")
+T.eq(P.guarded({ "yt-dlp", "u" }, "/tmp/l")[6], "/tmp/l", "log file")
+T.props["pid"] = nil
+T.eq(P.guarded({ "curl" })[5], "1", "no pid: watch init (never stops on its own)")
+T.ok(P.GUARD:find("pkill %-TERM %-P", 1) ~= nil, "children of the tool are stopped too")
 T.done("offline-downloads")

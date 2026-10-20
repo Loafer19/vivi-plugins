@@ -1,5 +1,5 @@
 -- @name Offline Downloads
--- @version 1.1.2
+-- @version 1.1.3
 -- @author Vivi
 -- @description Download queue for YouTube/yt-dlp sites, direct music files (Jamendo, Internet Archive, …) and radio streams (Vivi plugin package).
 --
@@ -58,6 +58,34 @@ local TMP = os.getenv("TMPDIR") or os.getenv("TEMP") or "/tmp"
 local function run(args, cb)
   return mp.command_native_async({ name = "subprocess", args = args, playback_only = false,
     capture_stdout = true, capture_stderr = true }, function(_, r) cb(r or {}) end)
+end
+
+-- Long downloads (curl, yt-dlp, ffmpeg) run under a small sh watchdog, so they stop when
+-- Vivi goes away without telling its scripts (quitting on Vivi before 0.13, a crash, a
+-- kill) and when mpv kills the wrapper on pause / cancel / quit: the tool and its own
+-- children (yt-dlp's ffmpeg) get SIGTERM. $1 = Vivi's pid, $2 = file for the tool's
+-- stdout + stderr ("" = keep mpv's capture pipes). Not on Windows (no sh).
+local GUARD = [[vp=$1; log=$2; shift 2
+if [ -n "$log" ]; then "$@" >"$log" 2>&1 & else "$@" & fi
+c=$!
+( while kill -0 "$c" 2>/dev/null; do
+    if ! kill -0 "$vp" 2>/dev/null || ! kill -0 "$PPID_SH" 2>/dev/null; then
+      pkill -TERM -P "$c" 2>/dev/null; kill -TERM "$c" 2>/dev/null; exit 0
+    fi
+    sleep 1
+  done ) >/dev/null 2>&1 &
+w=$!
+wait "$c"; r=$?
+kill "$w" 2>/dev/null
+exit $r]]
+
+local function guarded(args, log)
+  if windows then return args end
+  local pid = mp.get_property("pid", "")
+  if not pid or not pid:match("^%d+$") or pid == "0" then pid = "1" end
+  local w = { "sh", "-c", "PPID_SH=$$; " .. GUARD, "sh", pid, log or "" }
+  for _, x in ipairs(args) do w[#w + 1] = x end
+  return w
 end
 
 local function toast(msg, secs)
@@ -354,7 +382,7 @@ local function curl_job(it, max_time)
     elseif max_time then it.pct = math.min(99, (os.time() - t0) / max_time * 100) end
     report(it)
   end)
-  active.job = run(args, function(r)
+  active.job = run(guarded(args), function(r)
     -- curl exits 28 when --max-time ends a recording: that is the normal end.
     local ok = r.status == 0 or (max_time ~= nil and r.status == 28 and utils.file_info(it.file) ~= nil)
     finish(it, ok, (r.stderr or "") ~= "" and r.stderr or ("curl exit " .. tostring(r.status)))
@@ -389,11 +417,7 @@ local function ytdlp_job(it)
     "--progress-template", "download:[vivi] %(progress._percent_str)s|%(progress._total_bytes_str,progress._total_bytes_estimate_str)s|%(info.title)s" }
   if ffdir then args[#args + 1] = "--ffmpeg-location" args[#args + 1] = ffdir end
   args[#args + 1] = it.url
-  if not windows then
-    local w = { "sh", "-c", 'log=$1; shift; exec "$@" >"$log" 2>&1', "sh", log }
-    for _, x in ipairs(args) do w[#w + 1] = x end
-    args = w
-  end
+  if not windows then args = guarded(args, log) end
   active.timer = mp.add_periodic_timer(1, function()
     local f = io.open(log, "r")
     if not f then return end
@@ -464,7 +488,7 @@ local function begin(it)
           it.pct = math.min(99, (os.time() - t0) / secs * 100)
           report(it)
         end)
-        active.job = run({ ff, "-hide_banner", "-loglevel", "error", "-y", "-i", it.url, "-t", tostring(secs), "-c", "copy", it.file },
+        active.job = run(guarded({ ff, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", it.url, "-t", tostring(secs), "-c", "copy", it.file }),
           function(r) finish(it, r.status == 0, r.stderr) end)
         return
       end
@@ -676,5 +700,5 @@ if VIVI_TEST then
     clear_done = clear_done, known_site = known_site, format_for = format_for, queue = function() return queue end, describe = describe, human = human,
     set_active = function(a) active = a end, job_id = job_id, panel_row = panel_row,
     job_pause = job_pause, job_resume = job_resume, job_cancel = job_cancel, job_retry = job_retry,
-    show = show, report_unfinished = report_unfinished, record = record }
+    show = show, report_unfinished = report_unfinished, record = record, guarded = guarded, GUARD = GUARD }
 end
