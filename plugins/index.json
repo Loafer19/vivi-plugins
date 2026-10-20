@@ -151,12 +151,6 @@
           "default": "Plain lyrics"
         },
         {
-          "key": "radio-offset",
-          "title": "Radio sync offset (seconds)",
-          "type": "text",
-          "default": "0"
-        },
-        {
           "key": "size",
           "title": "Text size",
           "type": "choice",
@@ -348,6 +342,18 @@
           "title": "Restore original tags",
           "type": "action",
           "default": ""
+        },
+        {
+          "key": "auto-identify",
+          "title": "Identify untagged songs while playing",
+          "type": "toggle",
+          "default": "false"
+        },
+        {
+          "key": "forget",
+          "title": "Forget cached results",
+          "type": "action",
+          "default": ""
         }
       ],
       "categories": [
@@ -364,6 +370,11 @@
         "tagger-summary"
       ],
       "changelog": [
+        {
+          "version": "0.13.0",
+          "date": "2026-10-20",
+          "notes": "Identifies untagged songs while they play (optional, off by default): when AcoustID is at least 70% sure, the player, now-playing card, MPRIS and extensions show the title, artist and album, and a toast opens the review; nothing is written until you apply it. Each file's AcoustID answer is cached (path, size, modification time; 300 files) for identify, auto-identify and folder tagging, with Forget cached results. Replaces the AcoustID plugin."
+        },
         {
           "version": "0.9.0",
           "date": "2026-10-16",
@@ -462,6 +473,16 @@
           "title": "Program guide (XMLTV)",
           "type": "text",
           "default": ""
+        },
+        {
+          "key": "view",
+          "title": "Browser view",
+          "type": "choice",
+          "options": [
+            "List",
+            "Grid"
+          ],
+          "default": "List"
         },
         {
           "key": "refresh",
