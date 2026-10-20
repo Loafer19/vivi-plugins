@@ -114,8 +114,8 @@
     {
       "id": "lyrics",
       "name": "Lyrics",
-      "description": "Synced lyrics as a karaoke overlay or a full-screen karaoke view with word-by-word highlight (enhanced LRC). Sources: a .lrc file next to the song, embedded tags (USLT/SYLT/LYRICS), cache, LRCLIB (plain lyrics as fallback) and a manual search. Per-track timing offset; save as .lrc or embed. Radio streams: lyrics for the current stream title.",
-      "version": "0.11.0",
+      "description": "Synced lyrics as a karaoke overlay, a full-screen karaoke view with word-by-word highlight (enhanced LRC) or a list in the side drawer. Click a line to jump there. Sources: your manual pick, a .lrc file next to the song, embedded tags (USLT/SYLT/LYRICS), cache and LRCLIB (plain lyrics as fallback); instrumental tracks are recognised. Songs from music-service extensions and Auto-tagger matches get lyrics too. Per-track timing offset; save as .lrc or embed. Radio streams: lyrics for the current stream title, click the line being sung to sync.",
+      "version": "0.13.0",
       "author": "Vivi",
       "icon": "lyrics",
       "lucide": "mic-vocal",
@@ -144,11 +144,11 @@
           "title": "Radio lyrics",
           "type": "choice",
           "options": [
+            "Click a line to sync",
             "Plain lyrics",
-            "Approximate sync",
             "Off"
           ],
-          "default": "Plain lyrics"
+          "default": "Click a line to sync"
         },
         {
           "key": "size",
@@ -174,14 +174,23 @@
         "lyrics",
         "karaoke",
         "lrclib",
-        "lrc"
+        "lrc",
+        "radio"
       ],
       "screenshots": [
         "lyrics-karaoke",
+        "lyrics-drawer",
         "lyrics-search",
-        "lyrics"
+        "lyrics-instrumental",
+        "lyrics-radio",
+        "lyrics-settings"
       ],
       "changelog": [
+        {
+          "version": "0.13.0",
+          "date": "2026-10-20",
+          "notes": "Click a line (karaoke view, overlay or side drawer) to jump there. Songs from music-service extensions (YouTube Music and the like) and songs named by Auto-tagger now get lyrics for the song instead of the radio list. Instrumental tracks show \"Instrumental\" instead of \"No lyrics found\". Radio titles written \"Artist – Title\" (en / em dash) or \"Artist | Title\" are recognised by the same splitter the player uses. Fixes: songs not found on LRCLIB (radio included) are asked again after a week instead of never; the timing offset can no longer be set without synced lyrics; Save .lrc / Embed are hidden when the lyrics already come from there; lyrics files over 1 MiB are ignored."
+        },
         {
           "version": "0.11.0",
           "date": "2026-10-16",
