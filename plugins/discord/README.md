@@ -11,24 +11,39 @@ was built into Vivi up to 0.9.0, a downloadable plugin with a native helper sinc
 
 ## Setup
 
-1. Create an application at <https://discord.com/developers/applications>. Its name is
-   what Discord shows ("Listening to **Vivi**"), so call it e.g. *Vivi*.
-2. Copy its **Application ID** into *Application ID* in the plugin settings
-   (Settings → Extensions → Discord Rich Presence).
-3. Keep the Discord desktop app running on the same computer (also Flatpak / Snap Discord
+1. Install and enable the plugin (Settings → Extensions → Discord Rich Presence).
+2. Keep the Discord desktop app running on the same computer (also Flatpak / Snap Discord
    and Vesktop). *Connection status → Show* tells whether the helper reached Discord.
+
+That's all: the status goes through Vivi's own Discord application, so Discord shows
+"Listening to **Vivi**" with the Vivi logo as the picture (the small badge next to a
+YouTube thumbnail or a music package's cover).
+
+### Advanced: your own Discord application (optional)
+
+Only if you want a different name ("Listening to *My Player*") or your own art assets:
+
+1. Create an application at <https://discord.com/developers/applications>. Its name is
+   what Discord shows next to "Listening to".
+2. Copy its **Application ID** into *Custom Discord application ID* in the plugin settings.
+   Leave it empty to use Vivi's application again.
+3. Optionally upload an image under *Rich Presence → Art Assets* and enter its key in
+   *Large image*. With your own application the picture is only what *Large image* says
+   (the Vivi logo belongs to Vivi's application and is not used), as before 1.2.0; an ID
+   entered in an older version keeps working this way.
 
 ## Settings
 
 | Setting | Default | What it does |
 | --- | --- | --- |
+| Custom Discord application ID | empty | Empty: Vivi's own application. An ID (digits only) uses your application instead, see *Advanced* above; anything else falls back to Vivi's with a warning. |
 | Show for | Music and videos | *Music only* clears the status while a video plays. |
 | Hide video titles | on | Videos show only "Watching a video" (and *Paused*): no title, picture from the stream or link. Music keeps its titles. Turn it off to show video titles too. |
 | Hide titles and file names | off | Only "Listening to music" / "Watching a video" (and *Paused*); no titles, artists, pictures from the stream or links. |
 | Name in the member list | Application name | Discord shows "Listening to *Vivi*" next to your name; *Title* or *Artist* shows the song or video there instead. |
 | YouTube thumbnail | on | For YouTube / YouTube Music streams the video's thumbnail (`i.ytimg.com`) is the picture, your own image (below) becomes the small badge. |
 | Link button | off | A button that opens what you play, only for public sites (YouTube, YouTube Music, SoundCloud, Bandcamp, Vimeo, Twitch, Internet Archive) and as a clean link (YouTube rebuilt from the video id, query strings and fragments dropped). Discord does not show your own buttons to you, only to others. |
-| Large image | empty | An art asset key uploaded to your Discord application (*Rich Presence → Art Assets*) or an `https://` image URL. |
+| Large image | empty | An `https://` image URL, or an art asset key uploaded to your own Discord application (*Rich Presence → Art Assets*). Empty: the Vivi logo with Vivi's application, no picture with a custom one. |
 
 ## Where the titles come from
 
@@ -42,9 +57,10 @@ video, and its https cover becomes the picture. On older Vivi the helper reads t
 ## What is sent to Discord
 
 Only to the Discord app on this computer (its local IPC socket; nothing goes to the
-internet from Vivi): the activity type (listening / watching), the title, the artist (for
+internet from Vivi), under the application ID of Vivi's Discord application
+(`1562145928717271100`, public like every Discord client ID) or your custom one: the activity type (listening / watching), the title, the artist (for
 internet radio the station name), the album as tooltip, start and end time while playing,
-the picture (your image, the YouTube thumbnail URL or a music package's https cover) and, when turned on, the link
+the picture (the Vivi logo or your image, the YouTube thumbnail URL or a music package's https cover) and, when turned on, the link
 button. Discord then shows this to people who can see your status.
 
 * File paths, folders and stream URLs are never sent. A title that is only a file name

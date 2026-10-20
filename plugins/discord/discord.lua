@@ -1,5 +1,5 @@
 -- @name Discord Rich Presence
--- @version 1.1.0
+-- @version 1.2.0
 -- @author Vivi
 -- @description Discord status from what Vivi plays (Vivi plugin package).
 --
@@ -8,6 +8,11 @@
 -- starts the helper with the socket path and the settings, restarts it when a setting
 -- changes and stops it on shutdown. The helper polls mpv over IPC, talks to Discord's
 -- local IPC socket / named pipe and reports its state in user-data/discord/status.
+--
+-- Without a custom application ID the status goes through Vivi's own Discord application
+-- (VIVI_APP_ID, public like every Discord client ID) with its art asset "vivi" as the
+-- picture, so it works right after install. A custom ID uses that app and only the
+-- large image set in the settings.
 local mp = require "mp"
 local options = require "mp.options"
 
@@ -16,6 +21,9 @@ local o = {
   ["status-name"] = "Application name", ["cover-art"] = true, ["link-button"] = false,
   image = "", pkgdir = "",
 }
+-- Vivi's official Discord application ("Listening to Vivi") and its art asset key.
+local VIVI_APP_ID = "1562145928717271100"
+local VIVI_IMAGE = "vivi"
 local windows = package.config:sub(1, 1) == "\\"
 local job
 -- Token of the helper that should run: a helper whose token is no longer in
@@ -49,13 +57,25 @@ local function helper(name)
   return dir .. (windows and "\\bin\\" or "/bin/") .. name .. (windows and ".exe" or "")
 end
 
+local function trim(s) return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")) end
+
+-- Application ID and large image for the helper: the custom ID (digits only) with the
+-- user's image as is, else Vivi's application with its "vivi" asset unless an image is set.
+-- A custom ID that is not a number falls back to Vivi's (bad = true, the script warns).
+local function app()
+  local id, image = trim(o["app-id"]), trim(o.image)
+  if id ~= "" and id:match("^%d+$") then return id, image, false end
+  return VIVI_APP_ID, image ~= "" and image or VIVI_IMAGE, id ~= ""
+end
+
 local function yn(v) return (v == true or v == "yes" or v == "true") and "yes" or "no" end
 
 -- Command line of the helper for the current settings.
 local function helper_args(exe, ipc)
   local display = ({ Title = "title", Artist = "artist" })[o["status-name"]] or "app"
+  local id, image = app()
   local args = {
-    exe, "--ipc", ipc, "--app-id", o["app-id"], "--image", o.image,
+    exe, "--ipc", ipc, "--app-id", id, "--image", image,
     "--show", o.show == "Music only" and "music" or "all",
     "--display", display,
     "--art", yn(o["cover-art"]),
@@ -81,6 +101,10 @@ local function start()
   if not exe then
     toast("Discord Rich Presence: helper not found, reinstall the plugin")
     return
+  end
+  local _, _, bad = app()
+  if bad then
+    toast("Discord Rich Presence: the custom Discord application ID must be digits only, using Vivi's")
   end
   gen = gen + 1
   mp.set_property("user-data/discord/helper", token())
@@ -111,6 +135,7 @@ mp.register_script_message("status", show_status)
 mp.register_event("shutdown", stop)
 
 if VIVI_TEST then
-  return { o = o, helper_args = helper_args, start = start, show_status = show_status }
+  return { o = o, app = app, helper_args = helper_args, start = start, show_status = show_status,
+           VIVI_APP_ID = VIVI_APP_ID }
 end
 start()

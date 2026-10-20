@@ -1124,8 +1124,8 @@
     {
       "id": "discord",
       "name": "Discord Rich Presence",
-      "description": "Shows what you play in your Discord status: title, artist, progress, YouTube thumbnails, optional link button; privacy options to hide names or videos. Needs a Discord application ID; Discord must be running on this computer. Ships a small native helper (vivi-discord) that talks to Discord's local IPC.",
-      "version": "1.1.0",
+      "description": "Shows what you play in your Discord status: title, artist, progress, YouTube thumbnails, optional link button; privacy options to hide names or videos. Works right after install through Vivi's own Discord application (a custom application ID is optional); the Discord desktop app must be running on this computer. Ships a small native helper (vivi-discord) that talks to Discord's local IPC.",
+      "version": "1.2.0",
       "author": "Vivi",
       "icon": "discord",
       "lucide": "gamepad-2",
@@ -1137,13 +1137,13 @@
         "subprocess"
       ],
       "source": "plugins/discord",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/discord-1.1.0.zip",
-      "sha256": "035f0c6a0d2bcdcd5ecc309d0b89c444cb26eabb3f063c542ff15d532e81a7a4",
-      "size": 11194,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.2.0/discord-1.2.0.zip",
+      "sha256": "a4f75607eaeb1e710ef41f55bdf06d4d12777f32635cbd4f62b5deaacab6429a",
+      "size": 13725,
       "settings": [
         {
           "key": "app-id",
-          "title": "Discord application ID (from discord.com/developers/applications)",
+          "title": "Custom Discord application ID (optional; empty = Vivi's own)",
           "type": "text",
           "default": ""
         },
@@ -1194,7 +1194,7 @@
         },
         {
           "key": "image",
-          "title": "Large image: art asset key of your Discord app or an https URL",
+          "title": "Large image: an https URL or an art asset key of your Discord app (empty = Vivi logo)",
           "type": "text",
           "default": ""
         },
@@ -1223,10 +1223,15 @@
       ],
       "changelog": [
         {
+          "version": "1.2.0",
+          "date": "2026-10-20",
+          "notes": "Works right after install: Discord status now goes through Vivi's own Discord application (“Listening to Vivi”) with the Vivi logo as the picture, no setup needed. The application ID setting is now an optional Custom Discord application ID (empty = Vivi's); an ID you already entered keeps working with your own app and your Large image setting. A custom ID that is not a number falls back to Vivi's application with a warning instead of showing nothing.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.2.0/discord-1.2.0.zip"
+        },
+        {
           "version": "1.1.0",
           "date": "2026-10-20",
-          "notes": "Privacy: video titles are hidden by default (new Hide video titles, on: videos show only “Watching a video”, music keeps its titles); stream URLs are never shown as the title (a stream without tags shows its file name or host, never tokens or query strings), file names lose their extension, nothing is shown for finished files or still images; new Show for: Music only. New: YouTube thumbnail as the picture for YouTube streams, an optional link button for public sites (YouTube, SoundCloud, Bandcamp, Vimeo, Twitch, Internet Archive), the title or artist instead of the app name in the member list, the album as the picture's tooltip, an https image URL as the large image. Fixes: the timer follows the playback speed (no resend every few seconds at 1.5×), at most 5 updates per 20 s (Discord drops the rest), no padded empty status line, a hanging Discord no longer blocks the helper, Connection status is a clean Vivi toast (no JSON quotes) in plain words (“Discord did not answer”) and no longer shows a stale state after a settings change; two settings changed in a row can no longer leave two helpers running (an old one, e.g. still showing titles after Hide titles was turned on); while a stream opens the previous status stays instead of flashing the host name. On Vivi 0.13+ titles, artist, album and cover come from Vivi's shared now-playing track (tags, library, radio titles and music-package metadata merged); a music package's stream counts as music. README rewritten with what is sent to Discord.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/discord-1.1.0.zip"
+          "notes": "Privacy: video titles are hidden by default (new Hide video titles, on: videos show only “Watching a video”, music keeps its titles); stream URLs are never shown as the title (a stream without tags shows its file name or host, never tokens or query strings), file names lose their extension, nothing is shown for finished files or still images; new Show for: Music only. New: YouTube thumbnail as the picture for YouTube streams, an optional link button for public sites (YouTube, SoundCloud, Bandcamp, Vimeo, Twitch, Internet Archive), the title or artist instead of the app name in the member list, the album as the picture's tooltip, an https image URL as the large image. Fixes: the timer follows the playback speed (no resend every few seconds at 1.5×), at most 5 updates per 20 s (Discord drops the rest), no padded empty status line, a hanging Discord no longer blocks the helper, Connection status is a clean Vivi toast (no JSON quotes) in plain words (“Discord did not answer”) and no longer shows a stale state after a settings change; two settings changed in a row can no longer leave two helpers running (an old one, e.g. still showing titles after Hide titles was turned on); while a stream opens the previous status stays instead of flashing the host name. On Vivi 0.13+ titles, artist, album and cover come from Vivi's shared now-playing track (tags, library, radio titles and music-package metadata merged); a music package's stream counts as music. README rewritten with what is sent to Discord."
         },
         {
           "version": "1.0.0",
@@ -1237,43 +1242,7 @@
       "needs": [
         "vivi-discord"
       ],
-      "binaries": [
-        {
-          "name": "vivi-discord",
-          "platform": "linux-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-linux-x86_64",
-          "sha256": "2a704b6ba21d72d84ad3c3776ef8bfdb2ed7b3897bfc081b23a891b8285df769",
-          "size": 496336
-        },
-        {
-          "name": "vivi-discord",
-          "platform": "linux-aarch64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-linux-aarch64",
-          "sha256": "0ad8ee86b2a7db805ecc9b1d468ce35425c3240f8f6079276db524a181813915",
-          "size": 463024
-        },
-        {
-          "name": "vivi-discord",
-          "platform": "windows-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-windows-x86_64.exe",
-          "sha256": "293881c9424a5d0c6ae2a72c0ffd0079c072add828dd5b9265724fe2996e033d",
-          "size": 223744
-        },
-        {
-          "name": "vivi-discord",
-          "platform": "macos-x86_64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-macos-x86_64",
-          "sha256": "3b760b71deaf378f1fec44fc8cd81586d031b9fce800a192e14e100534c153eb",
-          "size": 374912
-        },
-        {
-          "name": "vivi-discord",
-          "platform": "macos-aarch64",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-discord-v1.1.0/vivi-discord-macos-aarch64",
-          "sha256": "971225c65986be57de81f8896951d22a4bfc81eb31de64043db42bab12dcd2ad",
-          "size": 369712
-        }
-      ]
+      "binaries": []
     },
     {
       "id": "equalizer",

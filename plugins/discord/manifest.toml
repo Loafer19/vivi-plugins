@@ -1,7 +1,7 @@
 id = "discord"
 name = "Discord Rich Presence"
-version = "1.1.0"
-description = "Shows what you play in your Discord status: title, artist, progress, YouTube thumbnails, optional link button; privacy options to hide names or videos. Needs a Discord application ID; Discord must be running on this computer. Ships a small native helper (vivi-discord) that talks to Discord's local IPC."
+version = "1.2.0"
+description = "Shows what you play in your Discord status: title, artist, progress, YouTube thumbnails, optional link button; privacy options to hide names or videos. Works right after install through Vivi's own Discord application (a custom application ID is optional); the Discord desktop app must be running on this computer. Ships a small native helper (vivi-discord) that talks to Discord's local IPC."
 author = "Vivi"
 kind = "mpv-lua"
 entry = "discord.lua"
@@ -15,7 +15,7 @@ binaries = ["vivi-discord"]
 
 [[settings]]
 key = "app-id"
-title = "Discord application ID (from discord.com/developers/applications)"
+title = "Custom Discord application ID (optional; empty = Vivi's own)"
 type = "text"
 default = ""
 
@@ -59,7 +59,7 @@ default = "false"
 
 [[settings]]
 key = "image"
-title = "Large image: art asset key of your Discord app or an https URL"
+title = "Large image: an https URL or an art asset key of your Discord app (empty = Vivi logo)"
 type = "text"
 default = ""
 
