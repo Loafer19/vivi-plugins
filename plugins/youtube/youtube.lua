@@ -1,9 +1,19 @@
 -- @name YouTube & yt-dlp
--- @version 1.2.2
+-- @version 1.3.0
 -- @author Vivi
 -- @description List, size and download YouTube (and other yt-dlp) videos and playlists.
 --
 -- Keys: Alt+u  paste a URL from the clipboard and add its entries to the playlist
+--
+-- Needs Vivi 0.13+ (host API): the YouTube source opens Vivi's music dialog to search YouTube
+-- or list a pasted video / playlist / channel link (rows with thumbnails; Play, Queue,
+-- Download, Download audio), queued videos get their title, channel and thumbnail on the
+-- now-playing card (vivi-media-meta), and downloads are rows in Vivi's Downloads panel
+-- (vivi-download: progress, Cancel, Retry, Play / Show in folder). In a plain mpv progress
+-- is shown on the OSD.
+--
+-- Every URL handed to yt-dlp comes after "--", so a URL setting such as "--exec=…" can
+-- never be read as an option, and only http(s) URLs are accepted.
 --
 -- yt-dlp: a system copy is preferred when it is recent (released in the last 90 days):
 -- PATH and common install folders. Otherwise the plugin downloads its own copy from the official GitHub releases
@@ -32,8 +42,10 @@ local mp = require "mp"
 local options = require "mp.options"
 local utils = require "mp.utils"
 
+local ID = "youtube"
 local o = {
   url = "",
+  view = "List",
   quality = "1080p",
   mode = "Video",
   ["audio-format"] = "Original",
@@ -58,14 +70,15 @@ local FLATPAK = utils.file_info("/.flatpak-info") ~= nil
 
 local ytdlp = nil      -- { cmd = {...}, kind = "system"|"managed", version, path }
 local resolving = nil  -- callbacks waiting for detection
-local ffmpeg = nil     -- true/false once checked
 local job = nil        -- running download
 local info_cache = {}  -- url -> yt-dlp JSON (single video)
 
+-- Inside Vivi (it always sets pkgdir) messages are Vivi toasts; mpv's OSD is only drawn
+-- into the video, so it is used only when the script runs in a plain mpv.
 local function toast(msg, secs)
   mp.msg.info(msg)
-  mp.osd_message(msg, secs or 3)
-  mp.commandv("script-message", "vivi-toast", msg)
+  if (o.pkgdir or "") == "" then return mp.osd_message(msg, secs or 3) end
+  mp.commandv("script-message", "vivi-toast", msg, tostring(secs or 3))
 end
 
 local function run(args, cb, capture)
@@ -203,7 +216,10 @@ local function install_managed(cb)
       local tmp = MANAGED .. ".part"
       toast("Downloading yt-dlp (" .. asset .. ")…", 5)
       run({ "curl", "-fsSL", "--retry", "2", "-o", tmp, RELEASES .. asset }, function(r)
-        if r.status ~= 0 then return cb(nil, "yt-dlp download failed: " .. (r.stderr or r.error_string or "")) end
+        if r.status ~= 0 then
+          os.remove(tmp)
+          return cb(nil, "yt-dlp download failed: " .. (r.stderr or r.error_string or ""))
+        end
         run({ "curl", "-fsSL", RELEASES .. "SHA2-256SUMS" }, function(s)
           local want
           for h, n in (s.stdout or ""):gmatch("(%x+)%s+%*?([^\r\n]+)") do
@@ -315,8 +331,16 @@ local function with_ytdlp(cb)
   end)
 end
 
-local function ytdlp_json(y, args, cb)
-  run(concat(y.cmd, concat({ "-J", "--no-warnings" }, args)), function(r)
+-- An http(s) URL without white space or control characters, else nil.
+local function valid_url(u)
+  u = tostring(u or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if u:match("^[Hh][Tt][Tt][Pp][Ss]?://[^%s%c]+$") then return u end
+  return nil
+end
+
+-- yt-dlp -J for `target` (a URL or "ytsearchN:query"), always after "--".
+local function ytdlp_json(y, args, target, cb)
+  run(concat(y.cmd, concat(concat({ "-J", "--no-warnings" }, args), { "--", target })), function(r)
     if r.status ~= 0 then
       local e = (r.stderr or ""):match("ERROR: ([^\n]+)") or r.error_string or "yt-dlp failed"
       return cb(nil, e)
@@ -379,8 +403,10 @@ local function estimate(info, q, audio_only, ff)
   return nil, nil
 end
 
-local function format_args(ff)
-  if o.mode == "Audio only" then
+-- mode: "Video" | "Audio only" (default: the setting).
+local function format_args(ff, mode)
+  mode = mode or o.mode
+  if mode == "Audio only" then
     local a = { "-f", "ba/b" }
     local af = o["audio-format"]
     if af ~= "Original" then
@@ -643,8 +669,8 @@ local function maybe_update_ffmpeg()
 end
 
 -- Whether the current settings need ffmpeg (and may download it).
-local function needs_ffmpeg()
-  if o.mode == "Audio only" then return o["audio-format"] ~= "Original" end
+local function needs_ffmpeg(mode)
+  if (mode or o.mode) == "Audio only" then return o["audio-format"] ~= "Original" end
   return height_limit(o.quality) >= 1080
 end
 
@@ -664,27 +690,36 @@ local function size_list(info, ff)
   return table.concat(parts, " · ")
 end
 
-local function current_url()
-  local u = (o.url or ""):gsub("^%s+", ""):gsub("%s+$", "")
-  if u ~= "" then return u end
-  local p = mp.get_property("path", "")
-  if p:match("^https?://") then return p end
-  return nil
+-- The playing http(s) URL, or nil.
+local function playing_url()
+  return valid_url(mp.get_property("path", ""))
 end
 
--- One video's info (first entry for a playlist URL), cached per URL.
+-- The URL setting, else the playing URL: url, from_setting. A URL setting that is not an
+-- http(s) URL is refused (it would reach yt-dlp's command line).
+local function current_url()
+  local u = (o.url or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if u ~= "" then
+    local v = valid_url(u)
+    if not v then return nil, "not an http(s) URL: " .. u:sub(1, 60) end
+    return v, true
+  end
+  return playing_url(), false
+end
+
+-- One video's info (first entry for a playlist URL), cached per URL. Only the first entry
+-- of a playlist is extracted (--playlist-items 1), not the whole list.
 local function video_info(y, url, cb)
   if info_cache[url] then return cb(info_cache[url]) end
-  ytdlp_json(y, { "--no-playlist", url }, function(j, e)
+  ytdlp_json(y, { "--playlist-items", "1" }, url, function(j, e)
     if not j then return cb(nil, e) end
     if j._type == "playlist" then
       local first = j.entries and j.entries[1]
-      if not first then return cb(nil, "empty playlist") end
-      return ytdlp_json(y, { "--no-playlist", first.webpage_url or first.url }, function(v, e2)
-        if v then v._playlist = j.title end
-        info_cache[url] = v
-        cb(v, e2)
-      end)
+      if type(first) ~= "table" then return cb(nil, "empty playlist") end
+      first._playlist = j.title
+      first._count = j.playlist_count
+      info_cache[url] = first
+      return cb(first)
     end
     info_cache[url] = j
     cb(j)
@@ -693,40 +728,140 @@ end
 
 -- ---------- actions ----------
 
-local function entry_url(e)
-  local u = e.webpage_url or e.url
-  if u and u:match("^https?://") then return u end
-  if e.ie_key == "Youtube" or (e.extractor_key or "") == "Youtube" then
-    return "https://www.youtube.com/watch?v=" .. (e.id or u or "")
-  end
-  return u
+local NAME = "YouTube"
+
+-- Vivi (0.13+, min_vivi) sets user-data/vivi/downloads: downloads are rows in its panel.
+-- Unset only in a plain mpv, where progress goes to the OSD instead.
+local function panel()
+  return tostring(mp.get_property_native("user-data/vivi/downloads", "")) == "1"
 end
 
-local function append(url, title)
-  if title and title ~= "" then
-    mp.command_native({ "loadfile", url, "append-play", -1, "force-media-title=%" .. #title .. "%" .. title })
-  else
-    mp.commandv("loadfile", url, "append-play")
+-- "mpv v0.38.0", "mpv 0.40.0-dev" -> whether the minor version is at least `minor`.
+local function mpv_at_least(v, minor)
+  local maj, mi = tostring(v or ""):match("(%d+)%.(%d+)")
+  if not maj then return true end
+  return tonumber(maj) > 0 or tonumber(mi) >= minor
+end
+
+local function fmt_dur(s)
+  s = tonumber(s)
+  if not s or s <= 0 then return "" end
+  s = math.floor(s + 0.5)
+  local h, m, sec = math.floor(s / 3600), math.floor(s % 3600 / 60), s % 60
+  if h > 0 then return string.format("%d:%02d:%02d", h, m, sec) end
+  return string.format("%d:%02d", m, sec)
+end
+
+local function short_count(n)
+  n = tonumber(n)
+  if not n then return nil end
+  if n >= 1e9 then return string.format("%.1fB", n / 1e9) end
+  if n >= 1e6 then return string.format("%.1fM", n / 1e6) end
+  if n >= 1e3 then return string.format("%.0fK", n / 1e3) end
+  return tostring(math.floor(n))
+end
+
+local function is_youtube(e)
+  return e.ie_key == "Youtube" or (e.extractor_key or "") == "Youtube"
+end
+
+-- Playlists and channels (listed, not played) in flat yt-dlp output.
+local function is_container(e)
+  return e._type == "playlist" or e.ie_key == "YoutubeTab" or (e.extractor_key or "") == "YoutubeTab"
+end
+
+-- The entry's http(s) URL (flat entries of YouTube may only carry the video id), or nil.
+local function entry_url(e)
+  local u = e.webpage_url or e.url
+  local v = valid_url(u)
+  if v then return v end
+  if is_youtube(e) and tostring(e.id or u or ""):match("^[%w_-]+$") then
+    return "https://www.youtube.com/watch?v=" .. (e.id or u)
   end
+  return nil
+end
+
+-- A small thumbnail URL of an entry (YouTube: i.ytimg.com by id), or "".
+local function thumb(e)
+  local best, bw
+  for _, t in ipairs(e.thumbnails or {}) do
+    local w = tonumber(t.width) or 0
+    if valid_url(t.url) and (not best or (w <= 480 and w > bw) or (bw > 480 and w < bw)) then best, bw = t.url, w end
+  end
+  if best then return best end
+  if valid_url(e.thumbnail) then return e.thumbnail end
+  if is_youtube(e) and not is_container(e) and tostring(e.id or ""):match("^[%w_-]+$") then
+    return "https://i.ytimg.com/vi/" .. e.id .. "/mqdefault.jpg"
+  end
+  return ""
+end
+
+local function channel(e)
+  return e.channel or e.uploader or e.playlist_uploader or ""
+end
+
+-- Title, channel and thumbnail of queued URLs for Vivi's now-playing card and the shared
+-- now playing.
+local function describe(list)
+  local items = {}
+  for _, e in ipairs(list) do
+    local u = entry_url(e)
+    if u and e.title then
+      items[#items + 1] = { url = u, title = e.title, artist = channel(e), cover = thumb(e), info = NAME,
+        kind = "video", duration = tonumber(e.duration) }
+    end
+  end
+  if #items > 0 then mp.commandv("script-message", "vivi-media-meta", ID, utils.format_json({ items = items })) end
+end
+
+-- mode: "append-play" (queue) or "replace" (play now).
+local function loadfile(url, title, mode)
+  mode = mode or "append-play"
+  if title and title ~= "" then
+    local opts = "force-media-title=%" .. #title .. "%" .. title
+    if mpv_at_least(mp.get_property("mpv-version", ""), 38) then
+      mp.command_native({ "loadfile", url, mode, -1, opts })
+    else
+      mp.command_native({ "loadfile", url, mode, opts })
+    end
+  else
+    mp.commandv("loadfile", url, mode)
+  end
+end
+
+local function queue(list, mode)
+  local n, first = 0, true
+  local queued = {}
+  for _, e in ipairs(list) do
+    local u = entry_url(e)
+    if u and not is_container(e) then
+      loadfile(u, e.title, (mode == "replace" and first) and "replace" or "append-play")
+      first = false
+      n = n + 1
+      queued[#queued + 1] = e
+    end
+  end
+  describe(queued)
+  return n
 end
 
 local function add_to_playlist(url)
-  url = url or current_url()
-  if not url then return toast("Enter a video or playlist URL in the YouTube plugin settings (or press Alt+U)") end
+  local err
+  if not url then url, err = current_url() end
+  if not url then
+    return toast(err and ("YouTube: " .. err) or "Enter a video or playlist URL in the YouTube plugin settings (or press Alt+U)", 5)
+  end
   with_ytdlp(function(y)
     toast("Reading " .. url .. "…", 2)
-    ytdlp_json(y, { "--flat-playlist", url }, function(j, e)
+    ytdlp_json(y, { "--flat-playlist" }, url, function(j, e)
       if not j then return toast("YouTube: " .. e, 6) end
       if j._type == "playlist" then
-        local n = 0
-        for _, it in ipairs(j.entries or {}) do
-          local u = entry_url(it)
-          if u then append(u, it.title) n = n + 1 end
-        end
+        local n = queue(j.entries or {})
         toast(string.format("Added %d entries from %s", n, j.title or "the playlist"), 4)
       else
         if j.formats then info_cache[url] = j end
-        append(j.webpage_url or url, j.title)
+        j.webpage_url = j.webpage_url or url
+        queue({ j })
         toast("Added " .. (j.title or url), 3)
       end
     end)
@@ -734,8 +869,8 @@ local function add_to_playlist(url)
 end
 
 local function show_sizes()
-  local url = current_url()
-  if not url then return toast("Enter a video URL first") end
+  local url, err = current_url()
+  if not url then return toast(err and ("YouTube: " .. err) or "Enter a video URL first") end
   with_ytdlp(function(y)
     toast("Checking sizes…", 2)
     get_ffmpeg(false, function(ff)
@@ -752,95 +887,372 @@ local function default_folder()
   return HOME .. SEP .. "Downloads" .. SEP .. "Vivi"
 end
 
-local log_timer, last_progress
+-- ---------- downloads (one at a time, queued; Vivi's Downloads panel when it has one) ----------
 
-local function read_progress(log)
-  local f = io.open(log, "r")
-  if not f then return end
-  local s = f:read("*a")
-  f:close()
-  local line
-  for l in s:gmatch("%[vivi%][^\r\n]*") do line = l end
-  if not line or line == last_progress then return end
-  last_progress = line
-  local pct, total, eta, idx, n, title = line:match("^%[vivi%] *([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|(.*)$")
-  if not pct then return end
-  local msg = "Downloading " .. pct:gsub("%s", "")
-  if total ~= "" and total ~= "NA" and total ~= "N/A" then msg = msg .. " of " .. total:gsub("^%s+", "") end
-  if eta ~= "" and eta ~= "NA" and eta ~= "Unknown" then msg = msg .. ", ETA " .. eta:gsub("%s", "") end
-  if idx ~= "NA" and n ~= "NA" and idx ~= "" then msg = msg .. " (" .. idx .. "/" .. n .. ")" end
-  if title ~= "" then msg = msg .. " · " .. title end
-  mp.commandv("script-message", "vivi-toast", msg)
+local LOG_DIR = DATA .. SEP .. "logs"
+local PROGRESS = "download:[vivi] %(progress.downloaded_bytes)s|%(progress.total_bytes,progress.total_bytes_estimate)s|%(progress.eta)s|%(progress.speed)s|%(info.playlist_index)s|%(info.n_entries)s|%(info.title)s"
+
+local jobs, order = {}, {} -- job id -> job; ids in the order they were added
+local active = nil         -- the running job
+local seq = 0
+
+local function report(j, t)
+  if panel() then mp.commandv("script-message", "vivi-download", ID, j.id, utils.format_json(t)) end
 end
 
-local function download()
-  if job then return toast("A download is already running (Cancel stops it)") end
-  local url = current_url()
-  if not url then return toast("Enter a video or playlist URL first") end
+-- The last "[vivi] …" progress line of a log: { done, total, eta, speed, idx, n, title } or nil.
+local function parse_progress(s)
+  local line
+  for l in (s or ""):gmatch("%[vivi%][^\r\n]*") do line = l end
+  if not line then return nil end
+  local d, t, eta, sp, idx, n, title = line:match("^%[vivi%] *([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|([^|]*)|(.*)$")
+  if not d then return nil end
+  return { line = line, done = tonumber(d), total = tonumber(t), eta = tonumber(eta), speed = tonumber(sp),
+    idx = tonumber(idx), n = tonumber(n), title = title ~= "NA" and title or nil }
+end
+
+-- Final paths yt-dlp printed (`--print after_move:[vivi-file] %(filepath)s`).
+local function printed_files(s)
+  local out = {}
+  for f in (s or ""):gmatch("%[vivi%-file%] ([^\r\n]+)") do out[#out + 1] = f end
+  return out
+end
+
+local function progress_text(p)
+  local msg = "Downloading"
+  if p.done and p.total and p.total > 0 then
+    msg = string.format("%s %.0f%% of %s", msg, p.done * 100 / p.total, human(p.total))
+  end
+  if p.eta then msg = msg .. ", ETA " .. fmt_dur(p.eta) end
+  if p.idx and p.n then msg = msg .. string.format(" (%d/%d)", p.idx, p.n) end
+  if p.title then msg = msg .. " · " .. p.title end
+  return msg
+end
+
+-- yt-dlp arguments of a download (without the yt-dlp command itself).
+local function download_args(j, folder, ff, ffi)
+  local audio = j.audio
+  local a = { "--newline", "--progress", "--no-colors", j.no_playlist and "--no-playlist" or "--yes-playlist",
+    "--progress-template", PROGRESS,
+    "--print", "after_move:[vivi-file] %(filepath)s",
+    -- Audio gets its own name: -x deletes its source file, which could be a video
+    -- downloaded earlier under the same name.
+    "-P", folder, "-o", "%(playlist_index&{} - |)s%(title)s [%(id)s]" .. (audio and " (audio)" or "") .. ".%(ext)s" }
+  a = concat(a, format_args(ff, audio and "Audio only" or "Video"))
+  if ffi then a = concat(a, { "--ffmpeg-location", ffi.dir }) end
+  return concat(a, { "--", j.url })
+end
+
+local pump
+
+local function finish(j, state, t, msg, secs)
+  j.state = state
+  if active == j then active = nil end
+  report(j, t)
+  if msg then toast(msg, secs) end
+  pump()
+end
+
+local function start(j)
+  active = j
+  j.state = "active"
+  j.cancelled = false
+  report(j, { state = "active", detail = "Starting…" })
   with_ytdlp(function(y)
-    get_ffmpeg(needs_ffmpeg(), function(ffi)
+    local mode = j.audio and "Audio only" or "Video"
+    get_ffmpeg(needs_ffmpeg(mode), function(ffi)
+      if j.cancelled then return finish(j, "failed", { state = "cancelled", error = "Cancelled" }) end
       local ff = ffi ~= nil
-      if not ff and needs_ffmpeg() then
-        return toast("Download needs ffmpeg, which could not be installed; pick a lower quality or Original audio", 8)
+      if not ff and needs_ffmpeg(mode) then
+        return finish(j, "failed", { state = "failed", error = "needs ffmpeg, which could not be installed" },
+          "Download needs ffmpeg, which could not be installed; pick a lower quality or Original audio", 8)
       end
       local folder = (o.folder or ""):gsub("^%s+", ""):gsub("%s+$", "")
       if folder == "" then folder = default_folder() end
       folder = folder:gsub("^~", HOME)
-      local function start()
-        mkdir(folder, function()
-          local log = (os.getenv("TMPDIR") or os.getenv("TEMP") or "/tmp") .. SEP .. "vivi-ytdlp-" .. mp.get_property("pid", "0") .. ".log"
+      local function go()
+        mkdir(folder, function() mkdir(LOG_DIR, function()
+          if j.cancelled then return finish(j, "failed", { state = "cancelled", error = "Cancelled" }) end
+          local log = LOG_DIR .. SEP .. j.id .. ".log"
           os.remove(log)
-          last_progress = nil
-          local args = concat(y.cmd, concat({
-            "--newline", "--progress", "--no-colors", "--yes-playlist",
-            "--progress-template",
-            "download:[vivi] %(progress._percent_str)s|%(progress._total_bytes_str,progress._total_bytes_estimate_str)s|%(progress._eta_str)s|%(info.playlist_index)s|%(info.n_entries)s|%(info.title)s",
-            -- Audio gets its own name: -x deletes its source file, which could be a video
-            -- downloaded earlier under the same name.
-            "-P", folder, "-o", "%(playlist_index&{} - |)s%(title)s [%(id)s]" .. (o.mode == "Audio only" and " (audio)" or "") .. ".%(ext)s",
-          }, concat(format_args(ff), ffi and { "--ffmpeg-location", ffi.dir, url } or { url })))
+          local args = concat(y.cmd, download_args(j, folder, ff, ffi))
+          local timer, last
           if not windows then
             args = concat({ "sh", "-c", 'log=$1; shift; exec "$@" >"$log" 2>&1', "sh", log }, args)
-            log_timer = mp.add_periodic_timer(2, function() read_progress(log) end)
+            timer = mp.add_periodic_timer(2, function()
+              local f = io.open(log, "r")
+              if not f then return end
+              local p = parse_progress(f:read("*a"))
+              f:close()
+              if not p or p.line == last then return end
+              last = p.line
+              local share = p.done and p.total and p.total > 0 and p.done / p.total or nil
+              report(j, { state = "active", done = p.done or 0, total = p.total or 0, speed = p.speed,
+                progress = share, detail = p.idx and p.n and string.format("%d / %d · %s", p.idx, p.n, p.title or "") or nil })
+              if not panel() then toast(progress_text(p), 3) end
+            end)
           end
-          local me
-          me = run(args, function(r)
-            if job == me then job = nil end
-            if log_timer then log_timer:kill() log_timer = nil end
-            local out = (r.stderr or "")
+          j.cmd = run(args, function(r)
+            j.cmd = nil
+            if timer then timer:kill() end
+            local out = (r.stdout or "") .. (r.stderr or "")
             local f = io.open(log, "r")
             if f then out = out .. f:read("*a") f:close() end
             os.remove(log)
-            if r.killed_by_us then
-              toast("Download cancelled")
+            local files = printed_files(out)
+            if r.killed_by_us or j.cancelled then
+              return finish(j, "failed", { state = "cancelled", error = "Cancelled" }, "Download cancelled")
             elseif r.status == 0 then
-              toast("Downloaded to " .. folder, 6)
-            else
-              toast("Download failed: " .. (out:match("ERROR: ([^\n]+)") or r.error_string or "yt-dlp error"), 8)
+              local path = files[#files]
+              local fi = path and utils.file_info(path)
+              local what = #files > 1 and string.format("%d files", #files) or (path and path:match("([^/\\]+)$")) or "done"
+              return finish(j, "done", { state = "done", path = path, done = fi and fi.size, total = fi and fi.size,
+                progress = 1, detail = #files > 1 and string.format("%d files in %s", #files, folder) or nil },
+                "Downloaded " .. what .. " to " .. folder, 6)
             end
-          end, false)
-          job = me
-        end)
+            local e = out:match("ERROR: ([^\n]+)") or r.error_string or "yt-dlp error"
+            finish(j, "failed", { state = "failed", error = e }, "Download failed: " .. e, 8)
+          end, windows) -- Windows has no sh: capture stdout for the printed file names
+        end) end)
       end
       -- Estimated size first (single videos; playlists say how many entries).
-      video_info(y, url, function(info)
-        local what = o.mode == "Audio only" and "audio" or o.quality
+      video_info(y, j.url, function(info)
+        local what = j.audio and "audio" or o.quality
         if info then
-          local s = estimate(info, o.quality, o.mode == "Audio only", ff)
+          local s = estimate(info, o.quality, j.audio, ff)
+          j.title = j.title or info._playlist or info.title
+          j.art = j.art or thumb(info)
+          report(j, { title = j.title, artwork = j.art ~= "" and j.art or nil, subtitle = channel(info), state = "active",
+            total = (not info._playlist and s) and math.floor(s) or 0 })
           local pl = info._playlist and (" each, playlist " .. info._playlist) or ""
-          toast(string.format("Downloading %s (%s ≈ %s%s) to %s", info.title or url, what, human(s), pl, folder), 5)
+          toast(string.format("Downloading %s (%s ≈ %s%s) to %s", info.title or j.url, what, human(s), pl, folder), 5)
         else
-          toast("Downloading " .. url .. " to " .. folder, 4)
+          toast("Downloading " .. j.url .. " to " .. folder, 4)
         end
-        start()
+        go()
       end)
     end)
   end)
 end
 
+pump = function()
+  if active then return end
+  for _, id in ipairs(order) do
+    local j = jobs[id]
+    if j and j.state == "queued" then return start(j) end
+  end
+end
+
+-- Queue a download: url (http(s)), opts { audio, title, art, no_playlist }.
+local function enqueue(url, opts)
+  opts = opts or {}
+  local u = valid_url(url)
+  if not u then return toast("YouTube: not an http(s) URL") end
+  seq = seq + 1
+  local j = { id = string.format("yt-%d-%d", os.time(), seq), url = u, audio = opts.audio or false,
+    title = opts.title, art = opts.art, no_playlist = opts.no_playlist, state = "queued" }
+  jobs[j.id] = j
+  order[#order + 1] = j.id
+  report(j, { title = j.title or u, artwork = (j.art and j.art ~= "") and j.art or nil, state = "queued",
+    subtitle = j.audio and "Audio" or o.quality })
+  if active then toast("Queued: " .. (j.title or u) .. " (after the running download)", 3) end
+  pump()
+  return j
+end
+
+-- The URL setting (playlists allowed), else the playing video (only that video, even
+-- when its URL names a playlist).
+local function download(audio)
+  local url, from_setting = current_url()
+  if not url then
+    return toast(type(from_setting) == "string" and ("YouTube: " .. from_setting)
+      or "Enter a video or playlist URL first, or play a video", 5)
+  end
+  enqueue(url, { audio = audio == nil and o.mode == "Audio only" or audio, no_playlist = not from_setting })
+end
+
+local function download_current(audio)
+  local url = playing_url()
+  if not url then return toast("Play a YouTube (or other yt-dlp) video first") end
+  enqueue(url, { audio = audio == nil and o.mode == "Audio only" or audio, no_playlist = true,
+    title = mp.get_property("media-title") })
+end
+
+local function cancel_job(id)
+  local j = jobs[id or ""]
+  if not j then return end
+  j.cancelled = true
+  if j.cmd then return mp.abort_async_command(j.cmd) end
+  if j.state == "queued" then
+    j.state = "failed"
+    report(j, { state = "cancelled", error = "Cancelled" })
+  end
+end
+
+local function retry_job(id)
+  local j = jobs[id or ""]
+  if not j then return toast("This download is from an earlier session: start it again") end
+  if j.state == "active" or j.state == "queued" then return end
+  j.state = "queued"
+  j.cancelled = false
+  report(j, { state = "queued", error = "" })
+  pump()
+end
+
+-- Settings "Cancel": the running download and everything queued.
 local function cancel()
-  if not job then return toast("No download is running") end
-  mp.abort_async_command(job)
+  local any = false
+  for _, id in ipairs(order) do
+    local j = jobs[id]
+    if j and (j.state == "queued" or j.state == "active") then any = true cancel_job(id) end
+  end
+  if not any then toast("No download is running") end
+end
+
+-- ---------- search / browse dialog ----------
+
+local S = { open = false, items = {}, sel = nil, q = "", n = 30, back = {}, title = nil, req = 0, more = false }
+local SEARCH_STEP, SEARCH_MAX = 30, 150
+
+local function send_dialog(t)
+  mp.commandv("script-message", "vivi-dialog", ID, utils.format_json(t))
+end
+
+local function rows()
+  local out = {}
+  for i, e in ipairs(S.items) do
+    local sub = {}
+    if channel(e) ~= "" then sub[#sub + 1] = channel(e) end
+    local v = short_count(e.view_count)
+    if v then sub[#sub + 1] = v .. " views" end
+    if is_container(e) and e.playlist_count then sub[#sub + 1] = e.playlist_count .. " videos" end
+    out[#out + 1] = { title = e.title or entry_url(e) or "?", sub = table.concat(sub, " · "),
+      dur = (e.live_status == "is_live" and "LIVE") or fmt_dur(e.duration), cover = thumb(e),
+      badge = is_container(e) and "Playlist" or (e.live_status == "is_live" and "Live" or ""),
+      dl = entry_url(e) ~= nil, selected = i == S.sel }
+  end
+  return out
+end
+
+local function actions()
+  local a = {}
+  if #S.back > 0 then a[#a + 1] = "‹ Back" end
+  for _, x in ipairs({ "Queue", "Queue all", "Download audio" }) do a[#a + 1] = x end
+  return a
+end
+
+local function show(status)
+  local n = #S.items
+  send_dialog({ rows = rows(), busy = false, actions = actions(), has_more = S.more,
+    status = status or (S.title and (S.title .. " · ") or "") .. (n == 1 and "1 result" or (n .. " results")) })
+end
+
+-- q: a link (listed as it is: video, playlist, channel) or a search.
+local function load(q, keep)
+  q = tostring(q or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if q == "" then return show("Type something to search YouTube, or paste a link") end
+  S.q = q
+  if not keep then S.n = SEARCH_STEP end
+  S.req = S.req + 1
+  local req = S.req
+  send_dialog({ busy = true, status = valid_url(q) and "Reading the link…" or "Searching YouTube…" })
+  with_ytdlp(function(y)
+    local target = valid_url(q) or string.format("ytsearch%d:%s", S.n, q)
+    ytdlp_json(y, { "--flat-playlist" }, target, function(j, e)
+      if req ~= S.req or not S.open then return end -- a newer search, or closed meanwhile
+      if not j then
+        S.items = {}
+        return show("YouTube: " .. tostring(e))
+      end
+      if j._type == "playlist" then
+        S.items = {}
+        for _, it in ipairs(j.entries or {}) do if type(it) == "table" then S.items[#S.items + 1] = it end end
+        S.title = valid_url(q) and j.title or nil
+        S.more = not valid_url(q) and #S.items >= S.n and S.n < SEARCH_MAX
+      else
+        j.webpage_url = j.webpage_url or valid_url(q)
+        S.items, S.title, S.more = { j }, nil, false
+      end
+      S.sel = nil
+      show()
+    end)
+  end)
+end
+
+local function open()
+  S.open = true
+  send_dialog({ open = true, title = NAME, placeholder = "Search YouTube, or paste a video, playlist or channel link",
+    search_label = "Search", query = S.q, primary = "Play", secondary = "Download", grid_toggle = true,
+    grid = o.view == "Grid", rows = rows(), actions = actions(), status = #S.items == 0 and "Search YouTube, or paste a link" or nil })
+end
+
+local function index(args)
+  local i = tonumber((args or {})[1])
+  if i and i >= 0 then return math.floor(i) + 1 end -- the dialog counts from 0; -1: none
+end
+
+local function on_ui(json)
+  local e = utils.parse_json(json or "")
+  if type(e) ~= "table" then return end
+  local ev, args = tostring(e.event or ""), e.args or {}
+  local function item() local i = index(args) or S.sel if i then S.sel = i end return S.sel and S.items[S.sel] end
+  if ev == "search" then
+    S.back = {}
+    load(e.query)
+  elseif ev == "select" then
+    local it = item()
+    if it then send_dialog({ copy = entry_url(it) or "" }) end
+  elseif ev == "primary" then
+    local it = item()
+    if not it then return end
+    if is_container(it) then
+      local u = entry_url(it)
+      if not u then return end
+      S.back[#S.back + 1] = { q = S.q, items = S.items, title = S.title, more = S.more, n = S.n }
+      load(u)
+    else
+      queue({ it }, "replace")
+    end
+  elseif ev == "secondary" then
+    local it = item()
+    if it and entry_url(it) then enqueue(entry_url(it), { title = it.title, art = thumb(it), no_playlist = not is_container(it) }) end
+  elseif ev:sub(1, 4) == "act:" then
+    local a = ev:sub(5)
+    if a == "‹ Back" then
+      local b = table.remove(S.back)
+      if b then
+        S.q, S.items, S.title, S.more, S.n, S.sel = b.q, b.items, b.title, b.more, b.n, nil
+        send_dialog({ query = S.q })
+        show()
+      end
+    elseif a == "Queue" then
+      local it = item()
+      if not it then return toast("Select a video first") end
+      if is_container(it) then return add_to_playlist(entry_url(it)) end
+      if queue({ it }) > 0 then toast("Queued “" .. (it.title or "") .. "”", 2) end
+    elseif a == "Queue all" then
+      local n = queue(S.items)
+      toast(string.format("Queued %d videos", n), 3)
+    elseif a == "Download audio" then
+      local it = item()
+      if it and entry_url(it) then
+        enqueue(entry_url(it), { audio = true, title = it.title, art = thumb(it), no_playlist = not is_container(it) })
+      else
+        toast("Select a video first")
+      end
+    end
+  elseif ev == "more" then
+    if S.more then
+      S.n = math.min(SEARCH_MAX, S.n + SEARCH_STEP)
+      load(S.q, true)
+    end
+  elseif ev == "view" then
+    o.view = tostring(args[1] or ""):lower() == "grid" and "Grid" or "List"
+    mp.commandv("script-message", "vivi-setting", ID, "view", o.view)
+  elseif ev == "close" then
+    S.open = false
+    S.req = S.req + 1
+  end
 end
 
 local function show_info()
@@ -856,30 +1268,34 @@ local function show_info()
 end
 
 local function paste()
-  local t = mp.get_property("clipboard/text", "") or ""
-  t = t:gsub("^%s+", ""):gsub("%s+$", "")
-  if not t:match("^https?://%S+$") then
+  local t = valid_url(mp.get_property("clipboard/text", "") or "")
+  if not t then
     return toast("No URL in the clipboard (paste it into the YouTube plugin settings instead)")
   end
   o.url = t
-  mp.commandv("script-message", "vivi-setting", "youtube", "url", t)
+  mp.commandv("script-message", "vivi-setting", ID, "url", t)
   add_to_playlist(t)
 end
 
 local last_source = o.source
-options.read_options(o, "youtube", function()
+options.read_options(o, ID, function()
   if o.source ~= last_source then
     last_source = o.source
     ytdlp = nil
-    ffmpeg = nil
   end
 end)
 last_source = o.source
 
 mp.register_script_message("add", function() add_to_playlist() end)
 mp.register_script_message("sizes", show_sizes)
-mp.register_script_message("download", download)
+mp.register_script_message("download", function() download() end)
+mp.register_script_message("download-current", function() download_current() end)
+mp.register_script_message("download-audio-current", function() download_current(true) end)
 mp.register_script_message("cancel", cancel)
+mp.register_script_message("download-cancel", cancel_job)
+mp.register_script_message("download-retry", retry_job)
+mp.register_script_message("open", open)
+mp.register_script_message("vivi-ui", on_ui)
 mp.register_script_message("update", function()
   toast("Updating yt-dlp…", 2)
   self_update(false)
@@ -890,14 +1306,16 @@ mp.register_script_message("update-ffmpeg", function()
   update_ffmpeg(false)
 end)
 mp.register_script_message("pick-folder", function()
-  mp.commandv("script-message", "vivi-pick-folder", "youtube", "folder")
+  mp.commandv("script-message", "vivi-pick-folder", ID, "folder")
 end)
 mp.register_script_message("folder-picked", function(p)
   o.folder = p
   toast("Downloads go to " .. p)
 end)
 mp.add_forced_key_binding("Alt+u", "youtube-paste", paste)
-mp.register_event("shutdown", function() if job then mp.abort_async_command(job) end end)
+mp.register_event("shutdown", function()
+  for _, j in pairs(jobs) do if j.cmd then mp.abort_async_command(j.cmd) end end
+end)
 
 -- An existing managed copy is handed to ytdl_hook right away (streaming works before any
 -- plugin action), and checked for updates.
@@ -916,9 +1334,18 @@ mp.register_script_message("selftest", function(file)
   print("fmt(1080p,ff): " .. table.concat(format_args(true), " "))
   print("needs_ffmpeg(1080p video)=" .. tostring(needs_ffmpeg()))
   if file:match("ffmpeg") then
-    get_ffmpeg(true, function(f) print("ffmpeg: " .. (f and (f.kind .. " " .. f.version .. " " .. f.path) or "none")) mp.command("quit") end)
+    get_ffmpeg(true, function(x) print("ffmpeg: " .. (x and (x.kind .. " " .. x.version .. " " .. x.path) or "none")) mp.command("quit") end)
     return
   end
   print("recent(2000.01.01)=" .. tostring(recent("2000.01.01")) .. " recent(today)=" .. tostring(recent(os.date("%Y.%m.%d"))))
   mp.command("quit")
 end)
+
+if VIVI_TEST then
+  return { valid_url = valid_url, current_url = current_url, entry_url = entry_url, thumb = thumb,
+    is_container = is_container, fmt_dur = fmt_dur, parse_progress = parse_progress, printed_files = printed_files,
+    download_args = download_args, format_args = format_args, needs_ffmpeg = needs_ffmpeg, enqueue = enqueue,
+    jobs = jobs, on_ui = on_ui, S = S, o = o, queue = queue, mpv_at_least = mpv_at_least, open = open,
+    estimate = estimate, height_limit = height_limit, download = download, cancel_job = cancel_job,
+    progress_text = progress_text }
+end

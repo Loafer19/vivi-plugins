@@ -5,6 +5,11 @@ tags = ["youtube", "yt-dlp", "download"]
 screenshots = ["youtube-settings"]
 
 [[changelog]]
+version = "1.3.0"
+date = "2026-10-20"
+notes = "Needs Vivi 0.13. Search YouTube and browse links in Vivi's own dialog, a download queue in the Downloads panel, Download this video in the player menu. Fixes: URL setting could inject yt-dlp options, playing video from a playlist downloaded the whole playlist, logs in /tmp."
+
+[[changelog]]
 version = "1.2.2"
 date = "2026-10-19"
 notes = "Own icon in Vivi 0.13+ (it looked like Network Streams)."
