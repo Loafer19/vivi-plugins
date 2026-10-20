@@ -1,5 +1,5 @@
 -- @name AcoustID Tagger
--- @version 1.1.0
+-- @version 1.1.1
 -- @author Vivi
 -- @description Identify songs by their sound (Chromaprint fpcalc + AcoustID) and review tags and a new file name in the Auto-tagger (Vivi plugin package).
 --
@@ -39,7 +39,7 @@ local mp = require "mp"
 local options = require "mp.options"
 local utils = require "mp.utils"
 
-local VERSION = "1.1.0"
+local VERSION = "1.1.1"
 local ID = "acoustid"
 local o = {
   ["api-key"] = "", pattern = "{artist} - {title}", download = true, auto = false,

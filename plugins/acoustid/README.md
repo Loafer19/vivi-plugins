@@ -1,5 +1,14 @@
 # AcoustID Tagger
 
+> **Deprecated — built into Vivi since 0.13.0.** Vivi's built-in **Auto-tagger**
+> (Settings → Extensions) fingerprints songs with Chromaprint itself (an
+> installed `fpcalc` or the bundled fingerprinter), looks them up on AcoustID with Vivi's
+> own application key (no key of your own needed) and on MusicBrainz, shows the same
+> before/after review, tags whole folders, and since 0.13.0 also identifies untagged songs
+> as they start (shown as now playing, the file is not changed until you apply the review)
+> and caches each file's answer (*Forget cached results*). Uninstall this plugin in
+> Extensions → All / Marketplace; it stays here, unchanged, for older Vivi versions.
+
 Identifies a song by its sound and hands the result to Vivi's Auto-tagger review.
 Implements #76 (follow-up to #65). Needs Vivi 0.10 or later and the built-in Auto-tagger
 turned on; the automatic mode and the private key file need Vivi 0.13.
