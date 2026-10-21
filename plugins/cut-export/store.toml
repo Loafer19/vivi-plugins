@@ -2,7 +2,12 @@
 # so editing it needs no new plugin version.
 categories = ["Video", "Tools"]
 tags = ["ffmpeg", "cut", "trim", "clip", "export"]
-screenshots = ["cut-export-player", "cut-export-settings"]
+screenshots = ["cut-export-player", "cut-export-settings", "cut-export-done-toast"]
+
+[[changelog]]
+version = "1.1.1"
+date = "2026-10-21"
+notes = "A finished export notifies \"Export finished: <clip>\" instead of \"Download finished\" (Vivi after 0.13.1; older versions keep the old wording)."
 
 [[changelog]]
 version = "1.1.0"

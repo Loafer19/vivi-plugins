@@ -68,4 +68,16 @@ T.eq(#T.osd, 0, "no OSD inside Vivi")
 local toast
 for _, c in ipairs(T.calls) do if c[2] == "vivi-toast" then toast = c[3] end end
 T.eq(toast, "Cut & Export works on local files only", "toast")
+-- Downloads panel rows ask Vivi to say "Export finished" (older Vivi ignores the field).
+T.calls = {}
+P.report("7", { state = "done" })
+T.eq(#T.calls, 0, "no panel: no report")
+T.props["user-data/vivi/downloads"] = 1
+P.report("7", { state = "done", title = "a [x].mp4" })
+local c = T.calls[1]
+T.eq(c[2], "vivi-download", "panel report")
+T.eq(c[4], "7", "job id")
+local r = require("mp.utils").parse_json(c[5])
+T.eq(r.done_title, "Export finished", "done_title")
+T.eq(r.state, "done", "state kept")
 T.done("cut-export")

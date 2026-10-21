@@ -22,7 +22,8 @@ An existing file is never replaced: a second clip of the same range is saved as
 
 **Progress** (Vivi 0.13+): each export is a row in Vivi's **Downloads** panel (Library →
 Downloads) with its progress, *Cancel* and *Retry*, and *Play* / *Show in folder* once it is
-saved. Older Vivi versions show a toast every 5 seconds instead. *Stop the running export*
+saved; a finished export notifies "Export finished: <clip>" (Vivi after 0.13.1; 0.13.0
+and 0.13.1 say "Download finished"). Older Vivi versions show a toast every 5 seconds instead. *Stop the running export*
 in the settings cancels too.
 
 ffmpeg: your system ffmpeg is used first. Otherwise Vivi's media ffmpeg build
@@ -34,6 +35,8 @@ libopenh264, h264_videotoolbox (macOS) and mpeg4 that the ffmpeg has.
 
 ## Version history
 
+- **1.1.1** (2026-10-21): a finished export notifies "Export finished: <clip>" instead of
+  "Download finished" (needs Vivi after 0.13.1; older versions ignore it).
 - **1.1.0** (2026-10-20): *Export audio* (the playing audio track of the clip, lossless);
   exports show in Vivi's Downloads panel with progress, Cancel, Retry, Play and Show in
   folder; an existing file is never overwritten (it was replaced with `-y`, and a failed

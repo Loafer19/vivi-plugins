@@ -991,7 +991,7 @@
       "id": "cut-export",
       "name": "Cut & Export Clip",
       "description": "Cut a fragment of the current file into a new file: set In / Out (Alt+[ / Alt+]) or reuse the A-B loop points, then export (Alt+W) by fast lossless stream copy or a frame-accurate re-encode, or save just its audio track losslessly (Alt+Shift+W). Never replaces an existing file; progress, Cancel and Retry in Vivi's Downloads panel (Vivi 0.13+). Uses your ffmpeg; without one it downloads Vivi's media ffmpeg build once (about 15 MB, shared with Chapter Thumbnails and Subtitle Auto-Sync; it re-encodes audio only, video re-encoding needs a system ffmpeg).",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": "Vivi",
       "icon": "chapters",
       "lucide": "scissors",
@@ -1005,9 +1005,9 @@
         "subprocess"
       ],
       "source": "plugins/cut-export",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-cut-export-v1.1.0/cut-export-1.1.0.zip",
-      "sha256": "4f64409293a14324b497753c8985c0b7f3e75865251a3c8dc6f793367fbd178a",
-      "size": 34708,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-cut-export-v1.1.1/cut-export-1.1.1.zip",
+      "sha256": "eacab37ffcf178ff08a2ede646f04f108b0db8f7fe2e2cbf0c94fb6fce96b60a",
+      "size": 35191,
       "settings": [
         {
           "key": "in",
@@ -1111,14 +1111,20 @@
       ],
       "screenshots": [
         "cut-export-player",
-        "cut-export-settings"
+        "cut-export-settings",
+        "cut-export-done-toast"
       ],
       "changelog": [
         {
+          "version": "1.1.1",
+          "date": "2026-10-21",
+          "notes": "A finished export notifies \"Export finished: <clip>\" instead of \"Download finished\" (Vivi after 0.13.1; older versions keep the old wording).",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-cut-export-v1.1.1/cut-export-1.1.1.zip"
+        },
+        {
           "version": "1.1.0",
           "date": "2026-10-20",
-          "notes": "Export audio: the playing audio track of the clip, without re-encoding. Exports show in Vivi's Downloads panel (Vivi 0.13+) with progress, Cancel and Retry. An existing file is never overwritten. Fixes: data streams no longer break stream copy, other video encoders when libx264 is missing, Vivi toasts instead of mpv's OSD.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-cut-export-v1.1.0/cut-export-1.1.0.zip"
+          "notes": "Export audio: the playing audio track of the clip, without re-encoding. Exports show in Vivi's Downloads panel (Vivi 0.13+) with progress, Cancel and Retry. An existing file is never overwritten. Fixes: data streams no longer break stream copy, other video encoders when libx264 is missing, Vivi toasts instead of mpv's OSD."
         },
         {
           "version": "1.0.2",

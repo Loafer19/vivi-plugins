@@ -1,5 +1,5 @@
 -- @name Cut & Export Clip
--- @version 1.1.0
+-- @version 1.1.1
 -- @author Vivi
 -- @description Cut a fragment of the current file into a new file with ffmpeg (Vivi plugin package).
 --
@@ -22,7 +22,9 @@
 -- An existing file is never replaced: the clip gets " (2)", " (3)", … instead.
 -- Progress: ffmpeg writes -progress to plugin-data/cut-export/progress-<n>.txt, read every
 -- second; with Vivi's Downloads panel (user-data/vivi/downloads = 1, Vivi 0.13+) the
--- export is a row there (progress, Cancel, Retry, Play / Show in folder when done).
+-- export is a row there (progress, Cancel, Retry, Play / Show in folder when done). Its
+-- done_title makes Vivi notify "Export finished: <clip>" (Vivi after 0.13.1; 0.13.1 and older
+-- ignore the field and say "Download finished").
 --
 -- ffmpeg: a system ffmpeg is used first; else Vivi's shared media ffmpeg build
 -- (release helper-ffmpeg-v8.0-2, about 15 MB, sha256 pinned below), downloaded once into
@@ -413,6 +415,7 @@ local function panel()
 end
 
 local function report(jobid, t)
+  t.done_title = "Export finished"
   if panel() then mp.commandv("script-message", "vivi-download", ID, jobid, utils.format_json(t)) end
 end
 
@@ -627,5 +630,5 @@ if VIVI_TEST then
   return { parse_time = parse_time, fmt_time = fmt_time, range = range, out_path = out_path,
     ffmpeg_args = ffmpeg_args, FF_MEDIA = FF_MEDIA, o = o, unique = unique, audio_ext = audio_ext,
     pick_encoder = pick_encoder, progress_seconds = progress_seconds, is_audio_only = is_audio_only,
-    export = export, jobs = jobs, cancel = cancel, retry = retry }
+    export = export, jobs = jobs, cancel = cancel, retry = retry, report = report }
 end
