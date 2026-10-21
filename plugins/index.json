@@ -1109,6 +1109,10 @@
         "clip",
         "export"
       ],
+      "screenshots": [
+        "cut-export-player",
+        "cut-export-settings"
+      ],
       "changelog": [
         {
           "version": "1.1.0",
