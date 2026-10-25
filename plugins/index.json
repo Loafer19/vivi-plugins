@@ -2664,7 +2664,7 @@
       "id": "youtube-music",
       "name": "YouTube Music",
       "description": "Your own YouTube Music account in Vivi: search songs, albums, artists and playlists, your liked songs, playlists, saved albums and history, up next and mixes, likes and adding to playlists, with Premium audio when your account has it. Signs in with your browser's cookies (kept in a private file, wiped on Sign out). Optional downloads with tags and cover, also of whole playlists, albums and liked songs as Vivi playlists you can sync, off by default. Unofficial: uses YouTube Music's web API, not a Google-approved app; it may break when Google changes it, and Google may restrict accounts that use it. Needs yt-dlp (the YouTube & yt-dlp plugin provides one), curl and a Vivi with the plugin music dialog: 0.13, or a 0.12.0 build from master of 18 Oct 2026 or later.",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "author": "Vivi",
       "icon": "youtube-music",
       "lucide": "music",
@@ -2678,9 +2678,9 @@
         "subprocess"
       ],
       "source": "plugins/youtube-music",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-music-v1.0.1/youtube-music-1.0.1.zip",
-      "sha256": "89716806e843c8ef6e599c509c8456faf64c3408bcd82faeea01dd69616b8c55",
-      "size": 124725,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-music-v1.1.0/youtube-music-1.1.0.zip",
+      "sha256": "43c6455665d9e8158b9b765e64018de172123d67361a65c2fd36003b06ac7607",
+      "size": 124871,
       "settings": [
         {
           "key": "open",
@@ -2809,10 +2809,15 @@
       ],
       "changelog": [
         {
+          "version": "1.1.0",
+          "date": "2026-10-25",
+          "notes": "YouTube Music now also appears in Vivi's Streams hub, under Music next to Free Music (Vivi with the Streams hub, after 0.13.1), as well as in the sidebar. Older Vivi versions ignore the new entry and work as before.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-music-v1.1.0/youtube-music-1.1.0.zip"
+        },
+        {
           "version": "1.0.1",
           "date": "2026-10-20",
-          "notes": "Fix: Cancel did not stop a running download (yt-dlp kept going until the song was saved), and closing Vivi during a download had to wait until Vivi force-stopped yt-dlp.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-youtube-music-v1.0.1/youtube-music-1.0.1.zip"
+          "notes": "Fix: Cancel did not stop a running download (yt-dlp kept going until the song was saved), and closing Vivi during a download had to wait until Vivi force-stopped yt-dlp."
         },
         {
           "version": "1.0.0",

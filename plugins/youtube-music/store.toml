@@ -5,6 +5,11 @@ tags = ["youtube-music", "youtube", "yt-dlp", "playlists", "radio", "downloads"]
 screenshots = ["youtube-music-search", "youtube-music-album", "youtube-music-playing", "youtube-music-downloads", "youtube-music-home"]
 
 [[changelog]]
+version = "1.1.0"
+date = "2026-10-25"
+notes = "YouTube Music now also appears in Vivi's Streams hub, under Music next to Free Music (Vivi with the Streams hub, after 0.13.1), as well as in the sidebar. Older Vivi versions ignore the new entry and work as before."
+
+[[changelog]]
 version = "1.0.1"
 date = "2026-10-20"
 notes = "Fix: Cancel did not stop a running download (yt-dlp kept going until the song was saved), and closing Vivi during a download had to wait until Vivi force-stopped yt-dlp."
