@@ -1752,9 +1752,10 @@
         "csv"
       ],
       "screenshots": [
+        "playback-stats-home-live",
+        "playback-stats-drawer",
         "playback-stats-player",
         "playback-stats-days",
-        "playback-stats-home",
         "playback-stats-extensions",
         "playback-stats-settings"
       ],

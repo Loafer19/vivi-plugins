@@ -2,7 +2,7 @@
 # so editing it needs no new plugin version.
 categories = ["Tools", "Music"]
 tags = ["statistics", "history", "csv"]
-screenshots = ["playback-stats-player", "playback-stats-days", "playback-stats-home", "playback-stats-extensions", "playback-stats-settings"]
+screenshots = ["playback-stats-home-live", "playback-stats-drawer", "playback-stats-player", "playback-stats-days", "playback-stats-extensions", "playback-stats-settings"]
 
 [[changelog]]
 version = "1.2.0"
