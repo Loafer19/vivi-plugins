@@ -29,5 +29,7 @@ gh attestation verify night-mode-1.0.0.zip -R Loafer19/vivi-plugins
 ```
 
 A released version is immutable: change anything, bump `version` and add a changelog entry in
-`store.toml`. The marketplace redeploys on the same push; Vivi picks the update up on its daily
+`store.toml`. Listing-only edits to `store.toml` (categories, tags, screenshots, `featured_rank`)
+are the exception: they are not in the zip, so the sha256 stays the same, CI finds the release
+already published and only the regenerated `plugins/index.json` (and the marketplace) changes. The marketplace redeploys on the same push; Vivi picks the update up on its daily
 check or on *Check now*.

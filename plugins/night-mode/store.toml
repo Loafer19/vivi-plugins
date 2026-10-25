@@ -3,6 +3,8 @@
 categories = ["Video", "Tools"]
 tags = ["audio", "dynamic-range", "dialogue"]
 screenshots = ["night-mode-player", "night-mode-settings"]
+# Featured on plugins.viviplayer.app and marked Recommended in Vivi's Browse tab (1 = first).
+featured_rank = 4
 
 [[changelog]]
 version = "1.1.0"

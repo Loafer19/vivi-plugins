@@ -3,6 +3,8 @@
 categories = ["Integrations", "Tools"]
 tags = ["remote", "phone", "web", "qr", "pwa"]
 screenshots = ["remote-control-phone", "remote-control-sleep", "remote-control-qr", "remote-control-landscape", "remote-control-tablet", "remote-control-settings"]
+# Featured on plugins.viviplayer.app and marked Recommended in Vivi's Browse tab (1 = first).
+featured_rank = 6
 
 [[changelog]]
 version = "1.2.0"

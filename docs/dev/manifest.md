@@ -62,3 +62,8 @@ notes = "First release."
 Add a `[[changelog]]` entry for every version; the marketplace shows it on the plugin page and in
 the [update feed](https://plugins.viviplayer.app/feed.xml). Prefer real in-player screenshots over
 settings cards.
+
+`featured_rank = N` (optional, curated by the maintainers; integer 1–99, unique, never on a
+deprecated plugin) lists the plugin in the marketplace's **Featured** block and makes Vivi mark it
+*Recommended* at the top of Settings → Extensions → Browse, both in rank order (1 = first). Like
+the rest of `store.toml` it is listing metadata: changing it needs no new plugin version.

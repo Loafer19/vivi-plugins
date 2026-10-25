@@ -31,6 +31,8 @@
     }[key] || name;
     cards.slice().sort(by).forEach(c => grid.appendChild(c));
     buttons.forEach(b => b.classList.toggle("on", b.dataset.cat === cat));
+    const feat = document.getElementById("featured"); // the Featured block only on the default view
+    if (feat) feat.hidden = !!(cat || words.length);
     document.getElementById("empty").hidden = shown > 0;
     if (tip) {
       tip.hidden = !hiddenDep;

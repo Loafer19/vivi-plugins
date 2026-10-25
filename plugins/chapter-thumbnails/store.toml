@@ -3,6 +3,8 @@
 categories = ["Video", "Tools"]
 tags = ["thumbnails", "chapters", "scenes", "seek bar", "preview", "ffmpeg"]
 screenshots = ["chapter-thumbnails-player", "chapter-thumbnails-scenes", "chapter-thumbnails-settings"]
+# Featured on plugins.viviplayer.app and marked Recommended in Vivi's Browse tab (1 = first).
+featured_rank = 1
 
 [[changelog]]
 version = "1.2.0"

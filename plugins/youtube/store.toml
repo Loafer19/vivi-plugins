@@ -3,6 +3,8 @@
 categories = ["Streaming", "Video"]
 tags = ["youtube", "yt-dlp", "download", "search", "playlist"]
 screenshots = ["youtube-search", "youtube-sizes", "youtube-playlist", "youtube-downloads", "youtube-menu", "youtube-settings"]
+# Featured on plugins.viviplayer.app and marked Recommended in Vivi's Browse tab (1 = first).
+featured_rank = 2
 
 [[changelog]]
 version = "1.4.0"

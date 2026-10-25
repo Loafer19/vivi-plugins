@@ -245,6 +245,28 @@ def dep_mark(p: dict) -> str:
             f'{f"<small>Replaced by {e(rb)}</small>" if rb else ""}</span>')
 
 
+def featured(plugins: list[dict]) -> list[dict]:
+    """Plugins with a catalog `featured_rank` (store.toml), rank 1 first; deprecated ones never."""
+    return sorted((p for p in plugins if isinstance(p.get("featured_rank"), int) and not p.get("deprecated")),
+                  key=lambda p: (p["featured_rank"], p["name"].lower()))
+
+
+def feat_card(p: dict) -> str:
+    """Card of the Featured block: main screenshot, name, two lines of description, chips."""
+    shots = [s for s in p.get("screenshots", []) if shot_path(s)]
+    thumb = (f'<img class="thumb" src="{shot(shots[0], 'webp')}" alt="{e(p["name"])} screenshot" loading="eager" width="640" height="360">'
+             if shots else f'<div class="thumb ph">{icon(p.get("lucide", "puzzle"))}</div>')
+    cats = "".join(f'<span class="chip">{e(c)}</span>' for c in p.get("categories", []))
+    return f"""<a class="card fcard" href="p/{e(p['id'])}/">
+  {thumb}
+  <div class="body">
+    <div class="title"><span class="ic">{icon(p.get('lucide', 'puzzle'))}</span><h3>{e(p['name'])}</h3></div>
+    <p>{e(p['description'])}</p>
+    <div class="chips"><span class="chip feat">{icon('star')}Featured</span>{cats}</div>
+  </div>
+</a>"""
+
+
 def card(p: dict) -> str:
     cats = p.get("categories", [])
     shots = [s for s in p.get("screenshots", []) if shot_path(s)]
@@ -264,7 +286,7 @@ def card(p: dict) -> str:
     <div class="title"><span class="ic">{icon(p.get('lucide', 'puzzle'))}</span><h2>{e(p['name'])}</h2></div>
     <p>{e(p['description'])}</p>
     <div class="meta"><span>v{e(p.get('version', ''))}</span>{f'<span>{e(size)}</span>' if p.get('kind') != 'builtin' else ''}{f'<span>{e(short_platforms(p))}</span>' if short_platforms(p) else ''}</div>
-    <div class="chips">{'<span class="chip dep">Deprecated</span>' if p.get('deprecated') else ''}<span class="chip k">{e(kind)}</span>{''.join(f'<span class="chip">{e(c)}</span>' for c in cats)}</div>
+    <div class="chips">{'<span class="chip dep">Deprecated</span>' if p.get('deprecated') else ''}{'<span class="chip feat">Featured</span>' if p.get('featured_rank') and not p.get('deprecated') else ''}<span class="chip k">{e(kind)}</span>{''.join(f'<span class="chip">{e(c)}</span>' for c in cats)}</div>
   </div>
 </a>"""
 
@@ -409,10 +431,13 @@ def main() -> None:
                               for i, p in enumerate(order)]}
     out = head("Vivi plugins – extensions for the Vivi media player", desc, BASE + "/", f"{SITE}/img/og.png",
                f'<script type="application/ld+json">{json.dumps(ld)}</script>')
+    feat = featured(plugins)
+    feat_block = (f'<section class="featured" id="featured" aria-labelledby="feat-h"><h2 id="feat-h">{icon("star")}Featured</h2>'
+                  f'<div class="frow">{"".join(feat_card(p) for p in feat)}</div></section>\n') if feat else ""
     out += f"""<section class="hero"><h1>Plugins for <span>Vivi</span></h1>
 <p>{len(listed)} extensions. Built-in ones ship with Vivi; downloadable ones install from Settings → Extensions → Browse
 with checksums verified and permissions shown before install.</p></section>
-<div class="toolbar">
+{feat_block}<div class="toolbar">
   <label class="search">{icon('search')}<input id="q" type="search" placeholder="Search plugins" aria-label="Search plugins"></label>
   <div class="cats" role="group" aria-label="Category"><button type="button" data-cat="" class="on">All</button>{cats}{dep_btn}</div>
   <label class="sort">Sort <select id="sort" aria-label="Sort"><option value="name">Name</option><option value="date">Recently updated</option></select></label>

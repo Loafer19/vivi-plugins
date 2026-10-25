@@ -20,8 +20,10 @@ kept (so --check works without the binaries).
     scripts/package-plugins.py --assets <id>  # print the helper files to upload for <id>
 
 Marketplace metadata lives next to the manifest in plugins/<id>/store.toml (categories,
-tags, screenshots, changelog). It is not part of the zip, so listings can change without a
-new plugin version; categories, tags and screenshots are copied into the index entry.
+tags, screenshots, changelog, featured_rank). It is not part of the zip, so listings can change
+without a new plugin version; categories, tags, screenshots and featured_rank are copied into the
+index entry. `featured_rank = N` (1 = first, unique, never on a deprecated plugin) puts a plugin
+in the marketplace's Featured block and makes Vivi mark it Recommended at the top of Browse.
 
 Standard library only (Python 3.11+ for tomllib).
 """
@@ -48,6 +50,7 @@ RESERVED = {"pkgdir", "secrets"}
 # [deprecated] in manifest.toml: since (Vivi version that replaces it), message, replacement
 # ("builtin:<feature>" or "plugin:<id>"), action (button label in Vivi).
 DEPRECATED_KEYS = {"since", "message", "replacement", "action"}
+MAX_FEATURED = 99
 REQUIRED = ["id", "name", "version", "description", "author", "kind", "entry", "min_vivi"]
 
 
@@ -82,7 +85,12 @@ def manifests() -> list[tuple[Path, dict]]:
             if dep.get("since") and not SEMVER.match(dep["since"]):
                 sys.exit(f"{f}: deprecated.since must be MAJOR.MINOR.PATCH")
         m["_store"] = store(d)
+        if m.get("deprecated") and "featured_rank" in m["_store"]:
+            sys.exit(f"{d / 'store.toml'}: a deprecated plugin cannot have featured_rank")
         out.append((d, m))
+    ranks = [m["_store"]["featured_rank"] for _, m in out if "featured_rank" in m["_store"]]
+    if len(ranks) != len(set(ranks)):
+        sys.exit(f"featured_rank must be unique across plugins (got {sorted(ranks)})")
     return out
 
 
@@ -92,6 +100,9 @@ def store(d: Path) -> dict:
     bad = set(s.get("categories", [])) - CATEGORIES
     if bad:
         sys.exit(f"{f}: unknown categories {sorted(bad)} (use {sorted(CATEGORIES)})")
+    r = s.get("featured_rank")
+    if r is not None and (type(r) is not int or not 1 <= r <= MAX_FEATURED):
+        sys.exit(f"{f}: featured_rank must be an integer from 1 to {MAX_FEATURED}")
     return s
 
 
@@ -170,6 +181,8 @@ def entry(m: dict, z: Path, old: dict | None = None) -> dict:
     for k in ("categories", "tags", "screenshots"):
         if m["_store"].get(k):
             e[k] = m["_store"][k]
+    if "featured_rank" in m["_store"]:
+        e["featured_rank"] = m["_store"]["featured_rank"]
     if m["_store"].get("changelog"):
         e["changelog"] = [
             {
