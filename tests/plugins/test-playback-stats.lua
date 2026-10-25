@@ -313,6 +313,8 @@ T.calls = {}
 P.open_dialog()
 D = dialog()
 T.eq(D.info_only, true, "info-only dialog")
+T.ok(not D.detail:find("▬", 1, true), "no block-character bars in the side pane")
+T.ok(D.detail:find(os.date("%a %d %b", NOW) .. " · 1h 05m", 1, true), "plain day lines")
 P.on_ui('{"event":"filter","args":["Group by","Days"]}')
 D = dialog()
 T.eq(D.rows[1].bar, 1, "native bar on the longest day")

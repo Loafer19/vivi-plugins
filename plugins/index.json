@@ -1706,8 +1706,8 @@
       ],
       "source": "plugins/playback-stats",
       "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-playback-stats-v1.2.0/playback-stats-1.2.0.zip",
-      "sha256": "bedb5184b7146de6356ab17a3f58f0900f2f22565429a77de8df544c24c4c4ce",
-      "size": 34328,
+      "sha256": "a66e3c6ee84d08905f1e31b8527c5cd28406f2d58f0eaecd770570902f8a50a0",
+      "size": 34533,
       "settings": [
         {
           "key": "record",

@@ -367,9 +367,14 @@ local function detail_text(S, e)
   t[#t + 1] = S.streak == 1 and "Streak: 1 day" or string.format("Streak: %d days", S.streak)
   t[#t + 1] = ""
   t[#t + 1] = "Last 7 days"
+  local native_bars = host_has("bars") -- the Days view draws real bars: plain lines here
   for _, b in ipairs(S.bars) do
-    -- bar first, so the bars line up (proportional font)
-    t[#t + 1] = string.format("%s %s · %s", b[2] > 0 and bar(b[2], S.max, 10) or "·", weekday(b[1]), hms(b[2]))
+    if native_bars then
+      t[#t + 1] = string.format("%s · %s", weekday(b[1]), hms(b[2]))
+    else
+      -- bar first, so the bars line up (proportional font)
+      t[#t + 1] = string.format("%s %s · %s", b[2] > 0 and bar(b[2], S.max, 10) or "·", weekday(b[1]), hms(b[2]))
+    end
   end
   return table.concat(t, "\n")
 end
