@@ -250,4 +250,89 @@ T.eq(T.osd[#T.osd], "Playback statistics cleared", "cleared toast")
 P.on_ui("not json")
 T.ok(true, "bad vivi-ui json is ignored")
 
+-- Live content (Vivi announcing host features): Home widget and drawer tab, native bars,
+-- info-only dialog, Alt+S toggles the drawer while playing.
+T.props["user-data/vivi/playlists"] = 1
+put(0, "audio", "Artist A", "Song", 3900)
+put(1, "audio", "Artist B", "x", 1800)
+put(2, "video", "My Show", "e1", 600)
+T.calls = {}
+P.push_live()
+T.eq(last("vivi-content"), nil, "older Vivi: no live content")
+P.drawer()
+T.ok(last("vivi-toast"), "older Vivi: drawer toast")
+T.ok(not P.host_has("content"), "no features")
+T.props["user-data/vivi/host-features"] = "dialog confirm media-meta contributions content drawer bars info-dialog"
+T.ok(P.host_has("content") and P.host_has("info-dialog") and not P.host_has("dialo"), "whole words")
+T.calls = {}
+P.push_live()
+local function content(surface)
+  for i = #T.calls, 1, -1 do
+    local c = T.calls[i]
+    if c[2] == "vivi-content" and c[4] == surface then return T.json_decode(c[5]), c end
+  end
+end
+local H, hc = content("home")
+T.eq(hc and hc[3], "playback-stats", "content owner")
+T.eq(H.value, "Today 1h 05m", "home value")
+T.ok(H.sub:find("^7 days 1h 45m"), "home sub: 7-day total")
+T.ok(H.sub:find("3-day streak", 1, true), "home sub: streak")
+T.eq(#H.rows, 7, "a row per day")
+T.eq(H.rows[7].label, os.date("%a", NOW), "last row is today")
+T.eq(H.rows[7].bar, 1, "today is the longest day")
+T.eq(H.rows[7].value, "1h 05m", "day value")
+T.ok(H.rows[6].bar > 0.4 and H.rows[6].bar < 0.5, "yesterday's bar is a fraction")
+T.ok(H.replace, "whole content")
+local Dr = content("drawer")
+T.eq(Dr.value, "Today 1h 05m", "drawer value")
+T.ok(Dr.sub:find("^Recording"), "recording status")
+T.ok(Dr.rows[1].heading and Dr.rows[1].label == "Totals", "totals heading")
+local heads, top = {}, nil
+for _, r in ipairs(Dr.rows) do
+  if r.heading then heads[#heads + 1] = r.label end
+  if not top and r.bar then top = r end
+end
+T.eq(#heads, 3, "totals, top, last 7 days")
+T.eq(top.label, "Artist A", "top artist bar")
+T.eq(top.bar, 1, "top bar is full")
+for _, r in ipairs(H.rows) do T.ok(not tostring(r.label):find("▬") and not tostring(r.value):find("█"), "no block characters") end
+-- unchanged content is not sent again; forced on the drawer command
+T.calls = {}
+P.push_live()
+T.eq(last("vivi-content"), nil, "unchanged: nothing sent")
+P.drawer()
+T.ok(content("drawer"), "drawer tab opened: sent again")
+T.eq(last("vivi-toast"), nil, "no toast with live content")
+P.set_record(false, true)
+T.ok(content("drawer").sub:find("^Recording paused"), "pause shows at once")
+T.ok(content("home").sub:find("paused", 1, true), "home too")
+P.set_record(true, true)
+-- the dialog: info-only, native day bars
+P.view.open = false
+T.calls = {}
+P.open_dialog()
+D = dialog()
+T.eq(D.info_only, true, "info-only dialog")
+P.on_ui('{"event":"filter","args":["Group by","Days"]}')
+D = dialog()
+T.eq(D.rows[1].bar, 1, "native bar on the longest day")
+T.eq(D.rows[1].sub, nil, "no block-character bar")
+P.on_ui('{"event":"filter","args":["Group by","Artists & shows"]}')
+P.on_ui('{"event":"close"}')
+-- Alt+S: drawer toggle while playing, the dialog otherwise
+T.calls = {}
+P.set_current({ "audio", "Artist A", "Song" })
+P.show_key()
+local dc = last("vivi-drawer")
+T.ok(dc and dc[3] == "playback-stats" and dc[4] == "toggle", "Alt+S toggles the drawer")
+T.eq(last("vivi-dialog"), nil, "no dialog then")
+P.set_current(nil)
+T.calls = {}
+P.show_key()
+T.ok(dialog() and dialog().open, "nothing playing: the dialog")
+T.eq(last("vivi-drawer"), nil, "no drawer")
+P.on_ui('{"event":"close"}')
+T.props["user-data/vivi/host-features"] = nil
+T.props["user-data/vivi/playlists"] = nil
+
 T.done("playback-stats")

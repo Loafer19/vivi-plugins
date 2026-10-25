@@ -1,12 +1,15 @@
 -- @name Playback Statistics
--- @version 1.1.0
+-- @version 1.2.0
 -- @author Vivi
 -- @description Local watch/listen time statistics (Vivi plugin package).
 --
 -- Data: $XDG_DATA_HOME/vivi/plugin-data/playback-stats/stats.tsv
 -- (one line per day + item: date, seconds, kind, artist/show, title). Nothing leaves the machine.
 -- Alt+S (script-binding playback_stats/show) opens the statistics in Vivi's plugin dialog (an OSD
--- panel on older Vivi) and a one-line toast. Home widget and side-drawer tab in Vivi 0.13+.
+-- panel on older Vivi) and a one-line toast. Home widget and side-drawer tab in Vivi 0.13+;
+-- with live plugin content (Vivi announcing "content" in user-data/vivi/host-features) the
+-- widget and the drawer tab show the numbers and bars themselves and Alt+S toggles the
+-- drawer while something plays.
 -- Script messages: show, open, drawer, export, clear, toggle-record, vivi-ui (dialog events).
 
 local mp = require "mp"
@@ -277,6 +280,14 @@ local function native()
     or mp.get_property_native("user-data/vivi/downloads") ~= nil
 end
 
+-- Host API words Vivi announces (`user-data/vivi/host-features`, e.g. "content drawer
+-- bars info-dialog"); unset on older Vivi, which keeps the dialog / toast behaviour.
+local function host_has(word)
+  local f = mp.get_property_native("user-data/vivi/host-features")
+  if f == nil then return false end
+  return (" " .. tostring(f) .. " "):find(" " .. word .. " ", 1, true) ~= nil
+end
+
 -- Short time for the list's narrow duration column: "1h 53m", "35m", "40s".
 local function short(s)
   s = math.floor(s + 0.5)
@@ -375,7 +386,7 @@ local function dialog_payload(open)
     local r = { title = e.name, dur = short(e.s), selected = view.sel == i }
     if view.group == "Days" then
       r.title = weekday(e.name)
-      r.sub = bar(e.s, max, 24)
+      if host_has("bars") then r.bar = e.s / math.max(max, 1) else r.sub = bar(e.s, max, 24) end
     elseif view.group == "Titles" then
       r.sub = e.sub
     else
@@ -393,8 +404,11 @@ local function dialog_payload(open)
   if #view.list == 0 then
     st = (view.query ~= "" and "Nothing matches \"" .. view.query .. "\"" or "Nothing played in this period yet") .. (recording and "" or " · recording paused")
   end
+  local info = host_has("info-dialog")
   return {
     open = open or nil,
+    -- Read-only statistics: no search row and no per-row play / queue buttons.
+    info_only = info or nil,
     title = "Playback statistics",
     placeholder = "Filter artists, shows, titles",
     search_label = "Filter",
@@ -429,6 +443,64 @@ end
 local function close_dialog()
   view.open = false
   mp.commandv("script-message", "vivi-dialog-close", ID)
+end
+
+-- Live content of the Home widget and the drawer tab (`vivi-content`, Vivi with the
+-- "content" host feature): sent when it changes (the 5 s timer, recording, clear) and when
+-- the drawer tab opens. Times are whole minutes, so playing updates it once a minute.
+local sent = {}
+local function day_label(d)
+  local y, m, dd = d:match("^(%d+)-(%d+)-(%d+)$")
+  return os.date("%a", os.time({ year = tonumber(y), month = tonumber(m), day = tonumber(dd), hour = 12 }))
+end
+
+local function live_content()
+  local S = summary(7)
+  local today = S.periods[1][2]
+  local days = {}
+  for _, b in ipairs(S.bars) do
+    days[#days + 1] = { label = day_label(b[1]), bar = b[2] / math.max(S.max, 1), value = short(b[2]) }
+  end
+  local streak_txt = S.streak == 1 and "1-day streak" or string.format("%d-day streak", S.streak)
+  local home = {
+    replace = true,
+    value = "Today " .. short(today),
+    sub = "7 days " .. short(S.periods[2][2]) .. (S.streak > 0 and " · " .. streak_txt or "")
+      .. (recording and "" or " · paused"),
+    rows = days,
+  }
+  local rows = { { heading = true, label = "Totals" } }
+  for _, q in ipairs(S.periods) do rows[#rows + 1] = { label = q[1], value = short(q[2]) } end
+  rows[#rows + 1] = { label = "Streak", value = S.streak == 1 and "1 day" or string.format("%d days", S.streak) }
+  rows[#rows + 1] = { label = "Video · audio", value = short(S.video) .. " · " .. short(S.audio) }
+  if #S.top > 0 then
+    rows[#rows + 1] = { heading = true, label = "Top artists & shows (7 days)" }
+    for _, t in ipairs(S.top) do
+      rows[#rows + 1] = { label = t[1], bar = t[2] / math.max(S.top[1][2], 1), value = short(t[2]) }
+    end
+  end
+  rows[#rows + 1] = { heading = true, label = "Last 7 days" }
+  for _, r in ipairs(days) do rows[#rows + 1] = r end
+  local drawer_c = {
+    replace = true,
+    value = "Today " .. short(today),
+    sub = (recording and "Recording" or "Recording paused: nothing is counted")
+      .. " · 7 days " .. short(S.periods[2][2]),
+    rows = rows,
+  }
+  return home, drawer_c
+end
+
+local function push_live(force)
+  if not host_has("content") then return end
+  local home, drawer_c = live_content()
+  for _, x in ipairs({ { "home", home }, { "drawer", drawer_c } }) do
+    local j = utils.format_json(x[2])
+    if force or sent[x[1]] ~= j then
+      sent[x[1]] = j
+      mp.commandv("script-message", "vivi-content", ID, x[1], j)
+    end
+  end
 end
 
 local shown = false
@@ -484,6 +556,7 @@ local function clear_now()
   view.sel = nil
   toast("Playback statistics cleared")
   refresh_dialog()
+  push_live()
 end
 
 -- Clear deletes everything recorded, so it asks first: Vivi's confirm dialog where the
@@ -518,6 +591,7 @@ local function set_record(on, quiet)
   tick()
   if not quiet then toast(on and "Playback statistics: recording" or "Playback statistics: paused (not recording)") end
   refresh_dialog()
+  push_live()
 end
 
 -- Palette / dialog / drawer: switch and save it as the setting, so it survives a restart.
@@ -567,11 +641,25 @@ local function on_ui(json)
   end
 end
 
--- The drawer tab was opened: its body is the plugin description and the action
--- buttons (static), so the current numbers go to a toast.
+-- The drawer tab was opened: with live content it shows the numbers itself (sent again
+-- now); on older Vivi its body is the static description, so they go to a toast.
 local function drawer()
   tick()
+  if host_has("content") then push_live(true) return end
   mp.commandv("script-message", "vivi-toast", toast_line(summary()))
+end
+
+-- Alt+S: with live content and something playing, toggle the drawer tab (the stats are
+-- there); otherwise the dialog / OSD panel as before. The `show` message (palette, the
+-- drawer's "Show summary" button) always opens the dialog.
+local function show_key()
+  if host_has("drawer") and host_has("content") and current ~= nil then
+    tick()
+    push_live()
+    mp.commandv("script-message", "vivi-drawer", ID, "toggle")
+    return
+  end
+  show()
 end
 
 options.read_options(o, "playback-stats", function(changed)
@@ -590,9 +678,10 @@ mp.register_event("file-loaded", function() tick(); current = describe(); tick()
 mp.register_event("end-file", function() tick(); current = nil; counting = false; save() end)
 mp.observe_property("core-idle", "bool", function() tick() end)
 mp.register_event("shutdown", function() tick(); save() end)
-mp.add_periodic_timer(5, function() tick(); refresh_dialog() end)
+mp.add_periodic_timer(5, function() tick(); refresh_dialog(); push_live() end)
 mp.add_periodic_timer(60, save)
-mp.add_forced_key_binding("Alt+s", "show", show)
+push_live()
+mp.add_forced_key_binding("Alt+s", "show", show_key)
 mp.register_script_message("show", show)
 mp.register_script_message("open", function() if native() then open_dialog() else show() end end)
 mp.register_script_message("drawer", drawer)
@@ -609,6 +698,7 @@ if VIVI_TEST then
     set_current = function(c) current = c end, save = save, load = load, file = file,
     set_clock = function(f) clock = f end, set_now = function(f) now_fn = f end,
     list_items = list_items, dialog_payload = dialog_payload, on_ui = on_ui, view = view,
-    drawer = drawer, open_dialog = open_dialog, native = native,
+    drawer = drawer, open_dialog = open_dialog, native = native, host_has = host_has,
+    push_live = push_live, live_content = live_content, show_key = show_key,
     set_export_path = function(p) export_path = p end }
 end

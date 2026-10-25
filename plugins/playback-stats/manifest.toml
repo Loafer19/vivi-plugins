@@ -1,6 +1,6 @@
 id = "playback-stats"
 name = "Playback Statistics"
-version = "1.1.0"
+version = "1.2.0"
 description = "Counts time watched and listened per day, with top artists and shows, today / 7 / 30 / 365-day totals and your day streak. Kept locally in a small TSV file; Alt+S shows a summary, pause recording, export as CSV or clear any time."
 author = "Vivi"
 kind = "mpv-lua"
@@ -14,7 +14,8 @@ role = "feature"
 
 # Where it shows up in Vivi 0.13+ (older Vivi ignores these and uses its built-in
 # default, the "Show playback statistics" palette command). The Home card opens the
-# statistics dialog; the side-drawer tab shows the action buttons below and a toast.
+# statistics dialog; the side-drawer tab shows the action buttons below and a toast, or,
+# on Vivi with live plugin content (host feature "content"), the live numbers and bars.
 [[contributes]]
 point = "home.widget"
 label = "Playback statistics"
