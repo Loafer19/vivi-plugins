@@ -659,12 +659,6 @@
         {
           "version": "1.0.3",
           "date": "2026-10-19",
-          "notes": "README: requires Vivi 0.9.0, matching the manifest.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-ab-loop-v1.0.3/ab-loop-1.0.3.zip"
-        },
-        {
-          "version": "1.0.3",
-          "date": "2026-10-19",
           "notes": "Deprecated: Vivi 0.13.0 has A-B loop and frame stepping built in with the same keys (Alt+A / Alt+B / Alt+C, Alt+Left / Alt+Right, , / .), drawn on the seek bar. On such Vivi the script stays quiet (no OSD bar, no second key handling). README now says Vivi 0.9.0+ like the manifest.",
           "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-ab-loop-v1.0.3/ab-loop-1.0.3.zip"
         },
@@ -2405,7 +2399,7 @@
       "changelog": [
         {
           "version": "1.3.0",
-          "date": "2026-10-19",
+          "date": "2026-10-20",
           "notes": "Sync to another subtitle track (Alt+Shift+Y): the secondary subtitle or another text track of the file, in seconds instead of minutes. The synced copy is picked again when the file opens with the original selected. The toast says how far the subtitle moved; a manual offset left over from the original is reset. Re-syncing starts from the original file, a re-sync replaces the loaded copy instead of adding another track, and the copy keeps the original's name and language. ffsubsync works with Vivi's ffmpeg build too. Messages show once, as Vivi toasts. On Vivi 0.13+, which keeps the per-file offset itself, the plugin binds no offset keys and keeps no offsets.json; offsets saved here earlier are imported by Vivi once.",
           "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-subtitle-sync-v1.3.0/subtitle-sync-1.3.0.zip"
         },
