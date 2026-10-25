@@ -19,6 +19,11 @@ label = "YouTube Music"
 command = "open"
 
 [[contributes]]
+point = "streams.music"     # Vivi's Streams hub → Music (#86); older Vivi ignores it
+label = "YouTube Music"
+command = "open"
+
+[[contributes]]
 point = "palette.command"
 label = "Search YouTube Music"
 command = "open"
