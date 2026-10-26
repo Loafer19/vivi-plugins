@@ -1,6 +1,6 @@
 id = "remote-control"
 name = "Remote Control"
-version = "1.2.0"
+version = "1.3.0"
 description = "Control Vivi from your phone: a dark, touch-friendly web page with cover art, seek, play/pause/next, volume and mute, speed, audio and subtitle tracks, chapters, the queue, library search, fullscreen, open URL, play next and a sleep timer, updated live. Pair by scanning a QR code; PIN protected and local-network only by default. Installs to the home screen. Ships a small native helper (vivi-remote) that serves the page."
 author = "Vivi"
 kind = "mpv-lua"

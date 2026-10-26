@@ -7,6 +7,11 @@ screenshots = ["remote-control-phone", "remote-control-sleep", "remote-control-q
 featured_rank = 6
 
 [[changelog]]
+version = "1.3.0"
+date = "2026-10-26"
+notes = "The phone page's sleep timer is now Vivi's own (Vivi 0.14+): the same timer as the side panel, the top-bar moon and AI agents, with Vivi's volume fade-out, so setting it on the phone shows in Vivi and the other way round; a timer set in Vivi to the end of the chapter or after N items shows on the phone too. Older Vivi keeps the helper's own timer."
+
+[[changelog]]
 version = "1.2.0"
 date = "2026-10-20"
 notes = "New: sleep timer on the phone page (15–90 minutes or the end of the current file; Vivi pauses with a toast, the page counts down), Play next for library results and Open URL, and repeat (off / queue / this file) and shuffle buttons on Vivi versions whose own buttons follow them (after 0.12.0; hidden on older ones). Show QR code no longer also shows the address and PIN as a toast on Vivi 0.11.0+ (it has the QR dialog). Fixes: a phone that was connected when the PIN changed (New PIN) kept polling with the old PIN, cleared the PIN being typed every second and locked itself out for a minute; the Library tab never found Vivi's control socket without XDG_RUNTIME_DIR (macOS), as it looked in ~/.cache instead of ~/.cache/vivi; the helper retries the port for a few seconds after a restart instead of failing with \"address in use\"; the docs said the QR dialog and fullscreen need Vivi 0.10.1, it is 0.11.0; the Library hint names the actual setting (Allow AI agents and scripts). Security: the PIN reaches the helper on stdin instead of its command line (readable by every local user) on Linux and macOS; the PIN setting is masked; embedded covers are extracted into a fresh owner-only folder instead of a predictable /tmp file; the failed-PIN table is pruned."

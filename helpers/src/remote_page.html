@@ -290,7 +290,7 @@ function curPos(){if(!st)return 0;if(st.paused||st.idle)return st.position;retur
 function setBar(fill,th,f){f=Math.max(0,Math.min(1,f||0));fill.style.width=f*100+'%';th.style.left=f*100+'%'}
 function sleepLeft(){return st&&st.sleep>0?Math.max(0,st.sleep-(performance.now()-stAt)/1000):0}
 function tick(){if(!st)return;
- const sl=sleepLeft();$('sleepv').textContent=sl>0?fmt(sl):st.sleep_eof?'End of file':'Sleep';$('csleep').classList.toggle('on',sl>0||!!st.sleep_eof);if(drag!=='seek'){const p=curPos();setBar($('sfill'),$('sth'),st.duration>0?p/st.duration:0);$('pos').textContent=fmt(p)}
+ const sl=sleepLeft();$('sleepv').textContent=sl>0?fmt(sl):st.sleep_eof?'End of file':st.sleep_label||'Sleep';$('csleep').classList.toggle('on',sl>0||!!st.sleep_eof||!!st.sleep_label);if(drag!=='seek'){const p=curPos();setBar($('sfill'),$('sth'),st.duration>0?p/st.duration:0);$('pos').textContent=fmt(p)}
  let ci=-1;const p=curPos();(st.chapters||[]).forEach((c,i)=>{if(c.time<=p+.25)ci=i});$('chap').textContent=ci>=0&&st.chapters.length>1?st.chapters[ci].title:'';
  document.querySelectorAll('#ch .row').forEach((r,i)=>r.classList.toggle('cur',i===ci))}
 setInterval(tick,250);
@@ -369,7 +369,7 @@ $('crepeat').onclick=()=>{if(!st)return;const n={off:2,all:1,one:0}[st.repeat]??
 $('cshuffle').onclick=()=>{if(!st)return;cmd('shuffle',st.shuffle?0:1);toast(st.shuffle?'Shuffle off':'Shuffle on')};
 $('csleep').onclick=()=>{if(!st)return;const on=sleepLeft()>0,cur=on?st.sleep:0,mins=[15,30,45,60,90];
  const o=(v,label,sel,sub)=>`<button class="opt${sel?' on':''}" data-v="${v}"><div class="tx"><div>${label}</div>${sub?`<div class="t2">${sub}</div>`:''}</div><span class="ck">${ic('check')}</span></button>`;
- sheet('Sleep timer','moon',o(0,'Off',!on&&!st.sleep_eof)+mins.map(m=>o(m,m+' minutes',false)).join('')+o(-1,'End of this file',!!st.sleep_eof,'Pauses when the current file ends')+(on?`<div class="more">Pausing in ${fmt(sleepLeft())}</div>`:''),
+ sheet('Sleep timer','moon',o(0,'Off',!on&&!st.sleep_eof&&!st.sleep_label)+mins.map(m=>o(m,m+' minutes',false)).join('')+o(-1,'End of this file',!!st.sleep_eof,'Pauses when the current file ends')+(on?`<div class="more">Pausing in ${fmt(sleepLeft())}${st.sleep_label?' ('+esc(st.sleep_label)+')':''}</div>`:st.sleep_label?`<div class="more">${esc(st.sleep_label)}</div>`:''),
  b=>b.onclick=e=>{const x=e.target.closest('[data-v]');if(!x)return;const v=+x.dataset.v;cmd('sleep',v);closeSheet();toast(v>0?`Pausing in ${v} minutes`:v<0?'Pausing at the end of this file':'Sleep timer off')})};
 $('bopen').onclick=()=>sheet('Open URL','link',`<div class="formrow"><label class="field"><span data-i="link"></span><input id="url" type="url" inputmode="url" placeholder="https://… (video, stream, YouTube)" autocomplete="off" autocapitalize="off"></label><div class="btns"><button class="btn wide" id="uplay">${ic('play')}Play now</button><button class="btn gh" id="unext">${ic('list-start')}Play next</button><button class="btn gh" id="uadd">${ic('list-plus')}Add to queue</button></div></div>`,b=>{
  b.querySelector('[data-i]').outerHTML=ic('link');const u=b.querySelector('#url');setTimeout(()=>u.focus(),250);

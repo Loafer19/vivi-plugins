@@ -20,8 +20,8 @@ use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use vivi_helpers::remote::{
-    lan_ip, parse_chapters, parse_queue, parse_tracks, repeat_mode, serve, vivi_socket, Cmd, Place,
-    Shared, Snapshot, SHUFFLE_PROP,
+    core_sleep, lan_ip, parse_chapters, parse_queue, parse_tracks, repeat_mode, serve, sleep_spec,
+    vivi_socket, Cmd, Place, Shared, Snapshot, SHUFFLE_PROP,
 };
 use vivi_helpers::{args, Mpv};
 
@@ -68,6 +68,7 @@ fn snapshot(m: &mut Mpv) -> io::Result<Snapshot> {
         art_id: 0,
         sleep: 0.0,
         sleep_eof: false,
+        sleep_label: String::new(),
     })
 }
 
@@ -136,12 +137,19 @@ fn art(m: &mut Mpv, path: &str) -> io::Result<Option<(Vec<u8>, &'static str)>> {
     Ok(None)
 }
 
-/// Sleep timer state: pause at a time, or when the current file ends.
+/// Vivi's own sleep timer (Vivi 0.14+ publishes `user-data/vivi/sleep`).
+const CORE_SLEEP: &str = "user-data/vivi/sleep";
+
+/// The helper's own sleep timer (older Vivi only): pause at a time, or when the current
+/// file ends.
 #[derive(Default)]
 struct Sleep {
     at: Option<Instant>,
     /// Path of the file whose end pauses playback.
     eof: Option<String>,
+    /// Vivi's timer state as last read, and when it changed (Vivi 0.14 publishes it only
+    /// when the timer is set, 0.15+ every second: the countdown runs on from it).
+    core: Option<(String, Instant)>,
 }
 
 /// mpv errors (kind `Other`) are ignored; `Err` only when mpv is gone.
@@ -155,6 +163,18 @@ fn ok(r: io::Result<serde_json::Value>) -> io::Result<()> {
 fn apply(m: &mut Mpv, c: Cmd, sleep: &mut Sleep) -> io::Result<()> {
     if let Cmd::Sleep(min) = c {
         *sleep = Sleep::default();
+        // Vivi's timer: the same one as its side panel, top bar and control socket.
+        if core_sleep(&m.get_str(CORE_SLEEP)?).is_some() {
+            ok(m.cmd(&["script-message", "vivi-sleep", &sleep_spec(min)]))?;
+            let msg = match min {
+                n if n > 0.0 => format!("Remote Control: sleep timer, pausing in {n:.0} min"),
+                n if n < 0.0 => {
+                    "Remote Control: sleep timer, pausing at the end of this file".into()
+                }
+                _ => "Remote Control: sleep timer off".into(),
+            };
+            return m.toast(&msg).or_else(|e| ok(Err(e)));
+        }
         if min == -1.0 {
             let p = m.get_str("path")?;
             if !p.is_empty() {
@@ -207,8 +227,27 @@ fn apply(m: &mut Mpv, c: Cmd, sleep: &mut Sleep) -> io::Result<()> {
     }
 }
 
-/// Pause when the sleep timer runs out; updates the snapshot's countdown.
+/// Pause when the sleep timer runs out; updates the snapshot's countdown. With Vivi's
+/// own timer only its state is shown (Vivi pauses and fades the volume itself).
 fn sleep_tick(m: &mut Mpv, sleep: &mut Sleep, s: &mut Snapshot) -> io::Result<()> {
+    let json = m.get_str(CORE_SLEEP)?;
+    if let Some((left, eof, label)) = core_sleep(&json) {
+        (sleep.at, sleep.eof) = (None, None);
+        let since = match &sleep.core {
+            Some((j, at)) if *j == json => at.elapsed().as_secs_f64(),
+            _ => {
+                sleep.core = Some((json, Instant::now()));
+                0.0
+            }
+        };
+        let left = if left > 0.0 {
+            (left - since).max(0.0)
+        } else {
+            0.0
+        };
+        (s.sleep, s.sleep_eof, s.sleep_label) = (left, eof, label);
+        return Ok(());
+    }
     let due = match (&sleep.at, &sleep.eof) {
         (Some(at), _) => *at <= Instant::now(),
         // The file ended (another one started, or the player went idle), or is about to:

@@ -87,6 +87,9 @@ pub struct Snapshot {
     pub sleep: f64,
     /// Sleep timer set to "end of this file".
     pub sleep_eof: bool,
+    /// Vivi's own timer in a mode the page has no button for ("End of chapter",
+    /// "After 3 items"); empty otherwise.
+    pub sleep_label: String,
     /// `off`, `one` (loop-file) or `all` (loop-playlist).
     pub repeat: String,
     pub shuffle: bool,
@@ -98,6 +101,42 @@ fn tracks_json(t: &[Track]) -> Value {
     t.iter()
         .map(|t| json!({"id": t.id, "title": t.title, "lang": t.lang, "codec": t.codec, "selected": t.selected}))
         .collect()
+}
+
+/// Vivi's sleep timer (`user-data/vivi/sleep`, Vivi 0.14+; JSON with `mode`, `active`,
+/// `remaining`, `items_left`) as the page shows it: (seconds left, end of file, label).
+/// None when Vivi does not publish one (older Vivi): the helper runs its own timer.
+pub fn core_sleep(json: &str) -> Option<(f64, bool, String)> {
+    let v: Value = serde_json::from_str(json.trim()).ok()?;
+    let mode = v.get("mode")?.as_str()?.to_string();
+    if v["active"] != true || mode == "off" {
+        return Some((0.0, false, String::new()));
+    }
+    let left = v["remaining"]
+        .as_f64()
+        .filter(|l| l.is_finite() && *l > 0.0);
+    let items = v["items_left"].as_u64().unwrap_or(0);
+    Some(match mode.as_str() {
+        "eof" => (0.0, true, String::new()),
+        // Counting down: the page shows the time; the label says why.
+        "chapter" => (left.unwrap_or(0.0), false, "End of chapter".into()),
+        m if m.starts_with("items:") => match items {
+            0 | 1 => (0.0, true, String::new()),
+            n => (0.0, false, format!("After {n} items")),
+        },
+        _ => (left.unwrap_or(0.0), false, String::new()),
+    })
+}
+
+/// `script-message vivi-sleep` spec for the page's choice in minutes (-1 = end of file).
+pub fn sleep_spec(min: f64) -> String {
+    if min == -1.0 {
+        "eof".into()
+    } else if min > 0.0 {
+        format!("min:{}", min.round() as i64)
+    } else {
+        "off".into()
+    }
 }
 
 impl Snapshot {
@@ -112,7 +151,7 @@ impl Snapshot {
             "chapters": self.chapters.iter().map(|c| json!({"title": c.title, "time": c.time})).collect::<Vec<_>>(),
             "chapter": self.chapter, "audio": tracks_json(&self.audio), "subs": tracks_json(&self.subs),
             "has_video": self.has_video, "library": self.library,
-            "sleep": self.sleep.max(0.0).round(), "sleep_eof": self.sleep_eof,
+            "sleep": self.sleep.max(0.0).round(), "sleep_eof": self.sleep_eof, "sleep_label": self.sleep_label,
             "repeat": self.repeat, "shuffle": self.shuffle, "loop_sync": self.loop_sync,
         })
     }
@@ -237,8 +276,8 @@ pub enum Cmd {
     Fullscreen,
     /// Load a URL or a library path: play now, add to the queue, or play next.
     Open(String, Place),
-    /// Sleep timer in minutes (0 = off, -1 = at the end of the current file). Handled by
-    /// the helper, not mpv.
+    /// Sleep timer in minutes (0 = off, -1 = at the end of the current file). Sent to
+    /// Vivi's own timer when it has one ([`sleep_spec`]), otherwise run by the helper.
     Sleep(f64),
     /// 0 = off, 1 = repeat the file, 2 = repeat the queue.
     Repeat(i64),
@@ -1020,6 +1059,46 @@ mod tests {
             ..a.clone()
         }
         .differs(&a, t));
+        assert!(Snapshot {
+            sleep_label: "After 3 items".into(),
+            ..a.clone()
+        }
+        .differs(&a, t));
+    }
+
+    #[test]
+    fn vivi_sleep_timer() {
+        let st = |j: &str| core_sleep(j);
+        assert_eq!(st(""), None);
+        assert_eq!(st("not json"), None);
+        assert_eq!(st(r#"{"x":1}"#), None);
+        assert_eq!(
+            st(r#"{"mode":"off","active":false,"remaining":null,"items_left":null,"fade":30}"#),
+            Some((0.0, false, String::new()))
+        );
+        assert_eq!(
+            st(r#"{"mode":"min:30","active":true,"remaining":1799.4,"items_left":null}"#),
+            Some((1799.4, false, String::new()))
+        );
+        assert_eq!(
+            st(r#"{"mode":"eof","active":true,"remaining":null}"#),
+            Some((0.0, true, String::new()))
+        );
+        assert_eq!(
+            st(r#"{"mode":"chapter","active":true,"remaining":42.0}"#),
+            Some((42.0, false, "End of chapter".into()))
+        );
+        assert_eq!(
+            st(r#"{"mode":"items:3","active":true,"remaining":null,"items_left":3}"#),
+            Some((0.0, false, "After 3 items".into()))
+        );
+        assert_eq!(
+            st(r#"{"mode":"items:3","active":true,"remaining":null,"items_left":1}"#),
+            Some((0.0, true, String::new()))
+        );
+        assert_eq!(sleep_spec(30.0), "min:30");
+        assert_eq!(sleep_spec(-1.0), "eof");
+        assert_eq!(sleep_spec(0.0), "off");
     }
 
     // Unix paths (Vivi's control socket is Unix-only; "/c" is not absolute on Windows).
