@@ -233,7 +233,13 @@ fn sleep_tick(m: &mut Mpv, sleep: &mut Sleep, s: &mut Snapshot) -> io::Result<()
     let json = m.get_str(CORE_SLEEP)?;
     if let Some((left, eof, label)) = core_sleep(&json) {
         (sleep.at, sleep.eof) = (None, None);
+        // Only a minutes timer runs down on its own (Vivi 0.14 published it once); the
+        // chapter and items ones follow playback and come fresh with every change.
         let since = match &sleep.core {
+            _ if eof || !label.is_empty() => {
+                sleep.core = None;
+                0.0
+            }
             Some((j, at)) if *j == json => at.elapsed().as_secs_f64(),
             _ => {
                 sleep.core = Some((json, Instant::now()));
