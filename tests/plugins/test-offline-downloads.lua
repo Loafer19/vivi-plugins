@@ -188,6 +188,28 @@ P.finish(ri, false)
 T.eq(ri.state, "failed", "discarded")
 T.eq(ri.error, "Discarded", "discard reason")
 T.eq(io.open(dir .. "/rec-discard.mp3", "r"), nil, "discard deletes the file")
+T.eq(P.panel_row(ri).state, "cancelled", "a discarded row reads cancelled in Vivi (no failure notice)")
+T.eq(P.panel_row(ri).can_discard, true, "rows offer the panel's Discard")
+-- The panel's Discard on a paused download deletes its partial file.
+local pf = dir .. "/paused.mp3"
+local ph = io.open(pf, "w") ph:write("abc") ph:close()
+local pi = { id = 60, url = "https://example.org/paused.mp3", kind = "file", state = "paused", file = pf, added = 1 }
+table.insert(P.queue(), pi)
+P.job_discard(P.job_id(pi))
+T.eq(pi.state, "failed", "panel discard of a paused download")
+T.eq(pi.error, "Discarded", "panel discard reason")
+T.eq(io.open(pf, "r"), nil, "panel discard deletes the partial file")
+for i, x in ipairs(P.queue()) do if x == pi then table.remove(P.queue(), i) break end end
+-- On the active download it stops it the graceful way, as discard.
+local ai = rec_item("rec-panel-discard.mp3")
+P.set_active({ item = ai, t0 = 0 })
+table.insert(P.queue(), ai)
+P.job_discard(P.job_id(ai))
+T.eq(P.get_active().aborted, "discard", "panel discard of the active recording")
+P.finish(ai, false)
+T.eq(ai.error, "Discarded", "active recording discarded")
+T.eq(io.open(dir .. "/rec-panel-discard.mp3", "r"), nil, "and deleted")
+for i, x in ipairs(P.queue()) do if x == ai then table.remove(P.queue(), i) break end end
 -- yt-dlp stopped mid-recording: its .part becomes the file.
 local part = dir .. "/Live [x].mp3.part"
 local h = io.open(part, "w") h:write("abc") h:close()
