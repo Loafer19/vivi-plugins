@@ -1529,8 +1529,8 @@
       ],
       "source": "plugins/offline-downloads",
       "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.4/offline-downloads-1.1.4.zip",
-      "sha256": "073c5d1789a802acfd39dba8a1bed793392cdec016e136fdc286328eec583430",
-      "size": 49273,
+      "sha256": "09cbef3ed314a411f4a76277e15cb3f3e673c09e30268a6bf42fd5a096440de9",
+      "size": 49937,
       "settings": [
         {
           "key": "url",

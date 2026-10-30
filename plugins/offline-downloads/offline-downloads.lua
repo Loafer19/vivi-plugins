@@ -473,11 +473,16 @@ local function finish(it, ok, err)
 end
 
 local function curl_job(it, max_time)
-  local args = { "curl", "-fL", "--retry", "2", "-s", "-A", "Vivi", "-o", it.file }
+  local args = { "curl", "-fL", "-s", "-A", "Vivi", "-o", it.file }
   if max_time then
+    -- A recording: no --retry (curl retries after --max-time and the new transfer
+    -- overwrote the recording), unbuffered so a stop loses nothing.
+    args[#args + 1] = "-N"
     args[#args + 1] = "--max-time"
     args[#args + 1] = tostring(max_time)
   else
+    args[#args + 1] = "--retry"
+    args[#args + 1] = "2"
     args[#args + 1] = "-C"
     args[#args + 1] = "-"
   end
@@ -536,6 +541,11 @@ local function ytdlp_job(it)
     "--print-to-file", "video:%(is_live)s\t%(filename)s", log .. ".info",
     "--progress-template", "download:[vivi] %(progress._percent_str)s|%(progress._total_bytes_str,progress._total_bytes_estimate_str)s|%(info.title)s" }
   if ffdir then args[#args + 1] = "--ffmpeg-location" args[#args + 1] = ffdir end
+  if not known_site(it.url) then
+    -- May turn out to be a stream: small fixed blocks, so stopping it keeps all but the
+    -- last few seconds (yt-dlp holds a whole block in memory, up to megabytes).
+    for _, x in ipairs({ "--buffer-size", "16K", "--no-resize-buffer" }) do args[#args + 1] = x end
+  end
   args[#args + 1] = it.url
   if not windows then args = guarded(args, log, active.pidfile) end
   local a = active
@@ -559,6 +569,8 @@ local function ytdlp_job(it)
     if it.live and not a.cap then
       local secs = radio_secs()
       it.minutes = math.floor(secs / 60)
+      toast(string.format("Recording %d min: %s (Cancel in Downloads stops and keeps it)", it.minutes, title_of(it)), 5)
+      save()
       a.cap = mp.add_timeout(math.max(0, secs - (os.time() - (it.started or os.time()))), function()
         if active == a and not a.aborted then stop_active("auto") end
       end)
