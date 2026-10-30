@@ -36,7 +36,7 @@
 -- Streams are probed with a short GET (a 1-byte range, at most 4 KB read): many
 -- Icecast servers refuse HEAD requests. Every recording is capped at the set length, also
 -- under yt-dlp. Stopping one (the length is reached, Cancel in the panel, "stop") ends
--- the tool with SIGTERM by its exact pid so it closes the file, and keeps the recording
+-- the tool with SIGINT (then SIGTERM) by its exact pid so it closes the file, and keeps the recording
 -- as a finished download with its length; only "discard" deletes it.
 --
 -- yt-dlp: a system yt-dlp is used, else the copy the YouTube & yt-dlp plugin manages
@@ -76,6 +76,11 @@ end
 -- stdout + stderr ("" = keep mpv's capture pipes), $3 = file that gets the tool's pid
 -- ("" = none; used to stop a recording gracefully). Not on Windows (no sh).
 local GUARD = [[vp=$1; log=$2; pf=$3; shift 3
+# sh starts background jobs with SIGINT ignored; perl puts it back (then execs the tool,
+# same pid) so a stop can interrupt yt-dlp / ffmpeg and they close their files.
+if command -v perl >/dev/null 2>&1; then
+  set -- perl -e '$SIG{INT} = "DEFAULT"; exec { $ARGV[0] } @ARGV or exit 127' "$@"
+fi
 if [ -n "$log" ]; then "$@" >"$log" 2>&1 & else "$@" & fi
 c=$!
 if [ -n "$pf" ]; then echo "$c" >"$pf"; fi
@@ -99,10 +104,15 @@ local function guarded(args, log, pidfile)
   return w
 end
 
--- Graceful stop of a guarded tool by the exact pid in $1 (a file): its children first
--- (yt-dlp's ffmpeg finishes the file on SIGTERM), up to 5 s for them, then the tool.
+-- Graceful stop of a guarded tool by the exact pid in $1 (a file): SIGINT first (yt-dlp
+-- writes out what it holds in memory, ffmpeg closes the file), up to 5 s; then SIGTERM to
+-- its children (yt-dlp's ffmpeg) and to the tool.
 local STOP = [[p=$(cat "$1" 2>/dev/null)
 case "$p" in ''|*[!0-9]*) exit 1;; esac
+kill -INT "$p" 2>/dev/null
+i=0
+while kill -0 "$p" 2>/dev/null && [ $i -lt 20 ]; do sleep 0.25; i=$((i+1)); done
+kill -0 "$p" 2>/dev/null || exit 0
 pkill -TERM -P "$p" 2>/dev/null
 i=0
 while pgrep -P "$p" >/dev/null 2>&1 && [ $i -lt 20 ]; do sleep 0.25; i=$((i+1)); done

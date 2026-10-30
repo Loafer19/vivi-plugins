@@ -38,7 +38,7 @@ older Vivi shows the queue on screen instead.
 Links are checked with a short GET (the headers and at most 4 KB), since many Icecast servers
 refuse HEAD requests. **Every recording stops after the set length**, also when yt-dlp ends up
 recording a live stream (it reports one, or an unknown site sends no size). Stopping one, by the
-length, **Cancel** or **Stop**, ends the tool with SIGTERM by its exact process id so it closes the
+length, **Cancel** or **Stop**, ends the tool with SIGINT (then SIGTERM) by its exact process id so it closes the
 file: the recording stays as a finished, playable download with its length (*Recorded 12:30*).
 **Discard** deletes it instead. Quitting Vivi keeps a recording as well.
 
