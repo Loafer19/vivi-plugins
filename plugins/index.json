@@ -1529,8 +1529,8 @@
       ],
       "source": "plugins/offline-downloads",
       "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.5/offline-downloads-1.1.5.zip",
-      "sha256": "6eb87fc543c9a9232a0d450b3f32895bc5eed28274f16a56ee340ea42b4461c7",
-      "size": 51622,
+      "sha256": "55051b6a8577968c33a0238ad4eaaaf983f5ff339e370b13b1c303e6aef61d0c",
+      "size": 51663,
       "settings": [
         {
           "key": "url",
@@ -1671,7 +1671,7 @@
         {
           "version": "1.1.5",
           "date": "2026-10-30",
-          "notes": "Discard in Vivi's Downloads panel (Vivi 0.16+): the trash button on a running download or recording stops it and deletes what it wrote, also a recording, which Cancel keeps. The row then reads Discarded, without a failure notification, and Retry starts it again. Older Vivi ignores it.",
+          "notes": "Discard in Vivi's Downloads panel (the next Vivi release after 0.15): the trash button on a running download or recording stops it and deletes what it wrote, also a recording, which Cancel keeps. The row then reads Discarded, without a failure notification, and Retry starts it again. Older Vivi ignores it.",
           "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.5/offline-downloads-1.1.5.zip"
         },
         {
