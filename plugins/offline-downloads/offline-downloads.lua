@@ -843,7 +843,7 @@ local function job_cancel(job)
   end
 end
 
--- The panel's Discard (Vivi 0.16+): end the job and delete what it wrote (a recording
+-- The panel's Discard (the Vivi release after 0.15): end the job and delete what it wrote (a recording
 -- too, which Cancel keeps). Queued and paused ones lose their partial file.
 local function job_discard(job)
   local it = find_job(job)

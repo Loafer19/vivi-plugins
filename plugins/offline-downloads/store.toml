@@ -7,7 +7,7 @@ screenshots = ["offline-downloads-panel"]
 [[changelog]]
 version = "1.1.5"
 date = "2026-10-30"
-notes = "Discard in Vivi's Downloads panel (Vivi 0.16+): the trash button on a running download or recording stops it and deletes what it wrote, also a recording, which Cancel keeps. The row then reads Discarded, without a failure notification, and Retry starts it again. Older Vivi ignores it."
+notes = "Discard in Vivi's Downloads panel (the next Vivi release after 0.15): the trash button on a running download or recording stops it and deletes what it wrote, also a recording, which Cancel keeps. The row then reads Discarded, without a failure notification, and Retry starts it again. Older Vivi ignores it."
 
 [[changelog]]
 version = "1.1.4"
