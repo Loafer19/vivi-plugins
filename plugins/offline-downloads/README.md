@@ -32,8 +32,15 @@ older Vivi shows the queue on screen instead.
 | --- | --- |
 | YouTube, YouTube Music, SoundCloud, Bandcamp, Jamendo / archive.org pages, … | yt-dlp |
 | Direct files (`.mp3`, `.flac`, `.ogg`, `.mp4`, …, Jamendo storage, `archive.org/download/…`) | curl, resumable, progress from Content-Length |
-| Radio (Icecast / Shoutcast, `.pls` / `.m3u`) | recorded with curl for the set length |
+| Radio (Icecast / Shoutcast, `.pls` / `.m3u`, audio without a size, the playing item when mpv shows it is live) | recorded with curl for the set length |
 | HLS (`.m3u8`) | recorded with ffmpeg (needs one already installed) |
+
+Links are checked with a short GET (the headers and at most 4 KB), since many Icecast servers
+refuse HEAD requests. **Every recording stops after the set length**, also when yt-dlp ends up
+recording a live stream (it reports one, or an unknown site sends no size). Stopping one, by the
+length, **Cancel** or **Stop**, ends the tool with SIGTERM by its exact process id so it closes the
+file: the recording stays as a finished, playable download with its length (*Recorded 12:30*).
+**Discard** deletes it instead. Quitting Vivi keeps a recording as well.
 
 yt-dlp formats always fall back, so a download no longer fails with "Requested format is not
 available" when YouTube offers no single file with video and audio: *Best single file* tries one
@@ -47,7 +54,7 @@ Vivi 0.13 has one **Downloads** panel for every extension (Library → Downloads
 tray). This plugin reports its whole queue there: title, progress, size, speed and time left,
 "Recording · 12:30 of 30 min" for radio, and the error of a failed download. The row buttons act
 on that one download: **Pause / Resume** (not for recordings, which cannot continue), **Cancel**
-(the row stays as *Cancelled*), **Retry**; Play now, Open file, Show in folder, Remove and Clear
+(the row stays as *Cancelled*; on a recording it stops it and keeps what was recorded), **Retry**; Play now, Open file, Show in folder, Remove and Clear
 finished are Vivi's. **Show** / `Alt+Shift+D` open the panel. Finished and failed downloads can
 raise a desktop notification (Settings → Extensions → Notifications). Older Vivi versions keep
 the on-screen list (pending / active / paused / done / failed) with the same actions in the
@@ -68,6 +75,7 @@ The queue is saved in `plugin-data/offline-downloads/queue.json` and continues a
 | --- | --- |
 | URL to download / **Add** / **Add current** | queue a pasted URL or the playing online item |
 | **Record** | record the playing radio / live stream for the set length |
+| **Stop** / **Discard** | end the active recording and keep it / delete it (also in the palette) |
 | **Show**, **Pause / Resume**, **Cancel**, **Retry**, **Clear** | act on the queue (the Downloads panel has the same per row) |
 | Download folder, **Choose…**, **Open** | default `Downloads/Vivi` |
 | yt-dlp quality | *Best single file* (default), *Best*, 1080p, 720p, 480p, *Audio only*; merging video + audio needs ffmpeg |

@@ -1514,7 +1514,7 @@
       "id": "offline-downloads",
       "name": "Offline Downloads",
       "description": "A download queue for offline listening and watching: YouTube and other yt-dlp sites, direct music files (Jamendo, Internet Archive and any audio/video link) and radio streams recorded for a set time. Pending / active / paused / done / failed list with pause, cancel and retry, progress and a download folder. Paste a URL or press Alt+D with one in the clipboard. Downloads no tools of its own: it uses curl and your yt-dlp, or the copy the YouTube & yt-dlp plugin manages.",
-      "version": "1.1.3",
+      "version": "1.1.4",
       "author": "Vivi",
       "icon": "download",
       "lucide": "download",
@@ -1528,9 +1528,9 @@
         "subprocess"
       ],
       "source": "plugins/offline-downloads",
-      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.3/offline-downloads-1.1.3.zip",
-      "sha256": "fbf1c5c92b2864ea1d6010cfc2bbdfbe7b79b42986fbd6c77489c062112160d9",
-      "size": 38080,
+      "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.4/offline-downloads-1.1.4.zip",
+      "sha256": "073c5d1789a802acfd39dba8a1bed793392cdec016e136fdc286328eec583430",
+      "size": 49273,
       "settings": [
         {
           "key": "url",
@@ -1555,6 +1555,18 @@
           "title": "Record the playing radio / live stream for the set length",
           "type": "action",
           "label": "Record"
+        },
+        {
+          "key": "stop",
+          "title": "Stop the active recording now and keep it (Cancel in Downloads does the same)",
+          "type": "action",
+          "label": "Stop"
+        },
+        {
+          "key": "discard",
+          "title": "Stop the active recording and delete what was recorded",
+          "type": "action",
+          "label": "Discard"
         },
         {
           "key": "show",
@@ -1620,7 +1632,7 @@
         },
         {
           "key": "radio-minutes",
-          "title": "Radio / live stream recording length (minutes)",
+          "title": "Radio / live stream recording length (minutes; every recording stops after it)",
           "type": "choice",
           "options": [
             "30",
@@ -1657,10 +1669,15 @@
       ],
       "changelog": [
         {
+          "version": "1.1.4",
+          "date": "2026-10-30",
+          "notes": "Radio stations no longer download forever (#2): streams are detected with a short GET (many Icecast servers refuse the HEAD request used before), from ICY headers, an audio type without a size, or mpv showing that the playing item is live, and recorded as radio. Every recording stops after the set length, also when yt-dlp records it. The Downloads panel shows Recording m:ss of N min; Cancel (or the new Stop) ends it gracefully and keeps a playable file listed as done with its length (Recorded 12:30); Discard deletes it instead. Quitting Vivi keeps a recording too.",
+          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.4/offline-downloads-1.1.4.zip"
+        },
+        {
           "version": "1.1.3",
           "date": "2026-10-20",
-          "notes": "Downloads stop when Vivi quits (tray menu Quit, closing the window, Ctrl+Q): each curl / yt-dlp / ffmpeg runs under a small watchdog that stops it, and what it started, once Vivi is gone, so no download keeps running in the background with no Vivi to show or cancel it. A stopped download resumes from the queue next time.",
-          "url": "https://github.com/Loafer19/vivi-plugins/releases/download/plugin-offline-downloads-v1.1.3/offline-downloads-1.1.3.zip"
+          "notes": "Downloads stop when Vivi quits (tray menu Quit, closing the window, Ctrl+Q): each curl / yt-dlp / ffmpeg runs under a small watchdog that stops it, and what it started, once Vivi is gone, so no download keeps running in the background with no Vivi to show or cancel it. A stopped download resumes from the queue next time."
         },
         {
           "version": "1.1.2",

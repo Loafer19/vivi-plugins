@@ -1,6 +1,6 @@
 id = "offline-downloads"
 name = "Offline Downloads"
-version = "1.1.3"
+version = "1.1.4"
 description = "A download queue for offline listening and watching: YouTube and other yt-dlp sites, direct music files (Jamendo, Internet Archive and any audio/video link) and radio streams recorded for a set time. Pending / active / paused / done / failed list with pause, cancel and retry, progress and a download folder. Paste a URL or press Alt+D with one in the clipboard. Downloads no tools of its own: it uses curl and your yt-dlp, or the copy the YouTube & yt-dlp plugin manages."
 author = "Vivi"
 kind = "mpv-lua"
@@ -40,6 +40,16 @@ command = "add-clipboard"
 point = "palette.command"
 label = "Downloads: record the playing stream"
 command = "record"
+
+[[contributes]]
+point = "palette.command"
+label = "Downloads: stop the recording (keep it)"
+command = "stop"
+
+[[contributes]]
+point = "palette.command"
+label = "Downloads: stop the recording and discard it"
+command = "discard"
 
 [[contributes]]
 point = "palette.command"
@@ -94,6 +104,18 @@ key = "record"
 title = "Record the playing radio / live stream for the set length"
 type = "action"
 label = "Record"
+
+[[settings]]
+key = "stop"
+title = "Stop the active recording now and keep it (Cancel in Downloads does the same)"
+type = "action"
+label = "Stop"
+
+[[settings]]
+key = "discard"
+title = "Stop the active recording and delete what was recorded"
+type = "action"
+label = "Discard"
 
 [[settings]]
 key = "show"
@@ -152,7 +174,7 @@ default = "Best single file"
 
 [[settings]]
 key = "radio-minutes"
-title = "Radio / live stream recording length (minutes)"
+title = "Radio / live stream recording length (minutes; every recording stops after it)"
 type = "choice"
 options = ["30", "10", "60", "120", "240"]
 default = "30"

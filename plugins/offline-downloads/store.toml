@@ -5,6 +5,11 @@ tags = ["download", "offline", "queue", "yt-dlp", "radio", "jamendo", "archive.o
 screenshots = ["offline-downloads-panel"]
 
 [[changelog]]
+version = "1.1.4"
+date = "2026-10-30"
+notes = "Radio stations no longer download forever (#2): streams are detected with a short GET (many Icecast servers refuse the HEAD request used before), from ICY headers, an audio type without a size, or mpv showing that the playing item is live, and recorded as radio. Every recording stops after the set length, also when yt-dlp records it. The Downloads panel shows Recording m:ss of N min; Cancel (or the new Stop) ends it gracefully and keeps a playable file listed as done with its length (Recorded 12:30); Discard deletes it instead. Quitting Vivi keeps a recording too."
+
+[[changelog]]
 version = "1.1.3"
 date = "2026-10-20"
 notes = "Downloads stop when Vivi quits (tray menu Quit, closing the window, Ctrl+Q): each curl / yt-dlp / ffmpeg runs under a small watchdog that stops it, and what it started, once Vivi is gone, so no download keeps running in the background with no Vivi to show or cancel it. A stopped download resumes from the queue next time."
