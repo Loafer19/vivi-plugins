@@ -25,7 +25,7 @@ jobs:
           - { os: ubuntu-24.04, platform: linux-x86_64 }
           - { os: ubuntu-24.04-arm, platform: linux-aarch64 }
           - { os: ubuntu-24.04, platform: windows-x86_64 }
-          - { os: macos-14, platform: macos-aarch64 }
+          - { os: macos-15, platform: macos-aarch64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -80,7 +80,7 @@ jobs:
           path: dist
           merge-multiple: true
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/*
       - name: Publish
