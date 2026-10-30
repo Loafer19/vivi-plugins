@@ -278,7 +278,10 @@ local function title_of(it) return it.title or (it.file and it.file:match("([^/\
 local function panel_row(it, now)
   local r = { title = title_of(it), state = PANEL_STATE[it.state] or "queued",
     done = it.done or 0, total = it.total or 0, progress = (it.pct or 0) / 100,
-    error = it.error or "", path = it.file or "", can_pause = not recording(it), detail = "" }
+    error = it.error or "", path = it.file or "", can_pause = not recording(it), detail = "",
+    can_discard = true }
+  -- Discarded by the user: Vivi shows "Discarded" (cancelled, no failure notification).
+  if it.state == "failed" and it.error == "Discarded" then r.state = "cancelled" end
   if it.state == "done" then
     r.done = it.size or r.done
     r.total = it.size or r.total
@@ -413,7 +416,7 @@ local function adopt_part(it)
 end
 
 local function remove_recording(it)
-  if it.file then os.remove(it.file) end
+  if it.file then os.remove(it.file) os.remove(it.file .. ".part") end
   if it.part then os.remove(it.part) end
 end
 
@@ -437,10 +440,11 @@ local function finish(it, ok, err)
   if a and a.cap then a.cap:kill() end
   active = nil
   local rec = recording(it)
-  if rec and a and a.aborted == "discard" then
+  if a and a.aborted == "discard" then
     remove_recording(it)
     it.state, it.error, it.done, it.pct, it.file, it.part = "failed", "Discarded", 0, 0, nil, nil
-    toast("Recording discarded")
+    it.recorded, it.size = nil, nil
+    toast(rec and "Recording discarded" or "Download discarded")
   elseif rec and a and a.aborted ~= "pause" and a.aborted ~= "cancel" then
     -- Ended by its length (the tool's own limit or ours), Stop or Cancel: keep it.
     adopt_part(it)
@@ -839,6 +843,21 @@ local function job_cancel(job)
   end
 end
 
+-- The panel's Discard (Vivi 0.16+): end the job and delete what it wrote (a recording
+-- too, which Cancel keeps). Queued and paused ones lose their partial file.
+local function job_discard(job)
+  local it = find_job(job)
+  if not it then return end
+  if active and active.item == it then return stop_active("discard") end
+  if it.state == "pending" or it.state == "paused" then
+    remove_recording(it)
+    it.state, it.error, it.done, it.pct, it.file, it.part = "failed", "Discarded", 0, 0, nil, nil
+    report(it)
+    save()
+    toast("Download discarded")
+  end
+end
+
 local function job_retry(job)
   local it = find_job(job)
   if not it or it.state ~= "failed" then return end
@@ -899,6 +918,7 @@ mp.register_script_message("download-pause", job_pause)
 mp.register_script_message("download-resume", job_resume)
 mp.register_script_message("download-cancel", job_cancel)
 mp.register_script_message("download-retry", job_retry)
+mp.register_script_message("download-discard", job_discard)
 mp.register_script_message("pick-folder", function()
   mp.commandv("script-message", "vivi-pick-folder", "offline-downloads", "folder")
 end)
@@ -921,7 +941,7 @@ if VIVI_TEST then
     file_name = file_name, parse_progress = parse_progress, enqueue = enqueue, retry = retry,
     clear_done = clear_done, known_site = known_site, format_for = format_for, queue = function() return queue end, describe = describe, human = human,
     set_active = function(a) active = a end, job_id = job_id, panel_row = panel_row,
-    job_pause = job_pause, job_resume = job_resume, job_cancel = job_cancel, job_retry = job_retry,
+    job_pause = job_pause, job_resume = job_resume, job_cancel = job_cancel, job_retry = job_retry, job_discard = job_discard,
     show = show, report_unfinished = report_unfinished, record = record, guarded = guarded, GUARD = GUARD,
     STOP = STOP, PROBE = PROBE, probe_args = probe_args, playing_live = playing_live, finish = finish,
     get_active = function() return active end, cancel = cancel, stop_recording = stop_recording, clock = clock }

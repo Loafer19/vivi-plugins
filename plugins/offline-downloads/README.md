@@ -40,7 +40,9 @@ refuse HEAD requests. **Every recording stops after the set length**, also when 
 recording a live stream (it reports one, or an unknown site sends no size). Stopping one, by the
 length, **Cancel** or **Stop**, ends the tool with SIGINT (then SIGTERM) by its exact process id so it closes the
 file: the recording stays as a finished, playable download with its length (*Recorded 12:30*).
-**Discard** deletes it instead. Quitting Vivi keeps a recording as well.
+**Discard** deletes it instead. Quitting Vivi keeps a recording as well. In Vivi 0.16+ every running
+row of the Downloads panel has a **Discard** (trash) button too: it stops that download or
+recording and deletes what it wrote; the row reads *Discarded* and Retry starts it again.
 
 yt-dlp formats always fall back, so a download no longer fails with "Requested format is not
 available" when YouTube offers no single file with video and audio: *Best single file* tries one
