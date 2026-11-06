@@ -70,6 +70,7 @@ command = "show"
 point = "context.player"
 label = "Download for offline"
 command = "add-current"
+when = "stream"            # Vivi #93; older Vivi ignores it
 
 [[contributes]]
 point = "tray.item"

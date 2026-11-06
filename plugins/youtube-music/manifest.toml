@@ -38,20 +38,27 @@ point = "palette.command"
 label = "YouTube Music: sync downloaded playlists"
 command = "sync-playlists"
 
+# Player-menu conditions (Vivi #93, host feature `menu-when`; older Vivi ignores them and
+# shows all three). Radio and Like also work for songs this plugin downloaded, so the
+# script shows them per file (`vivi-menu youtube-music <command> show`).
 [[contributes]]
 point = "context.player"
 label = "Start radio from this song"
 command = "radio-current"
+hidden = true
 
 [[contributes]]
 point = "context.player"
 label = "Download this song"
 command = "download-current"
+when = "stream"
+when_source = "youtube-music"
 
 [[contributes]]
 point = "context.player"
 label = "Like this song on YouTube Music"
 command = "like-current"
+hidden = true
 
 [[contributes]]
 point = "tray.item"

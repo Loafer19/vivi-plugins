@@ -12,15 +12,18 @@ permissions = ["network", "filesystem", "subprocess"]
 size_note = "+ ffmpeg if needed"
 default_enabled = true
 
+# Local files only (Vivi #93; older Vivi ignores `when`).
 [[contributes]]
 point = "context.player"
 label = "Set clip start here"
 command = "set-in"
+when = "local"
 
 [[contributes]]
 point = "context.player"
 label = "Set clip end here"
 command = "set-out"
+when = "local"
 
 [[contributes]]
 point = "palette.command"

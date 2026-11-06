@@ -33,10 +33,12 @@ point = "palette.command"
 label = "YouTube: download the playing video"
 command = "download-current"
 
+# Any yt-dlp site, so only "a stream" (Vivi #93; older Vivi ignores `when`).
 [[contributes]]
 point = "context.player"
 label = "Download this video"
 command = "download-current"
+when = "stream"
 
 [[contributes]]
 point = "downloads"

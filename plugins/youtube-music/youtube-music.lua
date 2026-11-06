@@ -2645,6 +2645,14 @@ mp.register_script_message("download-current", function()
   download(it)
 end)
 mp.register_event("shutdown", function() if S.dl_job then mp.abort_async_command(S.dl_job) end end)
+-- Radio and Like in Vivi's player menu only for YouTube Music songs, streamed or downloaded
+-- by this plugin (manifest `hidden = true`; Vivi #93 hides them again on the next file).
+mp.register_event("file-loaded", function()
+  if current() then
+    mp.commandv("script-message", "vivi-menu", ID, "radio-current", "show")
+    mp.commandv("script-message", "vivi-menu", ID, "like-current", "show")
+  end
+end)
 
 math.randomseed(os.time())
 

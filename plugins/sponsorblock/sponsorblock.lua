@@ -54,6 +54,12 @@ local function toast(msg, secs)
   mp.commandv("script-message", "vivi-toast", msg)
 end
 
+-- Show or hide "Undo SponsorBlock skip" in Vivi's player menu (manifest `hidden = true`;
+-- Vivi #93). Vivi hides it again when the next file loads; older Vivi ignores this.
+local function undo_menu(shown)
+  mp.commandv("script-message", "vivi-menu", "sponsorblock", "undo", shown and "show" or "hide")
+end
+
 local NAMES = {
   sponsor = "Sponsor", selfpromo = "Self-promotion", interaction = "Interaction reminder",
   intro = "Intro", outro = "Outro", preview = "Preview", music_offtopic = "Non-music part",
@@ -143,6 +149,8 @@ local function send_core()
   else
     mp.commandv("script-message", "vivi-skip-ranges", "sponsorblock", utils.format_json(core_ranges()))
   end
+  -- Vivi's Skip button does the skipping, so Undo is offered while it has segments.
+  undo_menu(#segments > 0)
   return true
 end
 
@@ -237,6 +245,7 @@ local function skip_to(i)
   announced = nil
   local from = mp.get_property_number("time-pos") or s[1]
   last_skip = { i, from }
+  undo_menu(true)
   mp.set_property_number("time-pos", s[2])
   local what = (NAMES[s[3]] or s[3]):lower()
   if o.notice then
@@ -260,12 +269,14 @@ local function undo()
   if muted then
     allowed[muted] = true
     unmute()
+    if not last_skip then undo_menu(false) end
     toast("Unmuted — playing the segment with sound")
     return
   end
   if not last_skip then toast("Nothing to undo") return end
   local i, from = last_skip[1], last_skip[2]
   last_skip = nil
+  undo_menu(false)
   allowed[i] = true
   announced = i
   mp.set_property_number("time-pos", math.max(0, math.min(from, segments[i] and segments[i][1] or from)))
@@ -283,6 +294,7 @@ local function check_mute(t)
     if s[4] == "mute" and not allowed[i] and t >= s[1] and t < s[2] - 0.5 then
       if mp.get_property_native("mute") then return end -- already muted by the user
       muted = i
+      undo_menu(true)
       mp.set_property_native("mute", true)
       if o.notice then
         toast(string.format("Muted %s (%.0f s) — Alt+Shift+K to unmute", (NAMES[s[3]] or s[3]):lower(), s[2] - s[1]), 5)

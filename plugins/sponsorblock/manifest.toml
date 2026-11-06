@@ -12,6 +12,15 @@ permissions = ["network", "subprocess"]
 issue = 73
 default_enabled = true
 
+# Hidden until there is something to undo: the script sends `vivi-menu sponsorblock undo
+# show` after a skip or mute (Vivi #93, host feature `menu-when`). Older Vivi ignores
+# `hidden` and shows it always, as it did with the built-in default.
+[[contributes]]
+point = "context.player"
+label = "Undo SponsorBlock skip"
+command = "undo"
+hidden = true
+
 [[settings]]
 key = "categories"
 title = "Categories (space separated: sponsor selfpromo interaction intro outro preview music_offtopic filler)"

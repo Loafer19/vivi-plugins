@@ -26,6 +26,7 @@ action = "Open Auto-tagger"
 point = "context.player"
 label = "Identify with AcoustID"
 command = "identify"
+when = ["local", "audio"]  # Vivi #93; older Vivi ignores it
 
 [[contributes]]
 point = "palette.command"

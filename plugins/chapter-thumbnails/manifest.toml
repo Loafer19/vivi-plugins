@@ -25,6 +25,7 @@ command = "generate"
 point = "menu.video"
 label = "Detect scene chapters"
 command = "scenes-detect"
+when = ["local", "video"]  # Vivi #93; older Vivi ignores it
 
 [[contributes]]
 point = "palette.command"
