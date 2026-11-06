@@ -7,6 +7,11 @@ screenshots = ["skip-intro-sponsorblock", "sponsorblock-player", "sponsorblock-s
 featured_rank = 3
 
 [[changelog]]
+version = "1.3.1"
+date = "2026-11-06"
+notes = "Player menu: \"Undo SponsorBlock skip\" only after a skip or mute (or while Vivi's Skip button has the segments). The menu conditions take effect from the next Vivi release (after 0.15); Vivi 0.15 and older show the entries as before."
+
+[[changelog]]
 version = "1.3.0"
 date = "2026-10-19"
 notes = "Vivi 0.13+: segments go to the player's one Skip button (Skip Intro & Credits): \"Skip sponsor\", Undo after automatic skips, \"Unmute\" in muted segments, Alt+K / Alt+Shift+K, and no second button where a chapter-named intro is the same segment. The per-category modes and the mute setting still decide; Vivi's per-category setting can override them. Older Vivi, or Skip Intro & Credits off: skips, asks and mutes itself as before."

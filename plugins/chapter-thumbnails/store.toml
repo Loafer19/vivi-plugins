@@ -7,6 +7,11 @@ screenshots = ["chapter-thumbnails-player", "chapter-thumbnails-scenes", "chapte
 featured_rank = 1
 
 [[changelog]]
+version = "1.2.1"
+date = "2026-11-06"
+notes = "Video menu: \"Detect scene chapters\" only for local videos. The menu conditions take effect from the next Vivi release (after 0.15); Vivi 0.15 and older show the entries as before."
+
+[[changelog]]
 version = "1.2.0"
 date = "2026-10-19"
 notes = "Now called Chapters & Previews and includes scene chapters (formerly the Scene Chapters plugin): Alt+J or Video → Detect scene chapters, automatic detection off by default, every frame or keyframes only (about 10× faster), threshold and minimum length, merged with SponsorBlock chapters, lowest CPU / disk priority, Alt+J again cancels, Forget in the command palette; Scene Chapters' cache and settings are taken over. Messages are Vivi toasts only (no mpv OSD text)."

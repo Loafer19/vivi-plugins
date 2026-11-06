@@ -7,6 +7,11 @@ screenshots = ["youtube-search", "youtube-sizes", "youtube-playlist", "youtube-d
 featured_rank = 2
 
 [[changelog]]
+version = "1.4.1"
+date = "2026-11-06"
+notes = "Player menu: \"Download this video\" only while a stream plays. The menu conditions take effect from the next Vivi release (after 0.15); Vivi 0.15 and older show the entries as before."
+
+[[changelog]]
 version = "1.4.0"
 date = "2026-10-20"
 notes = "Estimated size of each quality for the selected video in the search dialog, and a download quality dropdown there. Fixes: Cancel did not stop a running download, thumbnails were missing (YouTube sends WebP), Downloads panel rows showed no progress, sizes were up to 3× too high, 720p and lower failed without ffmpeg when YouTube has no single-file format."

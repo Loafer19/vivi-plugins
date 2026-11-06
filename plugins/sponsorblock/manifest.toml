@@ -1,6 +1,6 @@
 id = "sponsorblock"
 name = "SponsorBlock"
-version = "1.3.0"
+version = "1.3.1"
 description = "Skips sponsor, intro, self-promotion and other segments in YouTube videos using the crowd-sourced SponsorBlock database: segments as chapters on the seek bar, skip / ask / off per category, and muting where a segment is marked for muting. In Vivi 0.13+ the segments appear on the player's one Skip button (Skip sponsor, Undo, Alt+K / Alt+Shift+K). Also works for videos the YouTube plugin adds or downloads."
 author = "Vivi"
 kind = "mpv-lua"

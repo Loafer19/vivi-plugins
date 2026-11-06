@@ -5,6 +5,11 @@ tags = ["youtube-music", "youtube", "yt-dlp", "playlists", "radio", "downloads"]
 screenshots = ["youtube-music-search", "youtube-music-album", "youtube-music-playing", "youtube-music-downloads", "youtube-music-home"]
 
 [[changelog]]
+version = "1.1.1"
+date = "2026-11-06"
+notes = "Player menu: \"Download this song\" only for YouTube Music streams; \"Start radio\" and \"Like\" only for YouTube Music songs, streamed or downloaded by this plugin. The menu conditions take effect from the next Vivi release (after 0.15); Vivi 0.15 and older show the entries as before."
+
+[[changelog]]
 version = "1.1.0"
 date = "2026-10-25"
 notes = "YouTube Music now also appears in Vivi's Streams hub, under Music next to Free Music (Vivi with the Streams hub, after 0.13.1), as well as in the sidebar. Older Vivi versions ignore the new entry and work as before."

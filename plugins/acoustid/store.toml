@@ -4,6 +4,11 @@ categories = ["Music", "Tools"]
 tags = ["acoustid", "musicbrainz", "chromaprint", "tagging", "rename"]
 
 [[changelog]]
+version = "1.1.2"
+date = "2026-11-06"
+notes = "Player menu: \"Identify with AcoustID\" only for local audio files. The menu conditions take effect from the next Vivi release (after 0.15); Vivi 0.15 and older show the entries as before."
+
+[[changelog]]
 version = "1.1.1"
 date = "2026-10-20"
 notes = "Deprecated: Vivi 0.13.0's built-in Auto-tagger does what this plugin did (Chromaprint fingerprint, AcoustID + MusicBrainz lookup, identifying untagged songs as they start, per-file answer cache) without an API key of your own. The script is otherwise unchanged and keeps working on older Vivi."

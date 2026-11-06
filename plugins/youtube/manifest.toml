@@ -1,6 +1,6 @@
 id = "youtube"
 name = "YouTube & yt-dlp"
-version = "1.4.0"
+version = "1.4.1"
 description = "Search YouTube or open a video, playlist or channel link in Vivi's own dialog, see the estimated size of each quality, then play, queue or download it (video or audio only) with progress in the Downloads panel. Needs Vivi 0.13 or newer. Uses your system yt-dlp and ffmpeg, or downloads verified copies: yt-dlp (18–40 MB) on first use, Vivi's minimal ffmpeg (about 6 MB) only for merging or audio conversion."
 author = "Vivi"
 kind = "mpv-lua"

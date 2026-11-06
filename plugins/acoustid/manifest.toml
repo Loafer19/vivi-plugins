@@ -1,6 +1,6 @@
 id = "acoustid"
 name = "AcoustID Tagger"
-version = "1.1.1"
+version = "1.1.2"
 description = "Identifies the playing song by its sound: fingerprints it with Chromaprint's fpcalc, looks it up on AcoustID and MusicBrainz and opens the Auto-tagger's before/after review with the tags and a new file name built from your pattern (for example {artist} - {title}), applied only when you confirm. Optionally identifies untagged songs as they start and shows the match as now playing (card, MPRIS, Scrobbler) without changing the file. Uses an installed fpcalc, otherwise downloads the official one (1.3–2.6 MB). Needs your free AcoustID application key, kept in a private file on Vivi 0.13+."
 author = "Vivi"
 kind = "mpv-lua"
