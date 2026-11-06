@@ -100,7 +100,9 @@ T.eq(r[2].label, "self-promotion", "core: label name")
 T.eq(r[3].action, "ask", "core: per-category ask")
 T.calls = {}
 T.ok(P.send_core(), "core: sent")
-local sent = T.calls[#T.calls]
+local sent = T.calls[#T.calls - 1]
+local menu = T.calls[#T.calls]
+T.eq(table.concat(menu, " ", 2), "vivi-menu sponsorblock undo show", "core: Undo shown in the player menu")
 T.eq(sent[1], "script-message", "core: script-message")
 T.eq(sent[2], "vivi-skip-ranges", "core: message name")
 T.eq(sent[3], "sponsorblock", "core: source")
@@ -121,12 +123,25 @@ P.set_segments({})
 T.calls = {}
 P.send_core()
 T.eq(T.calls[1] and T.calls[1][2], "vivi-skip-ranges-clear", "core: no segments clears")
+T.eq(T.calls[2] and table.concat(T.calls[2], " ", 2), "vivi-menu sponsorblock undo hide", "core: Undo hidden without segments")
 -- Skip Intro & Credits off (0) or older Vivi (unset): own skipping again.
 T.props["user-data/vivi/skip-api"] = 0
 T.ok(not P.send_core(), "fallback: nothing sent")
 P.opts.per_category = ""
 P.set_segments({ { 10, 40, "sponsor", "skip" } })
+T.calls = {}
 P.on_time(nil, 10.2)
 T.eq(T.props["time-pos"], 40, "fallback: skips itself")
+local function menu_calls()
+  local out = {}
+  for _, c in ipairs(T.calls) do
+    if c[2] == "vivi-menu" then out[#out + 1] = table.concat(c, " ", 3) end
+  end
+  return table.concat(out, ", ")
+end
+T.eq(menu_calls(), "sponsorblock undo show", "fallback: a skip shows Undo")
+T.calls = {}
+P.undo()
+T.eq(menu_calls(), "sponsorblock undo hide", "fallback: Undo hides it again")
 T.props["user-data/vivi/skip-api"] = nil
 T.done("sponsorblock")
